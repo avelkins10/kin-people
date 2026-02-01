@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, date, timestamptz, index, unique } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, date, timestamp, index, unique } from 'drizzle-orm/pg-core';
 import { people } from './people';
 import { roles } from './roles';
 import { offices } from './offices';
@@ -38,7 +38,7 @@ export const orgSnapshots = pgTable(
     teamIds: uuid('team_ids').array(),
     teamNames: varchar('team_names', { length: 255 }).array(),
     // Timestamp
-    createdAt: timestamptz('created_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxOrgSnapshotsPerson: index('idx_org_snapshots_person').on(table.personId),

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, text, jsonb, boolean, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, integer, text, jsonb, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const roles = pgTable(
   'roles',
@@ -10,8 +10,8 @@ export const roles = pgTable(
     permissions: jsonb('permissions').default('{}'),
     isActive: boolean('is_active').default(true),
     sortOrder: integer('sort_order').default(0),
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxRolesActive: index('idx_roles_active').on(table.isActive),

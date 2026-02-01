@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
 import { people } from './people';
 import { offices } from './offices';
 import { teams } from './teams';
@@ -26,18 +26,18 @@ export const recruits = pgTable(
     targetPayPlanId: uuid('target_pay_plan_id').references(() => payPlans.id),
     // Agreement tracking
     signnowDocumentId: varchar('signnow_document_id', { length: 100 }),
-    agreementSentAt: timestamptz('agreement_sent_at'),
-    agreementSignedAt: timestamptz('agreement_signed_at'),
+    agreementSentAt: timestamp('agreement_sent_at', { withTimezone: true }),
+    agreementSignedAt: timestamp('agreement_signed_at', { withTimezone: true }),
     agreementDocumentUrl: text('agreement_document_url'),
     // Conversion
     convertedToPersonId: uuid('converted_to_person_id').references(() => people.id),
-    convertedAt: timestamptz('converted_at'),
+    convertedAt: timestamp('converted_at', { withTimezone: true }),
     // Notes
     notes: text('notes'),
     metadata: jsonb('metadata').default('{}'),
     // Timestamps
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxRecruitsStatus: index('idx_recruits_status').on(table.status),

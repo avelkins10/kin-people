@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, decimal, date, text, jsonb, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, decimal, date, text, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 import { deals } from './deals';
 import { people } from './people';
 import { commissionRules } from './commission-rules';
@@ -49,12 +49,12 @@ export const commissions = pgTable(
     statusReason: text('status_reason'), // reason for hold/void
     // Payroll
     payPeriodDate: date('pay_period_date'),
-    paidAt: timestamptz('paid_at'),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
     // Notes
     notes: text('notes'),
     // Timestamps
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxCommissionsDeal: index('idx_commissions_deal').on(table.dealId),

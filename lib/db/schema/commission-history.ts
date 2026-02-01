@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamptz } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp } from 'drizzle-orm/pg-core';
 import { commissions } from './commissions';
 import { people } from './people';
 
@@ -9,7 +9,7 @@ export const commissionHistory = pgTable('commission_history', {
   newStatus: varchar('new_status', { length: 50 }).notNull(),
   reason: text('reason'),
   changedById: uuid('changed_by_id').references(() => people.id),
-  createdAt: timestamptz('created_at').defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
 export type CommissionHistory = typeof commissionHistory.$inferSelect;

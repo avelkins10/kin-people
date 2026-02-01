@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, date, jsonb, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, date, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 import { roles } from './roles';
 import { offices } from './offices';
 
@@ -43,8 +43,8 @@ export const people = pgTable(
     // Metadata
     metadata: jsonb('metadata').default('{}'),
     // Timestamps
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxPeopleRole: index('idx_people_role').on(table.roleId),

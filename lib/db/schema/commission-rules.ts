@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, decimal, integer, jsonb, boolean, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, decimal, integer, jsonb, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 import { payPlans } from './pay-plans';
 import { roles } from './roles';
 
@@ -40,8 +40,8 @@ export const commissionRules = pgTable(
     conditions: jsonb('conditions').default('{}'), // Flexible conditions including setter_tier matching
     isActive: boolean('is_active').default(true),
     sortOrder: integer('sort_order').default(0),
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxCommissionRulesPayPlan: index('idx_commission_rules_pay_plan').on(table.payPlanId),

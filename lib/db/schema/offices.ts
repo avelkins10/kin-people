@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, boolean, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const offices = pgTable(
   'offices',
@@ -9,8 +9,8 @@ export const offices = pgTable(
     states: text('states').array(),
     address: text('address'),
     isActive: boolean('is_active').default(true),
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxOfficesActive: index('idx_offices_active').on(table.isActive),

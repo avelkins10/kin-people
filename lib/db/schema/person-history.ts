@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, jsonb, date, text, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, jsonb, date, text, timestamp, index } from 'drizzle-orm/pg-core';
 import { people } from './people';
 
 /**
@@ -32,7 +32,7 @@ export const personHistory = pgTable(
     effectiveDate: date('effective_date').notNull(),
     reason: text('reason'), // explanation for the change
     changedById: uuid('changed_by_id').references(() => people.id),
-    createdAt: timestamptz('created_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxPersonHistoryPerson: index('idx_person_history_person').on(table.personId),

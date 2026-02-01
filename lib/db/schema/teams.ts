@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, boolean, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 import { offices } from './offices';
 import { people } from './people';
 
@@ -11,8 +11,8 @@ export const teams = pgTable(
     officeId: uuid('office_id').references(() => offices.id),
     teamLeadId: uuid('team_lead_id').references(() => people.id),
     isActive: boolean('is_active').default(true),
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxTeamsActive: index('idx_teams_active').on(table.isActive),

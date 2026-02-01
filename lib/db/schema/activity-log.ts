@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, jsonb, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 import { people } from './people';
 
 export const activityLog = pgTable(
@@ -15,7 +15,7 @@ export const activityLog = pgTable(
     actorId: uuid('actor_id').references(() => people.id),
     actorType: varchar('actor_type', { length: 50 }).default('user'), // 'user', 'system', 'webhook'
     // Timestamp
-    createdAt: timestamptz('created_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxActivityEntity: index('idx_activity_entity').on(table.entityType, table.entityId),

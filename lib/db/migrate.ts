@@ -1,21 +1,27 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { migrate } from 'drizzle-orm/neon-http/migrator';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import postgres from 'postgres';
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
-const sql = neon(process.env.DATABASE_URL);
-const db = drizzle(sql);
+const client = postgres(process.env.DATABASE_URL!, { max: 1, ssl: 'require' });
+const db = drizzle(client);
 
 async function runMigrations() {
   console.log('Running migrations...');
-  await migrate(db, { migrationsFolder: './drizzle' });
-  console.log('Migrations completed successfully');
+  let failed = false;
+  try {
+    await migrate(db, { migrationsFolder: './drizzle' });
+    console.log('Migrations completed successfully');
+  } catch (error) {
+    console.error('Migration failed:', error);
+    failed = true;
+  } finally {
+    await client.end();
+  }
+  if (failed) process.exit(1);
 }
 
-runMigrations().catch((error) => {
-  console.error('Migration failed:', error);
-  process.exit(1);
-});
+runMigrations();

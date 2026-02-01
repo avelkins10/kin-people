@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, decimal, date, boolean, jsonb, timestamptz, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, decimal, date, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 import { people } from './people';
 import { offices } from './offices';
 import { orgSnapshots } from './org-snapshots';
@@ -48,8 +48,8 @@ export const deals = pgTable(
     // Metadata
     metadata: jsonb('metadata').default('{}'),
     // Timestamps
-    createdAt: timestamptz('created_at').defaultNow(),
-    updatedAt: timestamptz('updated_at').defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
     idxDealsSetter: index('idx_deals_setter').on(table.setterId),

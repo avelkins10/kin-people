@@ -1,0 +1,54 @@
+Neon Database Backup Metadata
+==============================
+Backup Date: [Current Date and Time]
+Backup File: neon_backup.sql
+Backup Size: [File size in MB]
+Source Database: Neon Postgres
+Source Region: [Neon region - check Neon dashboard]
+Destination: Supabase Project [Project Name]
+
+Tables Backed Up (16):
+- roles
+- offices
+- teams
+- pay_plans
+- commission_rules
+- people
+- person_teams
+- person_pay_plans
+- person_history
+- org_snapshots
+- recruits
+- recruit_history
+- deals
+- commissions
+- commission_history
+- activity_log
+
+Verification Status: [✓ All tables present / ⚠ Issues found]
+Row Counts: [Optional - add counts if needed]
+
+Export Command Used:
+pg_dump --clean --if-exists --no-owner --no-acl $DATABASE_URL > neon_backup.sql
+
+Notes:
+[Add any relevant notes about the backup process, issues encountered, or special considerations]
+
+---
+Phase 2: Supabase Import
+------------------------
+Import Date and Time: [Date/time of import]
+Supabase Project: [Project name / ref]
+Import Method: [script / manual / SQL Editor]
+Import Duration: [e.g. 2m 30s]
+Import Log File: [e.g. backups/import_log_YYYYMMDD_HHMMSS.txt]
+
+Verification Results Summary: [✓ Pass / ⚠ Issues]
+Row Count Comparison: [✓ Match / ✗ Mismatch - describe]
+Data Integrity Tests: [✓ Pass / ✗ Fail - describe]
+
+Issues Encountered During Import:
+[None / list any errors or warnings]
+
+Resolution Notes:
+[How any issues were resolved, or N/A]
