@@ -8,8 +8,9 @@ import {
   personTeams,
   personPayPlans,
   personHistory,
+  recruits,
 } from "@/lib/db/schema";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
 import type { PersonWithDetails, PersonHistoryWithChanger } from "@/types/people";
 import type { NewPersonHistory } from "@/lib/db/schema";
 
@@ -229,4 +230,36 @@ export async function createPersonHistoryRecord(
     .returning();
 
   return record;
+}
+
+/**
+ * Get document metadata for recruits with signed agreements recruited by this person.
+ * Used by the person documents tab.
+ */
+export async function getPersonDocuments(personId: string) {
+  const rows = await db
+    .select({
+      recruitId: recruits.id,
+      firstName: recruits.firstName,
+      lastName: recruits.lastName,
+      documentPath: recruits.agreementDocumentPath,
+      signedAt: recruits.agreementSignedAt,
+    })
+    .from(recruits)
+    .where(
+      and(
+        eq(recruits.recruiterId, personId),
+        isNotNull(recruits.agreementDocumentPath),
+        isNotNull(recruits.agreementSignedAt)
+      )
+    );
+
+  return rows
+    .filter((r) => r.documentPath != null && r.signedAt != null)
+    .map((r) => ({
+      recruitId: r.recruitId,
+      recruitName: `${r.firstName} ${r.lastName}`,
+      documentPath: r.documentPath as string,
+      signedAt: (r.signedAt as Date).toISOString(),
+    }));
 }

@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { recruits, recruitHistory } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { verifyWebhookSignature, getDocumentUrl } from "@/lib/integrations/signnow";
+import {
+  verifyWebhookSignature,
+  getDocumentUrl,
+  downloadDocument,
+} from "@/lib/integrations/signnow";
+import { uploadDocument } from "@/lib/supabase/storage";
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,15 +53,41 @@ export async function POST(req: NextRequest) {
 
     // Handle document.signed event
     if (event === "document.signed" || event === "document.complete") {
-      // Get document URL
-      const documentUrl = await getDocumentUrl(document_id);
+      let documentUrl: string | null = null;
+      let storagePath: string | null = null;
 
-      // Update recruit
+      // Backward compatibility: get document URL (legacy)
+      try {
+        documentUrl = await getDocumentUrl(document_id);
+      } catch (urlErr) {
+        console.error("[webhook/signnow] getDocumentUrl failed:", urlErr);
+      }
+
+      // Upload signed PDF to Supabase Storage
+      try {
+        const pdfBuffer = await downloadDocument(document_id);
+        const fileName = `agreement-${recruit.id}-${Date.now()}.pdf`;
+        const folder = `recruit-${recruit.id}`;
+        storagePath = await uploadDocument(
+          pdfBuffer,
+          fileName,
+          "agreements",
+          folder
+        );
+      } catch (storageErr) {
+        console.error(
+          "[webhook/signnow] Storage upload failed, continuing with URL only:",
+          storageErr
+        );
+      }
+
+      // Update recruit with both path (new) and URL (legacy)
       await db
         .update(recruits)
         .set({
           agreementSignedAt: new Date(),
-          agreementDocumentUrl: documentUrl,
+          ...(documentUrl != null && { agreementDocumentUrl: documentUrl }),
+          ...(storagePath != null && { agreementDocumentPath: storagePath }),
           status: "agreement_signed",
           updatedAt: new Date(),
         })

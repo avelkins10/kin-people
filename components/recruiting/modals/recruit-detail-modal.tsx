@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Download } from "lucide-react";
 import { SendAgreementModal } from "./send-agreement-modal";
 import { ConvertToPersonModal } from "./convert-to-person-modal";
 import { useRouter } from "next/navigation";
@@ -39,6 +40,8 @@ export function RecruitDetailModal({
   const [loading, setLoading] = useState(false);
   const [showSendAgreement, setShowSendAgreement] = useState(false);
   const [showConvert, setShowConvert] = useState(false);
+  const [downloadingDocument, setDownloadingDocument] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -93,6 +96,27 @@ export function RecruitDetailModal({
       alert("Failed to update status");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDownloadDocument(documentPath: string) {
+    setDownloadingDocument(true);
+    setDownloadError(null);
+    try {
+      const url = `/api/recruits/${recruitId}/documents/download?documentPath=${encodeURIComponent(documentPath)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get download link");
+      }
+      const { signedUrl } = data;
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setDownloadError(
+        err instanceof Error ? err.message : "Failed to download document"
+      );
+    } finally {
+      setDownloadingDocument(false);
     }
   }
 
@@ -167,22 +191,47 @@ export function RecruitDetailModal({
               </div>
             </div>
 
-            {/* Agreement Info */}
-            {r.agreementSentAt && (
+            {/* Agreement */}
+            {(r.agreementSentAt ||
+              r.agreementSignedAt ||
+              r.agreementDocumentPath ||
+              r.agreementDocumentUrl) && (
               <div>
                 <h3 className="font-semibold mb-3">Agreement</h3>
                 <div className="text-sm space-y-2">
-                  <div>
-                    <span className="text-gray-600">Sent:</span>{" "}
-                    {new Date(r.agreementSentAt).toLocaleDateString()}
-                  </div>
+                  {r.agreementSentAt && (
+                    <div>
+                      <span className="text-gray-600">Sent:</span>{" "}
+                      {new Date(r.agreementSentAt).toLocaleDateString()}
+                    </div>
+                  )}
                   {r.agreementSignedAt && (
                     <div>
                       <span className="text-gray-600">Signed:</span>{" "}
                       {new Date(r.agreementSignedAt).toLocaleDateString()}
                     </div>
                   )}
-                  {r.agreementDocumentUrl && (
+                  {r.agreementDocumentPath && (
+                    <div className="space-y-2">
+                      {(r.agreementDocumentPath as string).split("/").pop() && (
+                        <div className="text-gray-600">
+                          {(r.agreementDocumentPath as string).split("/").pop()}
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleDownloadDocument(r.agreementDocumentPath!)
+                        }
+                        disabled={downloadingDocument}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        {downloadingDocument ? "Downloading..." : "Download Agreement"}
+                      </Button>
+                    </div>
+                  )}
+                  {!r.agreementDocumentPath && r.agreementDocumentUrl && (
                     <div>
                       <a
                         href={r.agreementDocumentUrl}
@@ -192,6 +241,31 @@ export function RecruitDetailModal({
                       >
                         View Document
                       </a>
+                    </div>
+                  )}
+                  {downloadError && (
+                    <div className="text-red-600 text-sm space-y-1">
+                      {downloadError}
+                      <div className="flex gap-2">
+                        {r.agreementDocumentPath && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDownloadDocument(r.agreementDocumentPath!)
+                            }
+                            className="text-blue-600 hover:underline"
+                          >
+                            Retry
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDownloadError(null)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

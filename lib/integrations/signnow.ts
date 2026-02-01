@@ -198,8 +198,49 @@ export async function sendForSignature(
 }
 
 /**
- * Get signed document URL
- * Returns a direct download URL or data URL for server-side use
+ * Download signed document as a PDF buffer.
+ * Use this when uploading to Supabase Storage or other file storage.
+ */
+export async function downloadDocument(documentId: string): Promise<Buffer> {
+  try {
+    const accessToken = await getAccessToken();
+
+    const response = await fetch(
+      `https://api.signnow.com/v2/documents/${documentId}/download`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `[signnow] downloadDocument failed documentId=${documentId} status=${response.status}`,
+        errorText
+      );
+      throw new Error(
+        `Failed to download document ${documentId}: ${response.status} ${errorText}`
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error: unknown) {
+    console.error(
+      `[signnow] downloadDocument documentId=${documentId}`,
+      error
+    );
+    throw error;
+  }
+}
+
+/**
+ * Get signed document URL (legacy).
+ * Returns a direct download URL or data URL for server-side use.
+ * @deprecated Prefer downloadDocument() and uploading to Supabase Storage.
  */
 export async function getDocumentUrl(documentId: string): Promise<string> {
   try {

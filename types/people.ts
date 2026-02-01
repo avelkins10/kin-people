@@ -82,3 +82,17 @@ export interface TerminateRequest {
   terminationDate: string;
   reason: string;
 }
+
+/**
+ * Document (signed agreement) from a recruit for the person documents tab
+ */
+export interface PersonDocument {
+  id: string;
+  recruitId: string;
+  recruitName: string;
+  documentPath: string;
+  /** Display name derived from storage path or stored name */
+  name: string;
+  signedAt: string;
+  fileSize: number;
+}

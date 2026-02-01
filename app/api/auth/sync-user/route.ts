@@ -6,30 +6,41 @@ import { and, eq } from "drizzle-orm";
 /**
  * POST /api/auth/sync-user
  *
- * Syncs a Clerk user to the database by linking authUserId to a person record.
- * Used during onboarding to link Clerk accounts to people records.
+ * Syncs a Supabase Auth user to the database by linking authUserId to a person record.
+ * Used during onboarding (e.g. after email confirmation) to link Supabase accounts to people records.
  *
  * Expects JSON body:
  * {
- *   clerkUserId: string,
- *   email: string (optional, for matching),
+ *   supabaseUserId: string (UUID, required),
+ *   email: string (required; e.g. from confirmed signup),
  *   roleId: string (optional; if omitted, default "Sales Rep" role is used)
  * }
+ *
+ * Can be called without authentication for new signups.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { clerkUserId, email, roleId: bodyRoleId } = body;
+    const { supabaseUserId, email: bodyEmail, roleId: bodyRoleId } = body;
 
-    if (!clerkUserId) {
+    if (!supabaseUserId) {
       return NextResponse.json(
-        { error: "clerkUserId is required" },
+        { error: "supabaseUserId is required" },
         { status: 400 }
       );
     }
 
-    // If email provided, try to find existing person by email
-    if (email) {
+    const email = bodyEmail;
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "email is required when calling sync-user (e.g. from confirmed signup)" },
+        { status: 400 }
+      );
+    }
+
+    // Try to find existing person by email
+    {
       const existingPerson = await db
         .select()
         .from(people)
@@ -37,10 +48,9 @@ export async function POST(req: NextRequest) {
         .limit(1);
 
       if (existingPerson[0]) {
-        // Update existing person with authUserId
         await db
           .update(people)
-          .set({ authUserId: clerkUserId })
+          .set({ authUserId: supabaseUserId })
           .where(eq(people.id, existingPerson[0].id));
 
         return NextResponse.json({
@@ -85,8 +95,8 @@ export async function POST(req: NextRequest) {
       .values({
         firstName: "New",
         lastName: "User",
-        email: email || `${clerkUserId}@placeholder.com`,
-        authUserId: clerkUserId,
+        email,
+        authUserId: supabaseUserId,
         roleId,
         status: "onboarding",
       })
@@ -98,7 +108,7 @@ export async function POST(req: NextRequest) {
       personId: newPerson[0].id,
     });
   } catch (error: unknown) {
-    console.error("Error syncing user:", error);
+    console.error("Error syncing Supabase user:", error);
     return NextResponse.json(
       {
         error:

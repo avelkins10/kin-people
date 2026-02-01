@@ -1,12 +1,12 @@
 # Kin People App
 
-Sales team management and commission tracking application built with Next.js, Clerk authentication, and Neon Postgres.
+Sales team management and commission tracking application built with Next.js, Supabase Auth, and Supabase PostgreSQL.
 
 ## Tech Stack
 
 - **Framework**: Next.js 14+ (App Router)
-- **Authentication**: Clerk
-- **Database**: Neon Postgres with Drizzle ORM
+- **Authentication**: Supabase Auth
+- **Database**: Supabase PostgreSQL with Drizzle ORM
 - **UI**: Tailwind CSS, shadcn/ui components
 - **Language**: TypeScript
 
@@ -15,8 +15,7 @@ Sales team management and commission tracking application built with Next.js, Cl
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Neon Postgres database
-- Clerk account and application
+- Supabase account and project
 
 ### Installation
 
@@ -37,16 +36,13 @@ cp .env.example .env.local
 Required environment variables:
 
 ```env
-# Database
-DATABASE_URL=postgresql://user:pass@host/dbname
+# Database (Supabase PostgreSQL)
+DATABASE_URL=postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?sslmode=require
 
-# Clerk Auth
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/signup
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+# Supabase Auth
+NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
 3. Set up the database:
@@ -73,22 +69,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Authentication Setup
 
-### Clerk Configuration
-
-1. Create a Clerk account at [clerk.com](https://clerk.com)
-2. Create a new application
-3. Copy your publishable key and secret key to `.env.local`
-4. Configure the following URLs in Clerk dashboard:
-   - Sign-in URL: `/login`
-   - Sign-up URL: `/signup`
-   - After sign-in URL: `/dashboard`
-   - After sign-up URL: `/dashboard`
-
 ### User Onboarding
 
-When users sign up via Clerk, they need to be linked to person records in the database. The application provides an API endpoint for this:
+When users sign up via Supabase Auth, they need to be linked to person records in the database. The application provides an API endpoint for this:
 
-- `POST /api/auth/sync-user` - Links Clerk user to person record
+- `POST /api/auth/sync-user` - Links Supabase Auth user to person record (matches by email)
 
 See `docs/authentication.md` for detailed authentication and authorization documentation.
 
@@ -106,7 +91,7 @@ See `docs/authentication.md` for detailed authentication and authorization docum
   /(auth)          # Authentication pages (login, signup)
   /api             # API routes
     /auth          # Authentication endpoints
-  layout.tsx       # Root layout with ClerkProvider
+  layout.tsx       # Root layout
 /components
   /auth            # Permission and role guard components
   /shared          # Shared UI components (user profile, etc.)
@@ -116,7 +101,7 @@ See `docs/authentication.md` for detailed authentication and authorization docum
   /permissions     # Permission system (types, roles)
   /db              # Database configuration and schema
 /docs              # Documentation
-middleware.ts      # Clerk authentication middleware
+middleware.ts      # Supabase authentication middleware
 ```
 
 ## Authentication & Authorization

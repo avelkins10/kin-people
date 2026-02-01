@@ -1,43 +1,49 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { updateSession } from "@/lib/supabase/middleware";
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/login",
-  "/signup",
-  "/api/webhooks/(.*)",
-]);
-
-// Check if Clerk keys are valid (not placeholders)
-const hasValidClerkKeys = () => {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  
-  return (
-    publishableKey &&
-    secretKey &&
-    !publishableKey.includes("placeholder") &&
-    !secretKey.includes("placeholder") &&
-    publishableKey.startsWith("pk_") &&
-    secretKey.startsWith("sk_")
-  );
+const isPublicRoute = (pathname: string) => {
+  if (pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname === "/confirm") return true;
+  if (/^\/api\/webhooks\//.test(pathname)) return true;
+  return false;
 };
 
-export default clerkMiddleware(async (auth, req) => {
-  // If Clerk keys are not valid, bypass authentication for UI preview
-  if (!hasValidClerkKeys()) {
-    return NextResponse.next();
+export default async function middleware(request: NextRequest) {
+  const response = await updateSession(request);
+
+  if (isPublicRoute(request.nextUrl.pathname)) {
+    return response;
   }
 
-  // Protect routes that are not public
-  if (!isPublicRoute(req)) {
-    const { userId } = await auth();
-    if (!userId) {
-      const signInUrl = new URL("/login", req.url);
-      return NextResponse.redirect(signInUrl);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: Record<string, unknown>) {
+          response.cookies.set(name, value, options as { path?: string });
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          response.cookies.set(name, "", { ...options, maxAge: 0 });
+        },
+      },
     }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const signInUrl = new URL("/login", request.url);
+    return NextResponse.redirect(signInUrl);
   }
-});
+
+  return response;
+}
 
 export const config = {
   matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],

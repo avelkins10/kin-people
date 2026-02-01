@@ -1,7 +1,5 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { SignOutButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,10 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface UserData {
   user: {
@@ -27,8 +26,8 @@ interface UserData {
 }
 
 export function UserProfile() {
-  const { user: clerkUser } = useUser();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchUserData() {
@@ -43,12 +42,20 @@ export function UserProfile() {
       }
     }
 
-    if (clerkUser) {
-      fetchUserData();
-    }
-  }, [clerkUser]);
+    fetchUserData();
+  }, []);
 
-  if (!clerkUser || !userData) {
+  async function handleLogout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  }
+
+  if (!userData) {
     return null;
   }
 
@@ -61,10 +68,6 @@ export function UserProfile() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage
-              src={clerkUser.imageUrl}
-              alt={clerkUser.fullName || "User"}
-            />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
@@ -91,9 +94,13 @@ export function UserProfile() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <SignOutButton>
-            <button className="w-full text-left">Sign out</button>
-          </SignOutButton>
+          <button
+            type="button"
+            className="w-full text-left"
+            onClick={handleLogout}
+          >
+            Sign out
+          </button>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

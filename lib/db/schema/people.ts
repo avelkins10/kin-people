@@ -40,7 +40,7 @@ export const people = pgTable(
     terminationDate: date('termination_date'),
     // External IDs
     quickbaseId: varchar('quickbase_id', { length: 100 }),
-    authUserId: varchar('auth_user_id', { length: 100 }), // Clerk user ID
+    authUserId: uuid('auth_user_id'), // Supabase Auth user ID (UUID)
     // Metadata
     metadata: jsonb('metadata').default('{}'),
     // Timestamps

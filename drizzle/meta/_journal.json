@@ -8,6 +8,13 @@
       "when": 1769983920008,
       "tag": "0000_futuristic_sabra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1738368000000,
+      "tag": "0001_supabase_agreements_bucket_rls",
+      "breakpoints": true
     }
   ]
 }

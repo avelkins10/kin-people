@@ -29,6 +29,7 @@ export const recruits = pgTable(
     agreementSentAt: timestamp('agreement_sent_at', { withTimezone: true }),
     agreementSignedAt: timestamp('agreement_signed_at', { withTimezone: true }),
     agreementDocumentUrl: text('agreement_document_url'),
+    agreementDocumentPath: text('agreement_document_path'), // Supabase Storage path (e.g. agreements/recruit-{id}/document.pdf)
     // Conversion
     convertedToPersonId: uuid('converted_to_person_id').references(() => people.id),
     convertedAt: timestamp('converted_at', { withTimezone: true }),

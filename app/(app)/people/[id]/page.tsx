@@ -6,6 +6,7 @@ import { PersonTimeline } from "@/components/people/person-timeline";
 import { PersonDeals } from "@/components/people/person-deals";
 import { PersonCommissions } from "@/components/people/person-commissions";
 import { PersonRecruits } from "@/components/people/person-recruits";
+import { PersonDocuments } from "@/components/people/person-documents";
 import { PersonActionMenu } from "@/components/people/person-action-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +101,7 @@ export default async function PersonDetailPage({
               <TabsTrigger value="deals">Deals</TabsTrigger>
               <TabsTrigger value="commissions">Commissions</TabsTrigger>
               <TabsTrigger value="recruits">Recruits</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
             </TabsList>
           </div>
           <div className="p-6">
@@ -125,6 +127,9 @@ export default async function PersonDetailPage({
             </TabsContent>
             <TabsContent value="recruits">
               <PersonRecruits personId={person.id} />
+            </TabsContent>
+            <TabsContent value="documents">
+              <PersonDocuments personId={person.id} />
             </TabsContent>
           </div>
         </Tabs>

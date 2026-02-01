@@ -1,60 +1,125 @@
-import { SignIn } from "@clerk/nextjs";
+"use client";
 
-function hasValidClerkKeys() {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  
-  return (
-    publishableKey &&
-    secretKey &&
-    !publishableKey.includes("placeholder") &&
-    !secretKey.includes("placeholder") &&
-    publishableKey.startsWith("pk_") &&
-    secretKey.startsWith("sk_")
-  );
-}
+import { createClient } from "@/lib/supabase/client";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const hasClerk = hasValidClerkKeys();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  if (!hasClerk) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-8">
-        <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-          <h1 className="mb-4 text-2xl font-bold">Kin People App</h1>
-          <p className="mb-4 text-gray-600">
-            To enable authentication, please configure Clerk in your <code className="rounded bg-gray-100 px-2 py-1 text-sm">.env.local</code> file.
-          </p>
-          <div className="rounded-md bg-blue-50 p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Quick Setup:</strong>
-            </p>
-            <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-blue-700">
-              <li>Create a Clerk account at clerk.com</li>
-              <li>Create a new application</li>
-              <li>Copy your publishable key and secret key</li>
-              <li>Update <code className="rounded bg-blue-100 px-1">.env.local</code> with your keys</li>
-            </ol>
-          </div>
-          <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <p className="text-sm font-semibold text-gray-700">UI Preview Mode</p>
-            <p className="mt-1 text-xs text-gray-600">
-              You can still browse the application UI, but authentication features will be disabled.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("Invalid email or password. Please try again.");
+        } else if (signInError.message.includes("Email not confirmed")) {
+          setError("Please confirm your email before signing in.");
+        } else {
+          setError(signInError.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-8">
-      <SignIn
-        routing="path"
-        path="/login"
-        signUpUrl="/signup"
-        afterSignInUrl="/dashboard"
-      />
+    <div className="flex min-h-screen flex-col items-center justify-center p-8">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Kin People App</CardTitle>
+          <CardDescription>Sign in to your account</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleLogin}>
+          <CardContent className="space-y-4">
+            {error && (
+              <div
+                className="rounded-md bg-red-50 p-3 text-sm text-red-800"
+                role="alert"
+              >
+                {error}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                disabled={loading}
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+            <div className="flex w-full flex-wrap justify-between gap-2 text-sm">
+              <Link
+                href="/signup"
+                className="text-primary hover:underline"
+              >
+                Sign up
+              </Link>
+              <Link
+                href="#"
+                className="text-muted-foreground hover:underline"
+                onClick={(e) => e.preventDefault()}
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 }

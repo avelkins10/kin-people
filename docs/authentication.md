@@ -2,25 +2,25 @@
 
 ## Overview
 
-This application uses Clerk for user authentication and implements a custom role-based access control (RBAC) system for authorization. The system provides granular permissions, route protection, and data visibility filtering based on user roles.
+This application uses Supabase Auth for user authentication and implements a custom role-based access control (RBAC) system for authorization. The system provides granular permissions, route protection, and data visibility filtering based on user roles.
 
 ## Architecture
 
 ### Authentication Flow
 
-1. User authenticates via Clerk (login/signup pages)
-2. Clerk provides authentication tokens
-3. Middleware validates tokens on protected routes
-4. API routes use `getCurrentUser()` to fetch user from database
+1. User authenticates via Supabase Auth (login/signup pages)
+2. Supabase provides session cookies and JWT tokens
+3. Middleware validates sessions on protected routes and refreshes tokens
+4. API routes use `getCurrentUser()` to fetch user from database (linked via `authUserId`)
 5. Permission checks are performed using the RBAC system
 6. Data visibility is filtered based on user role
 
 ### Components
 
-- **Clerk**: Handles user authentication, session management, and user profiles
-- **Database**: Stores person records linked to Clerk users via `authUserId`
+- **Supabase Auth**: Handles user authentication, session management, and JWT validation
+- **Database**: Stores person records linked to auth users via `authUserId` (Supabase Auth UUID)
 - **Permission System**: Code-based permissions matrix mapping roles to permissions
-- **Middleware**: Protects routes and validates authentication
+- **Middleware**: Protects routes and validates Supabase session cookies
 - **Visibility Rules**: Filters data based on role hierarchy
 
 ## Permission System
@@ -55,7 +55,7 @@ The system defines granular permissions in `lib/permissions/types.ts`:
 | View own office people | ✓ | ✓ | ✓ | ✓ | ✓ | |
 | View own team | ✓ | ✓ | ✓ | ✓ | ✓ | |
 | Create recruits | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Approve commissions | ✓ | ✓ | ✓ | ✓ | | |
+| Approve commissions | ✓ | ✓ | | | | |
 | Run payroll | ✓ | | | | | |
 | View own data only | | | | | | ✓ |
 
@@ -190,26 +190,36 @@ const results = await filteredQuery;
 Required environment variables (see `.env.example`):
 
 ```env
-# Clerk Auth
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/signup
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+# Supabase Auth and database access
+NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # Database
 DATABASE_URL=postgresql://...
 ```
 
+- **NEXT_PUBLIC_SUPABASE_URL** - Supabase project URL (client-side auth and API)
+- **NEXT_PUBLIC_SUPABASE_ANON_KEY** - Supabase anonymous key for client-side auth and session validation
+- **SUPABASE_SERVICE_ROLE_KEY** - Supabase service role key for server-side operations (e.g. document storage, admin APIs)
+
+## Schema Migration (Supabase Auth & Storage)
+
+The database has been updated to support Supabase Auth and Storage:
+
+- **`people.authUserId`** now stores **Supabase Auth user IDs (UUID)** instead of Clerk user IDs. The column type is `uuid`. Existing Clerk-based records will have `authUserId` set to `NULL` until they are re-linked with Supabase Auth in a later phase. A data migration strategy is required for handling existing users when fully switching to Supabase Auth.
+- **`recruits.agreementDocumentPath`** is a new nullable `text` column for Supabase Storage bucket paths (e.g. `agreements/recruit-{id}/document.pdf`). The existing **`recruits.agreementDocumentUrl`** field is unchanged and remains for backward compatibility (e.g. SignNow document URLs) during the migration period.
+
+Migration file: `drizzle/0000_futuristic_sabra.sql` (applied via `npm run db:migrate` with `DATABASE_URL` set).
+
 ## User Onboarding
 
-When a new user signs up via Clerk:
+When a new user signs up via Supabase Auth:
 
-1. Clerk creates the user account
+1. Supabase creates the user account (email/password or OAuth)
 2. User is redirected to `/dashboard` (or onboarding flow)
-3. The application should call `/api/auth/sync-user` to link the Clerk user to a person record
-4. The person record is created or updated with the `authUserId` field
+3. The application calls `/api/auth/sync-user` to link the Supabase user to a person record
+4. The sync endpoint matches the auth user's email to an existing person or creates/updates a person record with the `authUserId` (Supabase UUID) field
 
 ## Testing
 
@@ -237,3 +247,42 @@ const rep = createMockSalesRep();
 - Audit logging for permission checks
 - Fine-grained resource-level permissions
 - Permission caching for performance
+
+## Migration from Clerk to Supabase Auth
+
+### Timeline and Phases
+
+The application has completed migration from Clerk to Supabase Auth. All authentication flows (login, signup, logout, session validation) now use Supabase Auth exclusively.
+
+### Key Differences
+
+| Aspect | Clerk | Supabase Auth |
+|--------|-------|----------------|
+| Provider wrapper | `ClerkProvider` in root layout | None; middleware and server utilities handle sessions |
+| Session storage | Clerk-managed cookies/JWT | Supabase SSR cookies via `@supabase/ssr` |
+| User ID format | Clerk string IDs (e.g. `user_...`) | Supabase UUID |
+| Current user | `auth()` from `@clerk/nextjs/server` | `createClient()` from `lib/supabase/server` + `getSession()` |
+| Client user data | `useUser()` from `@clerk/nextjs` | `/api/auth/me` + app database person record |
+
+### Data Migration Strategy
+
+- **`people.authUserId`** was migrated from storing Clerk user IDs to Supabase Auth UUIDs. Existing person rows that were linked to Clerk users had `authUserId` set to `NULL` until re-linked.
+- User linking is performed by `/api/auth/sync-user`, which matches the authenticated user's email to a person record and sets `authUserId` to the Supabase user's UUID.
+- No Clerk IDs remain in the database; all new and re-linked users use Supabase UUIDs.
+
+### Rollback Considerations
+
+If legacy data or integrations still reference Clerk user IDs, those references would need to be updated or migrated. The codebase no longer includes Clerk dependencies; rollback would require re-adding `@clerk/nextjs` and restoring Clerk-specific code from version control.
+
+### Testing Checklist
+
+After migration, verify:
+
+1. **Login** - User can sign in via Supabase (email/password or OAuth if configured).
+2. **Signup** - New user can register; redirect to dashboard or onboarding works.
+3. **Logout** - Sign out clears session and redirects to login.
+4. **Protected routes** - Unauthenticated access to `/dashboard` and app routes redirects to `/login`.
+5. **Root page** - `/` redirects to `/dashboard` when authenticated, `/login` when not.
+6. **User profile** - Navbar user menu shows correct name, email, role from `/api/auth/me`.
+7. **API routes** - `withAuth` and `withPermission` resolve the current user from Supabase session and database.
+8. **Middleware** - Session refresh and route protection work without Clerk.
