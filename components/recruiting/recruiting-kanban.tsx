@@ -200,7 +200,7 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
       // Dropped on a card - find which column that card belongs to
       const overRecruit = recruits.find((r) => r.recruit.id === over.id);
       if (overRecruit) {
-        newStatus = overRecruit.recruit.status;
+        newStatus = overRecruit.recruit.status as RecruitStatus | null;
       } else {
         // Invalid drop target
         return;

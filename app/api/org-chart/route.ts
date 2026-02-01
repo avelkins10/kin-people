@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { people, roles, offices } from "@/lib/db/schema";
-import { eq, and, or, like, sql, inArray } from "drizzle-orm";
+import { eq, and, or, sql, inArray } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/route-protection";
 import { hasPermission } from "@/lib/auth/check-permission";
 import { Permission } from "@/lib/permissions/types";
@@ -43,14 +43,12 @@ export const GET = withAuth(async (req: NextRequest, user) => {
 
     // Apply search filter if provided
     if (searchQuery) {
+      const pattern = `%${searchQuery.toLowerCase()}%`;
       conditions.push(
         or(
-          like(
-            sql`LOWER(${people.firstName} || ' ' || ${people.lastName})`,
-            `%${searchQuery.toLowerCase()}%`
-          ),
-          like(sql`LOWER(${people.email})`, `%${searchQuery.toLowerCase()}%`)
-        )
+          sql`LOWER(${people.firstName} || ' ' || ${people.lastName}) LIKE ${pattern}`,
+          sql`LOWER(${people.email}) LIKE ${pattern}`
+        )!
       );
     }
 

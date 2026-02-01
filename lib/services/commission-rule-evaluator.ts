@@ -127,7 +127,7 @@ export function getApplicableRules(
         return (a.sortOrder || 0) - (b.sortOrder || 0);
       }
       return (
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
       );
     });
 }
@@ -143,30 +143,22 @@ export async function getRulesForPayPlan(
   payPlanId: string,
   ruleType?: string
 ): Promise<CommissionRule[]> {
-  let query = db
-    .select()
-    .from(commissionRules)
-    .where(
-      and(
-        eq(commissionRules.payPlanId, payPlanId),
-        eq(commissionRules.isActive, true)
-      )
-    );
-
-  if (ruleType) {
-    query = query.where(
-      and(
+  const whereConditions = ruleType
+    ? and(
         eq(commissionRules.payPlanId, payPlanId),
         eq(commissionRules.isActive, true),
         eq(commissionRules.ruleType, ruleType)
       )
-    ) as any;
-  }
+    : and(
+        eq(commissionRules.payPlanId, payPlanId),
+        eq(commissionRules.isActive, true)
+      );
 
-  const rules = await query.orderBy(
-    commissionRules.sortOrder,
-    commissionRules.createdAt
-  );
+  const rules = await db
+    .select()
+    .from(commissionRules)
+    .where(whereConditions)
+    .orderBy(commissionRules.sortOrder, commissionRules.createdAt);
 
   return rules;
 }

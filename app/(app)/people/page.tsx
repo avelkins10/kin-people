@@ -5,7 +5,7 @@ import {
   roles,
   offices,
 } from "@/lib/db/schema";
-import { eq, and, or, like, sql } from "drizzle-orm";
+import { eq, and, or, sql, type SQL } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { hasPermission } from "@/lib/auth/check-permission";
 import { Permission } from "@/lib/permissions/types";
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { alias } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm";
 
 export default async function PeoplePage({
   searchParams,
@@ -50,7 +50,7 @@ export default async function PeoplePage({
   const searchQuery = searchParams.search as string | undefined;
 
   // Build where conditions
-  const conditions = [];
+  const conditions: SQL[] = [];
 
   // Office visibility filter
   if (!canViewAll && canViewOffice && user.officeId) {
@@ -71,19 +71,31 @@ export default async function PeoplePage({
   }
 
   if (searchQuery) {
-    conditions.push(
-      or(
-        like(sql`LOWER(${people.firstName} || ' ' || ${people.lastName})`, `%${searchQuery.toLowerCase()}%`),
-        like(sql`LOWER(${people.email})`, `%${searchQuery.toLowerCase()}%`)
-      )
+    const pattern = `%${searchQuery.toLowerCase()}%`;
+    const searchCond = or(
+      sql`LOWER(${people.firstName} || ' ' || ${people.lastName}) LIKE ${pattern}`,
+      sql`LOWER(${people.email}) LIKE ${pattern}`
     );
+    if (searchCond) conditions.push(searchCond);
   }
 
   // Create alias for manager
-  const manager = alias(people, "manager");
+  const manager = aliasedTable(people, "manager");
+
+  type PeopleRow = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    status: string | null;
+    roleName: string | null;
+    officeName: string | null;
+    managerFirstName: string | null;
+    managerLastName: string | null;
+  };
 
   // Fetch people with related data
-  const peopleList = await db
+  const peopleList: PeopleRow[] = await db
     .select({
       id: people.id,
       firstName: people.firstName,

@@ -19,6 +19,7 @@ export default async function DashboardPage() {
     const { redirect } = await import("next/navigation");
     redirect("/login");
   }
+  const currentUser = user as NonNullable<typeof user>;
 
   const headersList = await headers();
   const cookieHeader = headersList.get("cookie");
@@ -37,12 +38,12 @@ export default async function DashboardPage() {
   let recruitStageCounts: Record<string, number> = {};
 
   const showTeamPerformance =
-    hasPermission(user, Permission.MANAGE_OWN_TEAM) ||
-    hasPermission(user, Permission.MANAGE_OWN_OFFICE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION) ||
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE);
+    hasPermission(currentUser, Permission.MANAGE_OWN_TEAM) ||
+    hasPermission(currentUser, Permission.MANAGE_OWN_OFFICE) ||
+    hasPermission(currentUser, Permission.MANAGE_OWN_REGION) ||
+    hasPermission(currentUser, Permission.VIEW_ALL_PEOPLE);
   const showRecruitingPipeline = hasPermission(
-    user,
+    currentUser,
     Permission.CREATE_RECRUITS
   );
 
@@ -155,10 +156,10 @@ export default async function DashboardPage() {
   const totalCommissionValue = showTeamPerformance
     ? teamPendingTotal + teamApprovedTotal
     : pendingTotal + approvedTotal;
-  const teamPerformanceLabel = hasPermission(user, Permission.MANAGE_OWN_TEAM)
+  const teamPerformanceLabel = hasPermission(currentUser, Permission.MANAGE_OWN_TEAM)
     ? "Team Performance"
-    : hasPermission(user, Permission.MANAGE_OWN_OFFICE) ||
-        hasPermission(user, Permission.VIEW_ALL_PEOPLE)
+    : hasPermission(currentUser, Permission.MANAGE_OWN_OFFICE) ||
+        hasPermission(currentUser, Permission.VIEW_ALL_PEOPLE)
       ? "Office Performance"
       : "My Performance";
 
@@ -177,9 +178,9 @@ export default async function DashboardPage() {
         <div className="rounded-lg bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-bold">Dashboard</h2>
           <p className="mt-2 text-gray-600">
-            Welcome, {user.firstName} {user.lastName}!
+            Welcome, {currentUser.firstName} {currentUser.lastName}!
           </p>
-          <p className="mt-1 text-sm text-gray-500">Role: {user.roleName}</p>
+          <p className="mt-1 text-sm text-gray-500">Role: {currentUser.roleName}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

@@ -305,7 +305,7 @@ async function calculateLeadershipOverrides(
   }
 
   let count = 0;
-  let currentPersonId = setterSnapshot.reportsToId;
+  let currentPersonId: string | null = setterSnapshot.reportsToId;
   let level = 1;
   const maxLevels = 4; // Team Lead → Area Director → Regional Manager → VP
 
@@ -398,7 +398,7 @@ async function calculateRecruitingOverrides(
   }
 
   let count = 0;
-  let currentPersonId = setterSnapshot.recruitedById;
+  let currentPersonId: string | null = setterSnapshot.recruitedById;
   let level = 1;
   const maxLevels = 2; // Typically 1-2 levels of recruiting overrides
 

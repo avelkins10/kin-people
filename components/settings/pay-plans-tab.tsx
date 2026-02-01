@@ -25,9 +25,9 @@ interface PayPlan {
   id: string;
   name: string;
   description: string | null;
-  isActive: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  isActive: boolean | null;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
   rulesCount: number;
   peopleCount: number;
 }

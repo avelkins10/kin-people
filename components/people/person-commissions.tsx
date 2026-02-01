@@ -101,7 +101,6 @@ export function PersonCommissions({ personId }: PersonCommissionsProps) {
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
           setCommissions(sorted);
-        }
       } catch (error) {
         console.error("Error fetching commissions:", error);
       } finally {

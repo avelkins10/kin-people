@@ -249,7 +249,7 @@ export function RecruitDetailModal({
                 <div className="flex items-center gap-2">
                   <span className="text-sm">Update Status:</span>
                   <Select
-                    value={r.status}
+                    value={r.status ?? undefined}
                     onValueChange={handleStatusChange}
                     disabled={loading}
                   >

@@ -230,12 +230,13 @@ export async function getRecruitHistory(
 
   return history.map((h) => ({
     history: h.history,
-    changedBy: h.changedBy.firstName
-      ? {
-          firstName: h.changedBy.firstName,
-          lastName: h.changedBy.lastName,
-        }
-      : null,
+    changedBy:
+      h.changedBy?.firstName != null
+        ? {
+            firstName: h.changedBy.firstName,
+            lastName: h.changedBy.lastName,
+          }
+        : null,
   }));
 }
 

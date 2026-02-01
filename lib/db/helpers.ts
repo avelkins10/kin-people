@@ -125,7 +125,7 @@ export async function getPersonHierarchy(personId: string): Promise<Person[]> {
   let currentPersonId: string | null = personId;
 
   while (currentPersonId) {
-    const person = await db.query.people.findFirst({
+    const person: Person | undefined = await db.query.people.findFirst({
       where: eq(people.id, currentPersonId),
     });
 
@@ -149,7 +149,7 @@ export async function getRecruitingChain(personId: string): Promise<Person[]> {
   let currentPersonId: string | null = personId;
 
   while (currentPersonId) {
-    const person = await db.query.people.findFirst({
+    const person: Person | undefined = await db.query.people.findFirst({
       where: eq(people.id, currentPersonId),
     });
 

@@ -52,7 +52,15 @@ export async function getPersonCurrentPayPlan(
   effectiveDate: string;
   notes: string | null;
 } | null> {
-  let query = db
+  const whereConditions = asOfDate
+    ? and(
+        eq(personPayPlans.personId, personId),
+        sql`${personPayPlans.effectiveDate} <= ${asOfDate}`,
+        sql`(${personPayPlans.endDate} IS NULL OR ${personPayPlans.endDate} >= ${asOfDate})`
+      )
+    : and(eq(personPayPlans.personId, personId), isNull(personPayPlans.endDate));
+
+  const result = await db
     .select({
       payPlan: payPlans,
       effectiveDate: personPayPlans.effectiveDate,
@@ -60,22 +68,9 @@ export async function getPersonCurrentPayPlan(
     })
     .from(personPayPlans)
     .innerJoin(payPlans, eq(personPayPlans.payPlanId, payPlans.id))
-    .where(eq(personPayPlans.personId, personId));
-
-  if (asOfDate) {
-    // Find the pay plan active on the given date
-    query = query.where(
-      and(
-        sql`${personPayPlans.effectiveDate} <= ${asOfDate}`,
-        sql`(${personPayPlans.endDate} IS NULL OR ${personPayPlans.endDate} >= ${asOfDate})`
-      )
-    ) as any;
-  } else {
-    // Get current active pay plan
-    query = query.where(isNull(personPayPlans.endDate)) as any;
-  }
-
-  const result = await query.orderBy(personPayPlans.effectiveDate).limit(1);
+    .where(whereConditions)
+    .orderBy(personPayPlans.effectiveDate)
+    .limit(1);
 
   return result[0] || null;
 }

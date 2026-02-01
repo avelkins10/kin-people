@@ -90,7 +90,6 @@ export function PersonDeals({ personId }: PersonDealsProps) {
           );
 
           setDeals(dealsWithCommissions);
-        }
       } catch (error) {
         console.error("Error fetching deals:", error);
       } finally {

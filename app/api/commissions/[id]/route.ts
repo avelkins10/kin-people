@@ -79,11 +79,12 @@ export async function GET(
 
     // Fetch org snapshot if available
     let orgSnapshot = null;
-    if (commission.calcDetails?.org_snapshot_id) {
+    const calcDetails = commission.calcDetails as { org_snapshot_id?: string } | null;
+    if (calcDetails?.org_snapshot_id) {
       const [snapshotData] = await db
         .select()
         .from(orgSnapshots)
-        .where(eq(orgSnapshots.id, commission.calcDetails.org_snapshot_id))
+        .where(eq(orgSnapshots.id, calcDetails.org_snapshot_id))
         .limit(1);
       orgSnapshot = snapshotData || null;
     }

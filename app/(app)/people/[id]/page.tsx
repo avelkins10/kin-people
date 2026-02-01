@@ -49,7 +49,7 @@ export default async function PersonDetailPage({
     }
   }
 
-  const initials = `${person.firstName?.[0] || ""}${person.lastName?.[0] || ""}`.toUpperCase();
+  const initials = `${person.firstName?.[0] ?? ""}${person.lastName?.[0] ?? ""}`.toUpperCase();
   const fullName = `${person.firstName} ${person.lastName}`;
 
   return (
@@ -68,14 +68,14 @@ export default async function PersonDetailPage({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={person.profileImageUrl || undefined} alt={fullName} />
+              <AvatarImage src={person.profileImageUrl ?? undefined} alt={fullName} />
               <AvatarFallback className="text-lg">{initials}</AvatarFallback>
             </Avatar>
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold">{fullName}</h2>
-                <Badge variant={getStatusBadgeVariant(person.status)}>
-                  {person.status || "active"}
+                <Badge variant={getStatusBadgeVariant(person.status ?? "active")}>
+                  {person.status ?? "active"}
                 </Badge>
               </div>
               <p className="mt-1 text-gray-600">{person.email}</p>

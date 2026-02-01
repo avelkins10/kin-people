@@ -68,3 +68,4 @@ backups/
 supabase-credentials.md
 backup-metadata.txt
 neon_backup*.sql
+.vercel

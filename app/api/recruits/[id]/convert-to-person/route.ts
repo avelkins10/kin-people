@@ -72,14 +72,14 @@ export async function POST(
         const [newPerson] = await tx
           .insert(people)
           .values({
-            firstName: recruit.firstName,
-            lastName: recruit.lastName,
-            email: recruit.email || null,
-            phone: recruit.phone || null,
+            firstName: recruit.firstName ?? "",
+            lastName: recruit.lastName ?? "",
+            email: recruit.email ?? "",
+            phone: recruit.phone ?? null,
             officeId: targetOffice.id,
             roleId: targetRole.id,
-            reportsToId: targetReportsTo?.id || null,
-            recruitedById: recruit.recruiterId,
+            reportsToId: targetReportsTo?.id ?? null,
+            recruitedById: recruit.recruiterId ?? null,
             status: "active",
             hireDate: validated.hireDate,
           })
@@ -90,7 +90,7 @@ export async function POST(
           await tx.insert(personPayPlans).values({
             personId: newPerson.id,
             payPlanId: targetPayPlan.id,
-            startDate: validated.hireDate,
+            effectiveDate: validated.hireDate,
             notes: "Assigned from recruit conversion",
           });
         }

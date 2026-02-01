@@ -35,8 +35,8 @@ interface CommissionRule {
   overrideSource: string | null;
   dealTypes: string[] | null;
   conditions: any;
-  isActive: boolean;
-  sortOrder: number;
+  isActive: boolean | null;
+  sortOrder: number | null;
 }
 
 interface CommissionRuleModalProps {
@@ -123,7 +123,7 @@ export function CommissionRuleModal({
             : [],
           minKw: conditions.min_kw?.toString() || "",
           ppwFloor: conditions.ppw_floor?.toString() || "",
-          isActive: rule.isActive,
+          isActive: rule.isActive ?? true,
           sortOrder: rule.sortOrder?.toString() || "0",
         });
       } else if (duplicateFrom) {
@@ -145,7 +145,7 @@ export function CommissionRuleModal({
             : [],
           minKw: conditions.min_kw?.toString() || "",
           ppwFloor: conditions.ppw_floor?.toString() || "",
-          isActive: duplicateFrom.isActive,
+          isActive: duplicateFrom.isActive ?? true,
           sortOrder: duplicateFrom.sortOrder?.toString() || "0",
         });
       } else {

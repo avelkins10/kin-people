@@ -111,7 +111,7 @@ export function PersonRecruits({ personId }: PersonRecruitsProps) {
                   </TableCell>
                   <TableCell>{recruit.email || "-"}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(recruit.status)}>
+                    <Badge variant={getStatusBadgeVariant(recruit.status ?? "unknown")}>
                       {recruit.status}
                     </Badge>
                   </TableCell>

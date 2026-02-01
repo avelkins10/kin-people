@@ -1,4 +1,5 @@
 import { pgTable, uuid, varchar, text, date, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { roles } from './roles';
 import { offices } from './offices';
 
@@ -30,8 +31,8 @@ export const people = pgTable(
     roleId: uuid('role_id').references(() => roles.id).notNull(),
     status: varchar('status', { length: 50 }).default('active'), // 'onboarding', 'active', 'inactive', 'terminated'
     officeId: uuid('office_id').references(() => offices.id),
-    recruitedById: uuid('recruited_by_id').references(() => people.id), // Self-reference
-    reportsToId: uuid('reports_to_id').references(() => people.id), // Self-reference
+    recruitedById: uuid('recruited_by_id').references((): AnyPgColumn => people.id), // Self-reference
+    reportsToId: uuid('reports_to_id').references((): AnyPgColumn => people.id), // Self-reference
     // Setter tier
     setterTier: varchar('setter_tier', { length: 50 }), // 'Rookie', 'Veteran', 'Team Lead'
     // Dates

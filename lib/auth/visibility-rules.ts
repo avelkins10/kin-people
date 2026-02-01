@@ -425,7 +425,6 @@ export function getCommissionVisibilityFilter(
     if (!dealFilter) return null;
     if (dealFilter.officeId) return { officeId: dealFilter.officeId };
     if (dealFilter.setterId) return { personId: dealFilter.setterId };
-    if (dealFilter.id) return { personId: dealFilter.id };
     return null;
   }
 

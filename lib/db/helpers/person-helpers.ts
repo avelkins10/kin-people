@@ -112,12 +112,14 @@ export async function getPersonWithDetails(
     currentTeams: currentTeamsData.map((t) => ({
       team: t.team,
       roleInTeam: t.roleInTeam || "member",
-      effectiveDate: t.effectiveDate,
+      effectiveDate: t.effectiveDate ? new Date(t.effectiveDate) : null,
     })),
     currentPayPlan: currentPayPlanData[0]
       ? {
           payPlan: currentPayPlanData[0].payPlan,
-          effectiveDate: currentPayPlanData[0].effectiveDate,
+          effectiveDate: currentPayPlanData[0].effectiveDate
+            ? new Date(currentPayPlanData[0].effectiveDate)
+            : null,
           notes: currentPayPlanData[0].notes,
         }
       : null,
@@ -148,12 +150,13 @@ export async function getPersonHistory(
 
   return history.map((h) => ({
     history: h.history,
-    changedBy: h.changedBy.firstName
-      ? {
-          firstName: h.changedBy.firstName,
-          lastName: h.changedBy.lastName,
-        }
-      : null,
+    changedBy:
+      h.changedBy?.firstName != null
+        ? {
+            firstName: h.changedBy.firstName,
+            lastName: h.changedBy.lastName,
+          }
+        : null,
   }));
 }
 

@@ -41,8 +41,8 @@ interface CommissionRule {
   overrideSource: string | null;
   dealTypes: string[] | null;
   conditions: any;
-  isActive: boolean;
-  sortOrder: number;
+  isActive: boolean | null;
+  sortOrder: number | null;
   payPlanName?: string;
   appliesToRoleName?: string | null;
 }

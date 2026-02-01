@@ -19,7 +19,7 @@ interface PayPlan {
   id: string;
   name: string;
   description: string | null;
-  isActive: boolean;
+  isActive: boolean | null;
 }
 
 interface PayPlanModalProps {
@@ -45,7 +45,7 @@ export function PayPlanModal({
       setFormData({
         name: payPlan.name,
         description: payPlan.description || "",
-        isActive: payPlan.isActive,
+        isActive: payPlan.isActive ?? true,
       });
     } else {
       setFormData({
