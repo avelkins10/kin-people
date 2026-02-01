@@ -50,8 +50,7 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-# Drizzle
-drizzle/
+# Drizzle (migrations under drizzle/ are committed; *.sql elsewhere ignored below)
 *.db
 *.sqlite
 *.sqlite3
@@ -64,6 +63,7 @@ drizzle/
 # Database backups and credentials
 backups/
 *.sql
+!drizzle/*.sql
 *.sql.gz
 supabase-credentials.md
 backup-metadata.txt
