@@ -18,7 +18,7 @@ export async function GET() {
     );
   }
 
-  const permissions = getRolePermissions(user.roleName);
+  const permissions = getRolePermissions(user.roleName ?? "");
 
   return NextResponse.json({
     user: {
