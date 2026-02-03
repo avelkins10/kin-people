@@ -39,11 +39,13 @@ export async function getCurrentUser() {
         status: people.status,
       })
       .from(people)
-      .innerJoin(roles, eq(people.roleId, roles.id))
+      .leftJoin(roles, eq(people.roleId, roles.id))
       .where(eq(people.authUserId, authUserId))
       .limit(1);
 
-    return person[0] || null;
+    const row = person[0];
+    if (!row) return null;
+    return row;
   } catch (error) {
     console.error("Error fetching current user:", error);
     return null;
