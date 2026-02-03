@@ -1,6 +1,8 @@
 "use client";
 
-import React from 'react';
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Users,
   UserPlus,
@@ -10,8 +12,8 @@ import {
   Settings,
   LogOut,
   GraduationCap,
-  LayoutGrid } from
-'lucide-react';
+  LayoutGrid,
+} from "lucide-react";
 export type Page =
 'overview' |
 'recruiting' |
@@ -30,16 +32,29 @@ interface NavSection {
   label: string;
   items: NavItem[];
 }
+const PAGE_HREF: Record<Page, string> = {
+  overview: "/",
+  recruiting: "/recruiting",
+  onboarding: "/onboarding",
+  people: "/people",
+  "org-chart": "/org-chart",
+  deals: "/deals",
+  commissions: "/commissions",
+  settings: "/settings",
+};
+
 interface SidebarProps {
   isOpen?: boolean;
   activePage: Page;
   onNavigate: (page: Page) => void;
 }
+
 export function Sidebar({
   isOpen = true,
   activePage,
-  onNavigate
+  onNavigate,
 }: SidebarProps) {
+  const pathname = usePathname();
   const navSections: NavSection[] = [
   {
     label: 'Overview',
@@ -128,33 +143,38 @@ export function Sidebar({
 
             {/* Section Items */}
             <ul className="space-y-0.5">
-              {section.items.map((item) =>
-            <li key={item.id}>
-                  <button
-                onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center px-6 py-3 transition-all duration-200 group relative
-                      ${activePage === item.id ? 'text-black bg-gray-50' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}>
-
-                    {/* Active Indicator */}
-                    {activePage === item.id &&
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600" />
-                }
-
-                    <item.icon
-                  className={`w-5 h-5 shrink-0 ${isOpen ? 'mr-3' : 'mx-auto'} 
-                        ${activePage === item.id ? 'text-indigo-600' : 'text-gray-400 group-hover:text-black'}`} />
-
-
-                    {isOpen &&
-                <span
-                  className={`font-bold tracking-tight text-xs ${activePage === item.id ? 'text-black' : ''}`}>
-
-                        {item.name}
-                      </span>
-                }
-                  </button>
-                </li>
-            )}
+              {section.items.map((item) => {
+                const href = PAGE_HREF[item.id];
+                const isActive =
+                  activePage === item.id ||
+                  pathname === href ||
+                  (href !== "/" && pathname.startsWith(href + "/"));
+                return (
+                  <li key={item.id}>
+                    <Link
+                      href={href}
+                      className={`w-full flex items-center px-6 py-3 transition-all duration-200 group relative
+                        ${isActive ? "text-black bg-gray-50" : "text-gray-500 hover:text-black hover:bg-gray-50"}`}
+                      onClick={() => onNavigate(item.id)}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600" />
+                      )}
+                      <item.icon
+                        className={`w-5 h-5 shrink-0 ${isOpen ? "mr-3" : "mx-auto"}
+                          ${isActive ? "text-indigo-600" : "text-gray-400 group-hover:text-black"}`}
+                      />
+                      {isOpen && (
+                        <span
+                          className={`font-bold tracking-tight text-xs ${isActive ? "text-black" : ""}`}
+                        >
+                          {item.name}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -162,21 +182,25 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-100 mt-auto">
-        <button
-          onClick={() => onNavigate('settings')}
-          className={`w-full flex items-center px-4 py-3 rounded-sm transition-colors ${activePage === 'settings' ? 'text-black bg-gray-50' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}>
-
-          <Settings className={`w-5 h-5 ${isOpen ? 'mr-3' : 'mx-auto'}`} />
-          {isOpen &&
-          <span className="font-bold tracking-tight text-xs">Settings</span>
-          }
-        </button>
-        <button className="w-full flex items-center px-4 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors mt-1">
-          <LogOut className={`w-5 h-5 ${isOpen ? 'mr-3' : 'mx-auto'}`} />
-          {isOpen &&
-          <span className="font-bold tracking-tight text-xs">Logout</span>
-          }
-        </button>
+        <Link
+          href="/settings"
+          className={`w-full flex items-center px-4 py-3 rounded-sm transition-colors ${activePage === "settings" ? "text-black bg-gray-50" : "text-gray-500 hover:text-black hover:bg-gray-50"}`}
+          onClick={() => onNavigate("settings")}
+        >
+          <Settings className={`w-5 h-5 ${isOpen ? "mr-3" : "mx-auto"}`} />
+          {isOpen && (
+            <span className="font-bold tracking-tight text-xs">Settings</span>
+          )}
+        </Link>
+        <Link
+          href="/api/auth/logout"
+          className="w-full flex items-center px-4 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors mt-1"
+        >
+          <LogOut className={`w-5 h-5 ${isOpen ? "mr-3" : "mx-auto"}`} />
+          {isOpen && (
+            <span className="font-bold tracking-tight text-xs">Logout</span>
+          )}
+        </Link>
       </div>
     </aside>);
 
