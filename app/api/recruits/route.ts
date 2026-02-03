@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { recruits, people, offices, roles, teams, payPlans } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { recruits, people, offices, roles, documents } from "@/lib/db/schema";
+import { eq, and, desc, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { getRecruitVisibilityFilter } from "@/lib/auth/visibility-rules";
@@ -28,9 +28,28 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     const status = searchParams.get("status");
     const recruiterId = searchParams.get("recruiterId");
     const officeId = searchParams.get("officeId");
+    const expiredDocuments = searchParams.get("expiredDocuments") === "true";
+
+    // Subquery: count expired documents per recruit
+    const expiredCountSubquery = db.$with("expired_doc_counts").as(
+      db
+        .select({
+          recruitId: documents.recruitId,
+          expiredCount: sql<number>`count(*)::int`.as("expired_count"),
+        })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.status, "expired"),
+            isNotNull(documents.recruitId)
+          )
+        )
+        .groupBy(documents.recruitId)
+    );
 
     // Build base query with joins
     let query = db
+      .with(expiredCountSubquery)
       .select({
         recruit: recruits,
         recruiter: {
@@ -47,11 +66,18 @@ export const GET = withAuth(async (req: NextRequest, user) => {
           id: roles.id,
           name: roles.name,
         },
+        expiredDocumentsCount: sql<number>`coalesce(${expiredCountSubquery.expiredCount}, 0)`.as(
+          "expiredDocumentsCount"
+        ),
       })
       .from(recruits)
       .leftJoin(people, eq(recruits.recruiterId, people.id))
       .leftJoin(offices, eq(recruits.targetOfficeId, offices.id))
-      .leftJoin(roles, eq(recruits.targetRoleId, roles.id));
+      .leftJoin(roles, eq(recruits.targetRoleId, roles.id))
+      .leftJoin(
+        expiredCountSubquery,
+        eq(recruits.id, expiredCountSubquery.recruitId)
+      );
 
     // Build all filter conditions together
     const conditions: any[] = [];
@@ -75,6 +101,22 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     }
     if (officeId) {
       conditions.push(eq(recruits.targetOfficeId, officeId));
+    }
+    if (expiredDocuments) {
+      conditions.push(
+        inArray(
+          recruits.id,
+          db
+            .select({ recruitId: documents.recruitId })
+            .from(documents)
+            .where(
+              and(
+                eq(documents.status, "expired"),
+                isNotNull(documents.recruitId)
+              )
+            )
+        )
+      );
     }
 
     // Apply all conditions together in a single where clause

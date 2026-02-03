@@ -33,6 +33,10 @@ export * from './org-snapshots';
 export * from './recruits';
 export * from './recruit-history';
 
+// Document Management tables
+export * from './documents';
+export * from './document-templates';
+
 // Deals & Commissions tables
 export * from './deals';
 export * from './commissions';
@@ -56,6 +60,8 @@ import { personHistory } from './person-history';
 import { orgSnapshots } from './org-snapshots';
 import { recruits } from './recruits';
 import { recruitHistory } from './recruit-history';
+import { documents } from './documents';
+import { documentTemplates } from './document-templates';
 import { deals } from './deals';
 import { commissions } from './commissions';
 import { commissionHistory } from './commission-history';
@@ -76,6 +82,8 @@ export const schema = {
   orgSnapshots,
   recruits,
   recruitHistory,
+  documents,
+  documentTemplates,
   deals,
   commissions,
   commissionHistory,

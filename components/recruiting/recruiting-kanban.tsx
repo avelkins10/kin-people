@@ -110,11 +110,18 @@ function RecruitCard({
               {recruit.targetRole?.name || "Sales Rep"}
             </div>
           </div>
-          <Badge
-            className={`${priorityStyle.bg} ${priorityStyle.text} border-0 text-[10px] font-bold uppercase`}
-          >
-            {priority}
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge
+              className={`${priorityStyle.bg} ${priorityStyle.text} border-0 text-[10px] font-bold uppercase`}
+            >
+              {priority}
+            </Badge>
+            {recruit.expiredDocumentsCount > 0 && (
+              <Badge className="bg-red-100 text-red-700 border-0 text-[10px] font-bold">
+                Expired Docs
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Location */}

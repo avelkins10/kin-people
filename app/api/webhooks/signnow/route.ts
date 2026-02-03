@@ -1,112 +1,153 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { recruits, recruitHistory } from "@/lib/db/schema";
+import { documents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import {
-  verifyWebhookSignature,
-  getDocumentUrl,
-  downloadDocument,
-} from "@/lib/integrations/signnow";
+import { sql } from "drizzle-orm";
+import { verifyWebhookSignature, downloadDocument } from "@/lib/integrations/signnow";
 import { uploadDocument } from "@/lib/supabase/storage";
+import {
+  getDocumentBySignnowId,
+  updateDocumentStatus,
+} from "@/lib/db/helpers/document-helpers";
+
+const LOG_PREFIX = "[webhook/signnow]";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const signature = req.headers.get("x-signnow-signature");
 
-    // Verify webhook signature if configured
     if (process.env.SIGNNOW_WEBHOOK_SECRET && signature) {
-      const isValid = verifyWebhookSignature(
-        JSON.stringify(body),
-        signature
-      );
+      const isValid = verifyWebhookSignature(JSON.stringify(body), signature);
       if (!isValid) {
-        return NextResponse.json(
-          { error: "Invalid webhook signature" },
-          { status: 401 }
-        );
+        console.warn(`${LOG_PREFIX} invalid webhook signature, acknowledging to avoid retries`);
+        return NextResponse.json({ received: true });
       }
     }
 
-    // Parse webhook payload
     const { event, document_id } = body;
 
+    console.log(`${LOG_PREFIX} received event=${event} document_id=${document_id}`);
+
     if (!document_id) {
-      return NextResponse.json(
-        { error: "Missing document_id" },
-        { status: 400 }
-      );
+      console.warn(`${LOG_PREFIX} missing document_id in webhook body, acknowledging to avoid retries`);
+      return NextResponse.json({ received: true, error: "Missing document_id" });
     }
 
-    // Find recruit by SignNow document ID
-    const [recruit] = await db
-      .select()
-      .from(recruits)
-      .where(eq(recruits.signnowDocumentId, document_id))
-      .limit(1);
+    const docWithDetails = await getDocumentBySignnowId(document_id);
 
-    if (!recruit) {
-      // Document not found in our system, but return 200 to acknowledge receipt
-      console.warn(`SignNow webhook received for unknown document: ${document_id}`);
+    if (!docWithDetails) {
+      console.warn(`${LOG_PREFIX} document not found for signnowDocumentId=${document_id}, acknowledging receipt`);
       return NextResponse.json({ received: true });
     }
 
-    // Handle document.signed event
-    if (event === "document.signed" || event === "document.complete") {
-      let documentUrl: string | null = null;
-      let storagePath: string | null = null;
+    const { document } = docWithDetails;
+    const documentId = document.id;
 
-      // Backward compatibility: get document URL (legacy)
-      try {
-        documentUrl = await getDocumentUrl(document_id);
-      } catch (urlErr) {
-        console.error("[webhook/signnow] getDocumentUrl failed:", urlErr);
+    switch (event) {
+      case "document.open": {
+        await updateDocumentStatus(documentId, "viewed", {
+          viewedAt: new Date(),
+        });
+        console.log(`${LOG_PREFIX} document.open: documentId=${documentId}, status=viewed`);
+        break;
       }
 
-      // Upload signed PDF to Supabase Storage
-      try {
-        const pdfBuffer = await downloadDocument(document_id);
-        const fileName = `agreement-${recruit.id}-${Date.now()}.pdf`;
-        const folder = `recruit-${recruit.id}`;
-        storagePath = await uploadDocument(
-          pdfBuffer,
-          fileName,
-          "agreements",
-          folder
+      case "document.fieldinvite.signed": {
+        const totalSigners = document.totalSigners ?? 1;
+        const [updated] = await db
+          .update(documents)
+          .set({
+            signedCount: sql`${documents.signedCount} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(documents.id, documentId))
+          .returning({ signedCount: documents.signedCount });
+
+        const newSignedCount = updated?.signedCount ?? 0;
+        const newStatus =
+          newSignedCount >= totalSigners ? "signed" : "partially_signed";
+
+        await db
+          .update(documents)
+          .set({
+            status: newStatus,
+            updatedAt: new Date(),
+            ...(newStatus === "signed" && { signedAt: new Date() }),
+          })
+          .where(eq(documents.id, documentId));
+
+        console.log(
+          `${LOG_PREFIX} document.fieldinvite.signed: documentId=${documentId}, signedCount=${newSignedCount}/${totalSigners}, status=${newStatus}`
         );
-      } catch (storageErr) {
-        console.error(
-          "[webhook/signnow] Storage upload failed, continuing with URL only:",
-          storageErr
-        );
+        break;
       }
 
-      // Update recruit with both path (new) and URL (legacy)
-      await db
-        .update(recruits)
-        .set({
-          agreementSignedAt: new Date(),
-          ...(documentUrl != null && { agreementDocumentUrl: documentUrl }),
-          ...(storagePath != null && { agreementDocumentPath: storagePath }),
-          status: "agreement_signed",
-          updatedAt: new Date(),
-        })
-        .where(eq(recruits.id, recruit.id));
+      case "invite.expired": {
+        await updateDocumentStatus(documentId, "expired", {
+          expiresAt: new Date(),
+        });
+        console.log(`${LOG_PREFIX} invite.expired: documentId=${documentId}, status=expired`);
+        break;
+      }
 
-      // Create history record
-      await db.insert(recruitHistory).values({
-        recruitId: recruit.id,
-        previousStatus: recruit.status,
-        newStatus: "agreement_signed",
-        notes: "Agreement signed via SignNow",
-        changedById: null, // System event
-      });
+      case "document.complete": {
+        let storagePath: string | null = null;
+
+        try {
+          const pdfBuffer = await downloadDocument(document_id);
+          const entityId = document.recruitId ?? document.personId;
+          if (!entityId) {
+            console.warn(`${LOG_PREFIX} document.complete: documentId=${documentId} has no recruitId or personId, skipping storage`);
+          } else {
+            const folder = document.recruitId
+              ? `recruit-${document.recruitId}`
+              : `person-${document.personId}`;
+            const timestamp = Date.now();
+            const fileName = `${document.documentType}-${entityId}-${timestamp}.pdf`;
+            storagePath = await uploadDocument(
+              pdfBuffer,
+              fileName,
+              "agreements",
+              folder
+            );
+          }
+        } catch (storageErr) {
+          console.error(
+            `${LOG_PREFIX} Storage upload failed for documentId=${documentId}, continuing without storage`,
+            storageErr
+          );
+        }
+
+        const timestamps: { signedAt?: Date } = {};
+        if (!document.signedAt) {
+          timestamps.signedAt = new Date();
+        }
+
+        await db
+          .update(documents)
+          .set({
+            status: "signed",
+            updatedAt: new Date(),
+            ...(storagePath != null && { storagePath }),
+            ...timestamps,
+          })
+          .where(eq(documents.id, documentId));
+
+        console.log(
+          `${LOG_PREFIX} document.complete: documentId=${documentId}, storagePath=${storagePath ?? "none"}, status=signed`
+        );
+        break;
+      }
+
+      default:
+        console.log(`${LOG_PREFIX} unhandled event=${event} documentId=${documentId}, acknowledging`);
     }
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
-    console.error("Error processing SignNow webhook:", error);
-    // Return 200 to prevent webhook retries for our errors
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`${LOG_PREFIX} error`, { error: message });
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 200 }

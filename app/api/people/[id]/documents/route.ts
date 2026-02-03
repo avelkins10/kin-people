@@ -1,54 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route-protection";
 import { canViewPerson } from "@/lib/auth/visibility-rules";
-import { getPersonDocuments } from "@/lib/db/helpers/person-helpers";
-import { downloadDocument } from "@/lib/supabase/storage";
-
-const BUCKET_NAME = "agreements";
-
-function documentNameFromPath(documentPath: string): string {
-  const segment = documentPath.split("/").pop();
-  return segment?.trim() || documentPath || "Agreement";
-}
+import { getDocumentsByPerson } from "@/lib/db/helpers/document-helpers";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return withAuth(async (req, user) => {
+  return withAuth(async (_req, user) => {
     try {
       const allowed = await canViewPerson(user, id);
       if (!allowed) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const rows = await getPersonDocuments(id);
-
-      const documents = await Promise.all(
-        rows.map(async (row) => {
-          let fileSize = 0;
-          try {
-            const buffer = await downloadDocument(BUCKET_NAME, row.documentPath);
-            fileSize = buffer.length;
-          } catch (err) {
-            console.error(
-              `[documents] Failed to get size for ${row.documentPath}`,
-              err
-            );
-          }
-          return {
-            id: row.recruitId,
-            recruitId: row.recruitId,
-            recruitName: row.recruitName,
-            documentPath: row.documentPath,
-            name: documentNameFromPath(row.documentPath),
-            signedAt: row.signedAt,
-            fileSize,
-          };
-        })
-      );
-
+      const documents = await getDocumentsByPerson(id);
       return NextResponse.json(documents);
     } catch (error) {
       console.error("Error fetching person documents:", error);

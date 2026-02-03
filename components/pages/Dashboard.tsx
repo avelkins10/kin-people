@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ExpiredDocumentsBanner } from "@/components/documents/expired-documents-banner";
 import { RecruitingKanban } from "@/components/recruiting/recruiting-kanban";
 import { RecruitingTable } from "@/components/recruiting/recruiting-table";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export function Dashboard() {
   const status = searchParams.get("status") ?? "";
   const recruiterId = searchParams.get("recruiterId") ?? "";
   const officeId = searchParams.get("officeId") ?? "";
+  const expiredDocuments = searchParams.get("expiredDocuments") ?? "";
   const viewParam = searchParams.get("view");
   const viewMode: ViewMode =
     viewParam === "list" ? "list" : "kanban";
@@ -71,6 +73,7 @@ export function Dashboard() {
       if (status) params.set("status", status);
       if (recruiterId) params.set("recruiterId", recruiterId);
       if (officeId) params.set("officeId", officeId);
+      if (expiredDocuments) params.set("expiredDocuments", expiredDocuments);
       const res = await fetch(`/api/recruits?${params.toString()}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -84,7 +87,7 @@ export function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [status, recruiterId, officeId]);
+  }, [status, recruiterId, officeId, expiredDocuments]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -174,6 +177,10 @@ export function Dashboard() {
           </Button>
         </div>
       </header>
+
+      <ExpiredDocumentsBanner
+        onReview={() => updateFilter("expiredDocuments", "true")}
+      />
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
@@ -304,6 +311,18 @@ export function Dashboard() {
               </option>
             ))}
           </select>
+          <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={expiredDocuments === "true"}
+              onChange={(e) =>
+                updateFilter("expiredDocuments", e.target.checked ? "true" : "")
+              }
+              className="rounded border-gray-300"
+              aria-label="Filter by expired documents"
+            />
+            Expired Documents
+          </label>
         </div>
         <div className="flex items-center bg-white border border-gray-100 rounded-sm p-1 h-fit self-start sm:self-center">
           <button

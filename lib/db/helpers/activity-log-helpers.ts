@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { activityLog } from "@/lib/db/schema";
 
 export interface LogActivityParams {
-  entityType: "office" | "role" | "team" | "pay_plan" | "commission_rule";
+  entityType: "office" | "role" | "team" | "pay_plan" | "commission_rule" | "document_template";
   entityId: string;
   action: "created" | "updated" | "deleted";
   details?: Record<string, unknown>;

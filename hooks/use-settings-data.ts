@@ -67,6 +67,23 @@ export interface CommissionRule {
   updatedAt?: string;
 }
 
+export interface DocumentTemplate {
+  id: string;
+  documentType: string;
+  displayName: string;
+  signnowTemplateId: string | null;
+  requireRecruit: boolean | null;
+  requireManager: boolean | null;
+  requireHR: boolean | null;
+  expirationDays: number | null;
+  reminderFrequencyDays: number | null;
+  description: string | null;
+  metadata: unknown;
+  isActive: boolean | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface PersonListItem {
   id: string;
   firstName: string;
@@ -88,6 +105,7 @@ interface SettingsData {
   teams: Team[];
   payPlans: PayPlan[];
   commissionRules: CommissionRule[];
+  documentTemplates: DocumentTemplate[];
   people: PersonListItem[];
 }
 
@@ -107,6 +125,7 @@ export function useSettingsData() {
     teams: [],
     payPlans: [],
     commissionRules: [],
+    documentTemplates: [],
     people: [],
   });
   const [loading, setLoading] = useState(true);
@@ -116,15 +135,16 @@ export function useSettingsData() {
     setLoading(true);
     setError(null);
     try {
-      const [roles, offices, teams, payPlans, commissionRules, people] = await Promise.all([
+      const [roles, offices, teams, payPlans, commissionRules, documentTemplates, people] = await Promise.all([
         fetchJson<Role[]>("/api/roles"),
         fetchJson<Office[]>("/api/offices"),
         fetchJson<Team[]>("/api/teams"),
         fetchJson<PayPlan[]>("/api/pay-plans"),
         fetchJson<CommissionRule[]>("/api/commission-rules"),
+        fetchJson<DocumentTemplate[]>("/api/document-templates"),
         fetchJson<PersonListItem[]>("/api/people"),
       ]);
-      setData({ roles, offices, teams, payPlans, commissionRules, people });
+      setData({ roles, offices, teams, payPlans, commissionRules, documentTemplates, people });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load settings");
     } finally {

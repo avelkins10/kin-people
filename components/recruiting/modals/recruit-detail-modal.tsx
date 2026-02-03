@@ -21,8 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Pencil } from "lucide-react";
-import { SendAgreementModal } from "./send-agreement-modal";
+import { Pencil } from "lucide-react";
+import { SendDocumentModal } from "@/components/documents/send-document-modal";
+import { DocumentList } from "@/components/documents/document-list";
 import { ConvertToPersonModal } from "./convert-to-person-modal";
 import { useRouter } from "next/navigation";
 import type { RecruitWithDetails } from "@/types/recruiting";
@@ -42,11 +43,9 @@ export function RecruitDetailModal({
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showSendAgreement, setShowSendAgreement] = useState(false);
+  const [showSendDocument, setShowSendDocument] = useState(false);
   const [showConvert, setShowConvert] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [downloadingDocument, setDownloadingDocument] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [managers, setManagers] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
@@ -225,25 +224,11 @@ export function RecruitDetailModal({
     }
   }
 
-  async function handleDownloadDocument(documentPath: string) {
-    setDownloadingDocument(true);
-    setDownloadError(null);
-    try {
-      const url = `/api/recruits/${recruitId}/documents/download?documentPath=${encodeURIComponent(documentPath)}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to get download link");
-      }
-      const { signedUrl } = data;
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      setDownloadError(
-        err instanceof Error ? err.message : "Failed to download document"
-      );
-    } finally {
-      setDownloadingDocument(false);
-    }
+  function handleSendDocumentClose() {
+    setShowSendDocument(false);
+    fetchRecruit();
+    router.refresh();
+    window.dispatchEvent(new CustomEvent("documents-updated"));
   }
 
   if (!recruit) {
@@ -485,86 +470,11 @@ export function RecruitDetailModal({
               </>
             )}
 
-            {/* Agreement */}
-            {(r.agreementSentAt ||
-              r.agreementSignedAt ||
-              r.agreementDocumentPath ||
-              r.agreementDocumentUrl) && (
-              <div>
-                <h3 className="font-semibold mb-3">Agreement</h3>
-                <div className="text-sm space-y-2">
-                  {r.agreementSentAt && (
-                    <div>
-                      <span className="text-gray-600">Sent:</span>{" "}
-                      {new Date(r.agreementSentAt).toLocaleDateString()}
-                    </div>
-                  )}
-                  {r.agreementSignedAt && (
-                    <div>
-                      <span className="text-gray-600">Signed:</span>{" "}
-                      {new Date(r.agreementSignedAt).toLocaleDateString()}
-                    </div>
-                  )}
-                  {r.agreementDocumentPath && (
-                    <div className="space-y-2">
-                      {(r.agreementDocumentPath as string).split("/").pop() && (
-                        <div className="text-gray-600">
-                          {(r.agreementDocumentPath as string).split("/").pop()}
-                        </div>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleDownloadDocument(r.agreementDocumentPath!)
-                        }
-                        disabled={downloadingDocument}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        {downloadingDocument ? "Downloading..." : "Download Agreement"}
-                      </Button>
-                    </div>
-                  )}
-                  {!r.agreementDocumentPath && r.agreementDocumentUrl && (
-                    <div>
-                      <a
-                        href={r.agreementDocumentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        View Document
-                      </a>
-                    </div>
-                  )}
-                  {downloadError && (
-                    <div className="text-red-600 text-sm space-y-1">
-                      {downloadError}
-                      <div className="flex gap-2">
-                        {r.agreementDocumentPath && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleDownloadDocument(r.agreementDocumentPath!)
-                            }
-                            className="text-blue-600 hover:underline"
-                          >
-                            Retry
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setDownloadError(null)}
-                          className="text-blue-600 hover:underline"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Documents */}
+            <div>
+              <h3 className="font-semibold mb-3">Documents</h3>
+              <DocumentList entityType="recruit" entityId={recruitId} />
+            </div>
 
             {/* Notes */}
             {r.notes && (
@@ -604,11 +514,9 @@ export function RecruitDetailModal({
             <div>
               <h3 className="font-semibold mb-3">Actions</h3>
               <div className="flex flex-wrap gap-2">
-                {r.status === "offer_sent" && (
-                  <Button onClick={() => setShowSendAgreement(true)}>
-                    Send Agreement
-                  </Button>
-                )}
+                <Button onClick={() => setShowSendDocument(true)}>
+                  Send Rep Agreement
+                </Button>
                 {r.status === "agreement_signed" && (
                   <Button onClick={() => setShowConvert(true)}>
                     Convert to Person
@@ -671,15 +579,13 @@ export function RecruitDetailModal({
         </DialogContent>
       </Dialog>
 
-      {showSendAgreement && (
-        <SendAgreementModal
-          recruitId={recruitId}
-          open={showSendAgreement}
-          onClose={() => {
-            setShowSendAgreement(false);
-            fetchRecruit();
-            router.refresh();
-          }}
+      {showSendDocument && (
+        <SendDocumentModal
+          entityType="recruit"
+          entityId={recruitId}
+          documentType="rep_agreement"
+          open={showSendDocument}
+          onClose={handleSendDocumentClose}
         />
       )}
 

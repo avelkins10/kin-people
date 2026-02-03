@@ -10,6 +10,7 @@ import { PersonDeals } from "@/components/people/person-deals";
 import { PersonCommissions } from "@/components/people/person-commissions";
 import { PersonDocuments } from "@/components/people/person-documents";
 import { PersonRecruits } from "@/components/people/person-recruits";
+import { SendDocumentModalWrapper } from "@/components/people/modals/send-document-modal-wrapper";
 import type { PersonWithDetails } from "@/types/people";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default function PersonDetailPage() {
   const [data, setData] = useState<PersonWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sendDocModalOpen, setSendDocModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -108,6 +110,13 @@ export default function PersonDetailPage() {
             </div>
           </div>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setSendDocModalOpen(true)}
+          aria-label="Send document"
+        >
+          Send Document
+        </Button>
       </header>
 
       <Tabs defaultValue="overview" className="space-y-4">
@@ -143,6 +152,12 @@ export default function PersonDetailPage() {
           <PersonRecruits personId={id} />
         </TabsContent>
       </Tabs>
+
+      <SendDocumentModalWrapper
+        personId={id}
+        open={sendDocModalOpen}
+        onClose={() => setSendDocModalOpen(false)}
+      />
     </div>
   );
 }

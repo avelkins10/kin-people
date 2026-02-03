@@ -71,4 +71,5 @@ export interface RecruitListItem {
     id: string;
     name: string;
   } | null;
+  expiredDocumentsCount: number;
 }

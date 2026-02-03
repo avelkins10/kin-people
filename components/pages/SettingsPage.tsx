@@ -9,6 +9,7 @@ import { SettingsOfficesSection } from "@/components/settings/SettingsOfficesSec
 import { SettingsTeamsSection } from "@/components/settings/SettingsTeamsSection";
 import { SettingsPayPlansSection } from "@/components/settings/SettingsPayPlansSection";
 import { SettingsCommissionRulesSection } from "@/components/settings/SettingsCommissionRulesSection";
+import { SettingsDocumentTemplatesSection } from "@/components/settings/SettingsDocumentTemplatesSection";
 import { SettingsOnboardingMetricsSection } from "@/components/settings/SettingsOnboardingMetricsSection";
 import { SettingsHistorySection } from "@/components/settings/SettingsHistorySection";
 import { SettingsUsersSection } from "@/components/settings/SettingsUsersSection";
@@ -95,6 +96,13 @@ export function SettingsPage() {
             Teams
           </TabsTrigger>
           <TabsTrigger
+            value="documents"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
+          >
+            <FileText className="h-4 w-4 mr-2 shrink-0" />
+            Documents
+          </TabsTrigger>
+          <TabsTrigger
             value="pay-plans"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
           >
@@ -177,6 +185,16 @@ export function SettingsPage() {
             <SettingsTeamsSection
               teams={data.teams}
               offices={data.offices}
+              loading={loading}
+              onRefetch={refetch}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-6 focus-visible:outline-none">
+          <div className="max-w-2xl">
+            <SettingsDocumentTemplatesSection
+              documentTemplates={data.documentTemplates}
               loading={loading}
               onRefetch={refetch}
             />

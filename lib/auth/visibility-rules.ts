@@ -4,6 +4,7 @@ import { eq, or, and } from "drizzle-orm";
 import type { CurrentUser } from "./get-current-user";
 import { Permission } from "@/lib/permissions/types";
 import { hasPermission } from "./check-permission";
+import { getDocumentWithDetails } from "@/lib/db/helpers/document-helpers";
 
 /**
  * Get visibility filter criteria based on user role.
@@ -581,6 +582,169 @@ export async function canManageRecruit(
     console.error("Error checking recruit management access:", error);
     return false;
   }
+}
+
+/**
+ * Check if a user can send a document to a specific recruit.
+ * Allowed: recruiter (owner of the recruit), admin (MANAGE_ALL_OFFICES), office manager (MANAGE_OWN_OFFICE).
+ * MANAGE_OWN_TEAM and MANAGE_OWN_REGION are not allowed unless explicitly added later.
+ *
+ * @param user - The current user object
+ * @param recruitId - The ID of the recruit to check access for
+ * @returns Promise resolving to true if user can send document, false otherwise
+ */
+export async function canSendDocumentToRecruit(
+  user: NonNullable<CurrentUser>,
+  recruitId: string
+): Promise<boolean> {
+  if (hasPermission(user, Permission.MANAGE_ALL_OFFICES)) {
+    return true;
+  }
+
+  try {
+    const targetRecruit = await db
+      .select()
+      .from(recruits)
+      .where(eq(recruits.id, recruitId))
+      .limit(1);
+
+    if (!targetRecruit[0]) {
+      return false;
+    }
+
+    const recruit = targetRecruit[0];
+
+    if (recruit.recruiterId === user.id) {
+      return true;
+    }
+
+    if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
+      if (!user.officeId) {
+        return false;
+      }
+      return recruit.targetOfficeId === user.officeId;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Error checking can send document to recruit:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if a user can send a document to a specific person.
+ *
+ * @param user - The current user object
+ * @param personId - The ID of the person to check access for
+ * @returns Promise resolving to true if user can send document, false otherwise
+ */
+export async function canSendDocumentToPerson(
+  user: NonNullable<CurrentUser>,
+  personId: string
+): Promise<boolean> {
+  if (hasPermission(user, Permission.MANAGE_ALL_OFFICES)) {
+    return true;
+  }
+  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
+    return true;
+  }
+
+  if (user.id === personId) {
+    return true;
+  }
+
+  try {
+    const targetPerson = await db
+      .select()
+      .from(people)
+      .where(eq(people.id, personId))
+      .limit(1);
+
+    if (!targetPerson[0]) {
+      return false;
+    }
+
+    const person = targetPerson[0];
+
+    if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
+      if (!user.officeId) {
+        return false;
+      }
+      return person.officeId === user.officeId;
+    }
+
+    if (hasPermission(user, Permission.MANAGE_OWN_TEAM)) {
+      return person.reportsToId === user.id || person.officeId === user.officeId;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Error checking can send document to person:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if a user can view a specific document.
+ *
+ * @param user - The current user object
+ * @param documentId - The ID of the document to check access for
+ * @returns Promise resolving to true if user can view, false otherwise
+ */
+export async function canViewDocument(
+  user: NonNullable<CurrentUser>,
+  documentId: string
+): Promise<boolean> {
+  if (
+    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
+    hasPermission(user, Permission.MANAGE_OWN_REGION)
+  ) {
+    return true;
+  }
+
+  try {
+    const docWithDetails = await getDocumentWithDetails(documentId);
+    if (!docWithDetails) {
+      return false;
+    }
+
+    const { document } = docWithDetails;
+
+    if (document.recruitId) {
+      const [fullRecruit] = await db
+        .select()
+        .from(recruits)
+        .where(eq(recruits.id, document.recruitId))
+        .limit(1);
+      if (!fullRecruit) {
+        return false;
+      }
+      return canViewRecruit(user, {
+        recruiterId: fullRecruit.recruiterId,
+        targetOfficeId: fullRecruit.targetOfficeId,
+      });
+    }
+
+    if (document.personId) {
+      return canViewPerson(user, document.personId);
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Error checking document visibility:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if a user can manage document templates.
+ *
+ * @param user - The current user object
+ * @returns true if user can manage templates, false otherwise
+ */
+export function canManageTemplates(user: NonNullable<CurrentUser>): boolean {
+  return hasPermission(user, Permission.MANAGE_SETTINGS);
 }
 
 /**
