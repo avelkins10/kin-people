@@ -32,7 +32,8 @@ export function SettingsPage() {
 
   const activePayPlans = data.payPlans.filter((p) => p.isActive).length;
   const totalCommissionRules = data.commissionRules.length;
-  const peopleWithoutPayPlans = data.people.filter((p) => !p.payPlanId).length;
+  const peopleWithPayPlans = data.payPlans.reduce((sum, p) => sum + (p.peopleCount ?? 0), 0);
+  const peopleWithoutPayPlans = Math.max(0, data.people.length - peopleWithPayPlans);
 
   return (
     <div className="space-y-6">
