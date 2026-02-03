@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -22,11 +22,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const timedOutRef = useRef(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    timedOutRef.current = false;
+
+    const timeoutMs = 15000;
+    const timeoutId = setTimeout(() => {
+      timedOutRef.current = true;
+      setError("Sign-in is taking too long. Check your connection and try again.");
+      setLoading(false);
+    }, timeoutMs);
 
     try {
       const supabase = createClient();
@@ -34,6 +43,9 @@ export default function LoginPage() {
         email,
         password,
       });
+
+      clearTimeout(timeoutId);
+      if (timedOutRef.current) return;
 
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials")) {
@@ -50,8 +62,14 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setError("Something went wrong. Please try again.");
-      setLoading(false);
+      clearTimeout(timeoutId);
+      if (!timedOutRef.current) {
+        setError("Something went wrong. Please try again.");
+        setLoading(false);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      if (!timedOutRef.current) setLoading(false);
     }
   }
 
