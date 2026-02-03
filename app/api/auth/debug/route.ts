@@ -12,31 +12,44 @@ import { eq } from "drizzle-orm";
  * Remove or restrict in production once fixed.
  */
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
 
-  const hasSession = !!authUser;
-  const authUserId = authUser?.id ?? null;
+    const hasSession = !!authUser;
+    const authUserId = authUser?.id ?? null;
 
-  let hasPerson = false;
-  if (authUserId) {
-    const rows = await db
-      .select({ id: people.id })
-      .from(people)
-      .where(eq(people.authUserId, authUserId))
-      .limit(1);
-    hasPerson = rows.length > 0;
+    let hasPerson = false;
+    if (authUserId) {
+      const rows = await db
+        .select({ id: people.id })
+        .from(people)
+        .where(eq(people.authUserId, authUserId))
+        .limit(1);
+      hasPerson = rows.length > 0;
+    }
+
+    return NextResponse.json({
+      hasSession,
+      hasPerson,
+      hint: !hasSession
+        ? "Server has no Supabase session (cookies not sent or wrong domain)."
+        : !hasPerson
+          ? "Session ok but no person row for this auth user in DB."
+          : "Session and person both ok; getCurrentUser() should work.",
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      {
+        hasSession: false,
+        hasPerson: false,
+        error: message,
+        hint: "Check server logs; often DATABASE_URL or Supabase env missing.",
+      },
+      { status: 200 }
+    );
   }
-
-  return NextResponse.json({
-    hasSession,
-    hasPerson,
-    hint: !hasSession
-      ? "Server has no Supabase session (cookies not sent or wrong domain)."
-      : !hasPerson
-        ? "Session ok but no person row for this auth user in DB."
-        : "Session and person both ok; getCurrentUser() should work.",
-  });
 }
