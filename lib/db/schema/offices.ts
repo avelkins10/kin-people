@@ -6,6 +6,7 @@ export const offices = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: varchar('name', { length: 100 }).notNull(),
     region: varchar('region', { length: 100 }),
+    division: varchar('division', { length: 100 }),
     states: text('states').array(),
     address: text('address'),
     isActive: boolean('is_active').default(true),
@@ -15,6 +16,7 @@ export const offices = pgTable(
   (table) => ({
     idxOfficesActive: index('idx_offices_active').on(table.isActive),
     idxOfficesRegion: index('idx_offices_region').on(table.region),
+    idxOfficesDivision: index('idx_offices_division').on(table.division),
     officesNameUnique: uniqueIndex('offices_name_unique').on(table.name),
   })
 );

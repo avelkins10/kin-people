@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { deals, commissions, people } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { deals, commissions, people, offices, officeLeadership } from "@/lib/db/schema";
+import { eq, and, or, lte, gte, isNull } from "drizzle-orm";
 import { getOrCreateOrgSnapshot } from "@/lib/db/helpers/org-snapshot-helpers";
 import { getPersonCurrentPayPlan } from "@/lib/db/helpers/pay-plan-helpers";
 import {
@@ -129,6 +129,10 @@ export async function calculateCommissionsForDeal(dealId: string): Promise<numbe
   // Calculate recruiting overrides (based on setter's recruited_by chain)
   const recruitingCount = await calculateRecruitingOverrides(deal, setterSnapshot);
   commissionCount += recruitingCount;
+
+  // Calculate office-hierarchy overrides (AD/Regional/Divisional/VP for deal's office)
+  const officeHierarchyCount = await calculateOfficeHierarchyOverrides(deal, snapshotDate);
+  commissionCount += officeHierarchyCount;
 
   return commissionCount;
 }
@@ -474,6 +478,185 @@ async function calculateRecruitingOverrides(
     // Move up the chain
     currentPersonId = recruiterSnapshot.recruitedById || null;
     level++;
+  }
+
+  return count;
+}
+
+/** office_hierarchy override_level: 1 AD, 2 Regional, 3 Divisional, 4 VP */
+const OFFICE_ROLE_LEVEL: Record<string, number> = {
+  ad: 1,
+  regional: 2,
+  divisional: 3,
+  vp: 4,
+};
+
+const OFFICE_COMMISSION_TYPE: Record<string, "override_office_ad" | "override_office_regional" | "override_office_divisional" | "override_office_vp"> = {
+  ad: "override_office_ad",
+  regional: "override_office_regional",
+  divisional: "override_office_divisional",
+  vp: "override_office_vp",
+};
+
+/**
+ * Calculate office-hierarchy overrides: AD/Regional/Divisional/VP for the deal's office.
+ * Only assignments effective on the deal's close date qualify (no retroactivity).
+ */
+async function calculateOfficeHierarchyOverrides(
+  deal: Deal,
+  effectiveDate: string
+): Promise<number> {
+  if (!deal.officeId) {
+    return 0;
+  }
+
+  const [officeRow] = await db
+    .select()
+    .from(offices)
+    .where(eq(offices.id, deal.officeId))
+    .limit(1);
+
+  if (!officeRow) {
+    return 0;
+  }
+
+  const dateFilter = and(
+    lte(officeLeadership.effectiveFrom, effectiveDate),
+    or(isNull(officeLeadership.effectiveTo), gte(officeLeadership.effectiveTo, effectiveDate))
+  );
+
+  // AD: this office
+  const adRows = await db
+    .select()
+    .from(officeLeadership)
+    .where(
+      and(
+        eq(officeLeadership.officeId, deal.officeId),
+        eq(officeLeadership.roleType, "ad"),
+        dateFilter
+      )
+    );
+
+  // Regional: this office's region
+  const regionalRows =
+    officeRow.region != null
+      ? await db
+          .select()
+          .from(officeLeadership)
+          .where(
+            and(
+              eq(officeLeadership.region, officeRow.region),
+              eq(officeLeadership.roleType, "regional"),
+              dateFilter
+            )
+          )
+      : [];
+
+  // Divisional: this office's division
+  const divisionalRows =
+    officeRow.division != null
+      ? await db
+          .select()
+          .from(officeLeadership)
+          .where(
+            and(
+              eq(officeLeadership.division, officeRow.division),
+              eq(officeLeadership.roleType, "divisional"),
+              dateFilter
+            )
+          )
+      : [];
+
+  // VP: one per deal — prefer divisional VP for this office's division, else company-wide VP
+  let vpRows: { personId: string; roleType: "vp"; effectiveFrom: string | null; effectiveTo: string | null }[] = [];
+  if (officeRow.division != null) {
+    const divVp = await db
+      .select()
+      .from(officeLeadership)
+      .where(
+        and(
+          eq(officeLeadership.roleType, "vp"),
+          eq(officeLeadership.division, officeRow.division),
+          dateFilter
+        )
+      )
+      .limit(1);
+    if (divVp.length > 0) {
+      vpRows = divVp.map((r) => ({ personId: r.personId, roleType: "vp" as const, effectiveFrom: r.effectiveFrom, effectiveTo: r.effectiveTo }));
+    }
+  }
+  if (vpRows.length === 0) {
+    const companyVp = await db
+      .select()
+      .from(officeLeadership)
+      .where(
+        and(
+          eq(officeLeadership.roleType, "vp"),
+          isNull(officeLeadership.division),
+          dateFilter
+        )
+      )
+      .limit(1);
+    vpRows = companyVp.map((r) => ({ personId: r.personId, roleType: "vp" as const, effectiveFrom: r.effectiveFrom, effectiveTo: r.effectiveTo }));
+  }
+
+  const allLeaders = [
+    ...adRows.map((r) => ({ ...r, roleType: "ad" as const })),
+    ...regionalRows.map((r) => ({ ...r, roleType: "regional" as const })),
+    ...divisionalRows.map((r) => ({ ...r, roleType: "divisional" as const })),
+    ...vpRows.map((r) => ({ ...r, roleType: "vp" as const })),
+  ];
+
+  let count = 0;
+  const setterSnapshot = await getOrCreateOrgSnapshot(deal.setterId, effectiveDate);
+
+  for (const row of allLeaders) {
+    const payPlanData = await getPersonCurrentPayPlan(row.personId, effectiveDate);
+    if (!payPlanData) continue;
+
+    const rules = await getRulesForPayPlan(payPlanData.payPlan.id, "override");
+    const level = OFFICE_ROLE_LEVEL[row.roleType];
+    const commissionType = OFFICE_COMMISSION_TYPE[row.roleType];
+
+    const context: RuleEvaluationContext = {
+      dealType: deal.dealType,
+      systemSizeKw: parseFloat(deal.systemSizeKw || "0"),
+      dealValue: parseFloat(deal.dealValue),
+      ppw: parseFloat(deal.ppw || "0"),
+      setterTier: (setterSnapshot.setterTier as "Rookie" | "Veteran" | "Team Lead" | null) || null,
+      personRoleId: "", // leader's role not required for office-hierarchy rule match
+    };
+
+    const leaderSnapshot = await getOrCreateOrgSnapshot(row.personId, effectiveDate);
+
+    const applicableRules = rules.filter((rule) => {
+      if (rule.overrideSource !== "office_hierarchy") return false;
+      if (rule.overrideLevel !== null && rule.overrideLevel !== 0 && rule.overrideLevel !== level) {
+        return false;
+      }
+      return evaluateRule(rule, context);
+    });
+
+    if (applicableRules.length === 0) continue;
+
+    const rule = applicableRules[0];
+    const amount = calculateCommissionAmount(rule, context);
+    const calcDetails = buildCalcDetails(rule, deal, leaderSnapshot, amount, {
+      overrideLevel: level,
+      setterSnapshot,
+    });
+
+    await db.insert(commissions).values({
+      dealId: deal.id,
+      personId: row.personId,
+      commissionType,
+      amount: amount.toString(),
+      commissionRuleId: rule.id,
+      payPlanId: payPlanData.payPlan.id,
+      calcDetails,
+      status: "pending",
+    });
+    count++;
   }
 
   return count;

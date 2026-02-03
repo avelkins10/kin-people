@@ -33,6 +33,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 const createOfficeSchema = z.object({
   name: z.string().min(1).max(100),
   region: z.string().optional(),
+  division: z.string().optional(),
   address: z.string().optional(),
   isActive: z.boolean().optional().default(true),
 });
@@ -47,6 +48,7 @@ export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req, us
       .values({
         name: validated.name,
         region: validated.region || null,
+        division: validated.division || null,
         address: validated.address || null,
         isActive: validated.isActive ?? true,
       })
@@ -57,7 +59,7 @@ export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req, us
         entityType: "office",
         entityId: newOffice.id,
         action: "created",
-        details: { name: newOffice.name, region: newOffice.region, address: newOffice.address },
+        details: { name: newOffice.name, region: newOffice.region, division: newOffice.division, address: newOffice.address },
         actorId: user.id,
       });
     }

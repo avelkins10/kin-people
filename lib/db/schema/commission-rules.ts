@@ -10,10 +10,15 @@ import { roles } from './roles';
  * - 'setter_commission': Commission for the setter on a deal
  * - 'closer_commission': Commission for the closer on a deal
  * - 'self_gen_commission': Commission when setter and closer are the same person
- * - 'override': Override commission for managers/recruiters
+ * - 'override': Override commission for managers/recruiters (reports_to, recruited_by, or office_hierarchy)
  * - 'recruiting_bonus': One-time bonus for bringing someone in
  * - 'draw': Advance against future commissions
- * 
+ *
+ * override_source values (when rule_type = 'override'):
+ * - 'reports_to': Override via setter's reports_to chain; override_level = 1 = direct, 2 = skip-level, etc.
+ * - 'recruited_by': Override via setter's recruited_by chain; override_level = 1, 2, etc.
+ * - 'office_hierarchy': Override via office/region/division leadership; override_level = 1 AD, 2 Regional, 3 Divisional, 4 VP.
+ *
  * calc_method values:
  * - 'flat_per_kw': Fixed amount per kW (for solar deals)
  * - 'percentage_of_deal': Percentage of deal value
@@ -35,7 +40,7 @@ export const commissionRules = pgTable(
     amount: decimal('amount', { precision: 10, scale: 4 }).notNull(),
     appliesToRoleId: uuid('applies_to_role_id').references(() => roles.id),
     overrideLevel: integer('override_level'), // 1 = direct, 2 = skip-level, etc.
-    overrideSource: varchar('override_source', { length: 50 }), // 'reports_to' or 'recruited_by'
+    overrideSource: varchar('override_source', { length: 50 }), // 'reports_to' | 'recruited_by' | 'office_hierarchy'
     dealTypes: text('deal_types').array(), // ['solar', 'hvac', 'roofing'], null = all
     conditions: jsonb('conditions').default('{}'), // Flexible conditions including setter_tier matching
     isActive: boolean('is_active').default(true),

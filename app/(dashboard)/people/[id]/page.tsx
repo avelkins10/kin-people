@@ -127,6 +127,7 @@ export default function PersonDetailPage() {
             recruiter={recruiter}
             currentTeams={currentTeams}
             currentPayPlan={currentPayPlan}
+            personId={id}
           />
         </TabsContent>
         <TabsContent value="deals">

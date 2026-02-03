@@ -46,8 +46,14 @@ export function SettingsUsersSection({
   const [formPhone, setFormPhone] = useState("");
   const [formRoleId, setFormRoleId] = useState("");
   const [formOfficeId, setFormOfficeId] = useState("");
+  const [formAssignAdOfficeId, setFormAssignAdOfficeId] = useState("");
+  const [formAssignAdEffectiveFrom, setFormAssignAdEffectiveFrom] = useState(
+    () => new Date().toISOString().slice(0, 10)
+  );
 
   const adminRoleId = roles.find((r) => r.name === "Admin")?.id;
+  const areaDirectorRoleId = roles.find((r) => r.name === "Area Director")?.id ?? "";
+  const isAreaDirectorRole = formRoleId === areaDirectorRoleId;
 
   const resetForm = () => {
     setFormFirstName("");
@@ -56,6 +62,8 @@ export function SettingsUsersSection({
     setFormPhone("");
     setFormRoleId(roles[0]?.id ?? "");
     setFormOfficeId("");
+    setFormAssignAdOfficeId("");
+    setFormAssignAdEffectiveFrom(new Date().toISOString().slice(0, 10));
     setEditPerson(null);
   };
 
@@ -75,8 +83,10 @@ export function SettingsUsersSection({
     setFormLastName(person.lastName);
     setFormEmail(person.email);
     setFormPhone("");
-    setFormRoleId("");
+    setFormRoleId(roles.find((r) => r.name === person.roleName)?.id ?? "");
     setFormOfficeId(person.officeId ?? "");
+    setFormAssignAdOfficeId("");
+    setFormAssignAdEffectiveFrom(new Date().toISOString().slice(0, 10));
   };
 
   const handleCreate = async () => {
@@ -113,7 +123,7 @@ export function SettingsUsersSection({
     if (!editPerson || !formFirstName.trim() || !formLastName.trim() || !formEmail.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/people/${editPerson.id}`, {
+      const patchRes = await fetch(`/api/people/${editPerson.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -123,10 +133,63 @@ export function SettingsUsersSection({
           phone: formPhone.trim() || null,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+      if (!patchRes.ok) {
+        const err = await patchRes.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error || "Failed to update");
       }
+
+      const currentRoleId = roles.find((r) => r.name === editPerson.roleName)?.id ?? "";
+      if (formRoleId !== currentRoleId) {
+        const roleRes = await fetch(`/api/people/${editPerson.id}/change-role`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newRoleId: formRoleId,
+            effectiveDate: new Date().toISOString().slice(0, 10),
+            reason: "Role changed from Settings",
+          }),
+        });
+        if (!roleRes.ok) {
+          const err = await roleRes.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error || "Failed to update role");
+        }
+      }
+
+      if (formOfficeId !== (editPerson.officeId ?? "")) {
+        if (formOfficeId) {
+          const officeRes = await fetch(`/api/people/${editPerson.id}/change-office`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              newOfficeId: formOfficeId,
+              effectiveDate: new Date().toISOString().slice(0, 10),
+              reason: "Office changed from Settings",
+            }),
+          });
+          if (!officeRes.ok) {
+            const err = await officeRes.json().catch(() => ({}));
+            throw new Error((err as { error?: string }).error || "Failed to update office");
+          }
+        }
+      }
+
+      if (formRoleId === areaDirectorRoleId && formAssignAdOfficeId) {
+        const adRes = await fetch("/api/office-leadership", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            officeId: formAssignAdOfficeId,
+            roleType: "ad",
+            personId: editPerson.id,
+            effectiveFrom: formAssignAdEffectiveFrom,
+          }),
+        });
+        if (!adRes.ok) {
+          const err = await adRes.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error || "Failed to assign AD");
+        }
+      }
+
       setEditPerson(null);
       resetForm();
       onRefetch();
@@ -360,6 +423,71 @@ export function SettingsUsersSection({
                 placeholder="+1 234 567 8900"
               />
             </div>
+            <div className="grid gap-2">
+              <Label>Role</Label>
+              <Select value={formRoleId} onValueChange={setFormRoleId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Office (optional)</Label>
+              <Select value={formOfficeId || "none"} onValueChange={(v) => setFormOfficeId(v === "none" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select office" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {offices.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {isAreaDirectorRole && (
+              <div className="border-t pt-4 mt-2 space-y-2">
+                <p className="text-sm font-medium text-gray-700">Assign as AD to an office?</p>
+                <p className="text-xs text-gray-500">
+                  Overrides apply only from the effective date forward. Create an office in the Offices tab if needed.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-ad-office">Office</Label>
+                    <Select value={formAssignAdOfficeId} onValueChange={setFormAssignAdOfficeId}>
+                      <SelectTrigger id="edit-ad-office">
+                        <SelectValue placeholder="Select office" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {offices.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-ad-effective">Effective from</Label>
+                    <Input
+                      id="edit-ad-effective"
+                      type="date"
+                      value={formAssignAdEffectiveFrom}
+                      onChange={(e) => setFormAssignAdEffectiveFrom(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditPerson(null)}>

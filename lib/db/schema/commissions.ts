@@ -15,6 +15,10 @@ import { payPlans } from './pay-plans';
  * - 'override_reports_to_l2': Second level override via reports_to chain
  * - 'override_recruited_by_l1': First level override via recruited_by chain
  * - 'override_recruited_by_l2': Second level override via recruited_by chain
+ * - 'override_office_ad': Override for office AD (office_hierarchy level 1)
+ * - 'override_office_regional': Override for Regional (office_hierarchy level 2)
+ * - 'override_office_divisional': Override for Divisional (office_hierarchy level 3)
+ * - 'override_office_vp': Override for VP (office_hierarchy level 4)
  * - etc.
  * 
  * calc_details JSONB structure:

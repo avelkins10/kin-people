@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import type { PersonWithDetails } from "@/types/people";
@@ -8,6 +11,17 @@ function formatDate(date: Date | string | null): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
+interface LeadershipAssignment {
+  id: string;
+  roleType: string;
+  officeId: string | null;
+  officeName: string | null;
+  region: string | null;
+  division: string | null;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+}
+
 interface PersonOverviewProps {
   person: PersonWithDetails["person"];
   role: PersonWithDetails["role"];
@@ -16,6 +30,7 @@ interface PersonOverviewProps {
   recruiter: PersonWithDetails["recruiter"];
   currentTeams: PersonWithDetails["currentTeams"];
   currentPayPlan: PersonWithDetails["currentPayPlan"];
+  personId?: string;
 }
 
 export function PersonOverview({
@@ -26,7 +41,34 @@ export function PersonOverview({
   recruiter,
   currentTeams,
   currentPayPlan,
+  personId,
 }: PersonOverviewProps) {
+  const [leadership, setLeadership] = useState<LeadershipAssignment[]>([]);
+
+  useEffect(() => {
+    if (!personId) return;
+    let cancelled = false;
+    fetch(`/api/people/${personId}/leadership`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
+      .then((data: { leadership: LeadershipAssignment[] }) => {
+        if (!cancelled) setLeadership(data.leadership ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setLeadership([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [personId]);
+
+  const leadershipLabel = (a: LeadershipAssignment): string => {
+    if (a.roleType === "ad" && a.officeName) return `AD of ${a.officeName}`;
+    if (a.roleType === "regional" && a.region) return `Regional for ${a.region}`;
+    if (a.roleType === "divisional" && a.division) return `Divisional for ${a.division}`;
+    if (a.roleType === "vp") return a.division ? `VP for ${a.division}` : "VP (company)";
+    return a.roleType;
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
       {/* Current Position */}
@@ -100,6 +142,30 @@ export function PersonOverview({
           )}
         </CardContent>
       </Card>
+
+      {/* Leadership */}
+      {leadership.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Leadership</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {leadership.map((a) => (
+                <li key={a.id} className="text-base">
+                  {leadershipLabel(a)}
+                  {(a.effectiveFrom || a.effectiveTo) && (
+                    <span className="text-sm text-gray-500 ml-1">
+                      {a.effectiveFrom && `(from ${formatDate(a.effectiveFrom)})`}
+                      {a.effectiveTo && ` – ${formatDate(a.effectiveTo)}`}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Teams */}
       <Card>

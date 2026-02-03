@@ -22,7 +22,7 @@ const calcMethodEnum = z.enum([
   "flat_fee",
 ]);
 
-const overrideSourceEnum = z.enum(["reports_to", "recruited_by"]);
+const overrideSourceEnum = z.enum(["reports_to", "recruited_by", "office_hierarchy"]);
 
 const updateCommissionRuleSchema = z.object({
   payPlanId: z.string().uuid().optional(),

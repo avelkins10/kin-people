@@ -165,6 +165,7 @@ export function SettingsPage() {
           <div className="max-w-2xl">
             <SettingsOfficesSection
               offices={data.offices}
+              people={data.people}
               loading={loading}
               onRefetch={refetch}
             />

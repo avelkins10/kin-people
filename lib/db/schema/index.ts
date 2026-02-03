@@ -17,6 +17,7 @@
 // Configuration tables
 export * from './roles';
 export * from './offices';
+export * from './office-leadership';
 export * from './teams';
 export * from './pay-plans';
 export * from './commission-rules';
@@ -44,6 +45,7 @@ export * from './app-settings';
 // Export schema object for Drizzle migrations
 import { roles } from './roles';
 import { offices } from './offices';
+import { officeLeadership } from './office-leadership';
 import { teams } from './teams';
 import { payPlans } from './pay-plans';
 import { commissionRules } from './commission-rules';
@@ -63,6 +65,7 @@ import { appSettings } from './app-settings';
 export const schema = {
   roles,
   offices,
+  officeLeadership,
   teams,
   payPlans,
   commissionRules,

@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 const updateOfficeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   region: z.string().nullable().optional(),
+  division: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });
@@ -32,6 +33,7 @@ export async function PATCH(
       const updateData: Record<string, unknown> = { updatedAt: new Date() };
       if (validated.name !== undefined) updateData.name = validated.name;
       if (validated.region !== undefined) updateData.region = validated.region;
+      if (validated.division !== undefined) updateData.division = validated.division;
       if (validated.address !== undefined) updateData.address = validated.address;
       if (validated.isActive !== undefined) updateData.isActive = validated.isActive;
 
@@ -49,7 +51,7 @@ export async function PATCH(
         entityType: "office",
         entityId: id,
         action: "updated",
-        details: { previous: { name: previous.name, region: previous.region, address: previous.address, isActive: previous.isActive }, new: { name: updated.name, region: updated.region, address: updated.address, isActive: updated.isActive } },
+        details: { previous: { name: previous.name, region: previous.region, division: previous.division, address: previous.address, isActive: previous.isActive }, new: { name: updated.name, region: updated.region, division: updated.division, address: updated.address, isActive: updated.isActive } },
         actorId: user.id,
       });
 

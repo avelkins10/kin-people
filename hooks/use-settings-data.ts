@@ -18,6 +18,7 @@ export interface Office {
   id: string;
   name: string;
   region: string | null;
+  division: string | null;
   address: string | null;
   isActive: boolean;
   createdAt?: string;
