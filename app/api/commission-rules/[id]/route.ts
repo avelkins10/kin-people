@@ -5,6 +5,7 @@ import { commissionRules, payPlans, roles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 const ruleTypeEnum = z.enum([
   "setter_commission",
@@ -220,6 +221,14 @@ export async function PUT(
         .where(eq(commissionRules.id, id))
         .returning();
 
+      await logActivity({
+        entityType: "commission_rule",
+        entityId: id,
+        action: "updated",
+        details: { previous: { ruleType: existing.ruleType, calcMethod: existing.calcMethod, amount: existing.amount, isActive: existing.isActive }, new: { ruleType: updated.ruleType, calcMethod: updated.calcMethod, amount: updated.amount, isActive: updated.isActive } },
+        actorId: user.id,
+      });
+
       return NextResponse.json(updated);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -264,6 +273,16 @@ export async function DELETE(
         .set({ isActive: false, updatedAt: new Date() })
         .where(eq(commissionRules.id, id))
         .returning();
+
+      if (deleted) {
+        await logActivity({
+          entityType: "commission_rule",
+          entityId: id,
+          action: "deleted",
+          details: { ruleType: deleted.ruleType, payPlanId: deleted.payPlanId },
+          actorId: user.id,
+        });
+      }
 
       return NextResponse.json({ success: true, rule: deleted });
     } catch (error: any) {

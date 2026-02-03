@@ -9,6 +9,7 @@ export interface Role {
   description: string | null;
   isActive: boolean;
   sortOrder: number;
+  permissions?: string[] | unknown;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -65,12 +66,28 @@ export interface CommissionRule {
   updatedAt?: string;
 }
 
+export interface PersonListItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: string | null;
+  hireDate: string | null;
+  officeId: string | null;
+  officeName: string | null;
+  roleName: string;
+  setterTier: string | null;
+  name: string;
+  managerName: string | null;
+}
+
 interface SettingsData {
   roles: Role[];
   offices: Office[];
   teams: Team[];
   payPlans: PayPlan[];
   commissionRules: CommissionRule[];
+  people: PersonListItem[];
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -89,6 +106,7 @@ export function useSettingsData() {
     teams: [],
     payPlans: [],
     commissionRules: [],
+    people: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,14 +115,15 @@ export function useSettingsData() {
     setLoading(true);
     setError(null);
     try {
-      const [roles, offices, teams, payPlans, commissionRules] = await Promise.all([
+      const [roles, offices, teams, payPlans, commissionRules, people] = await Promise.all([
         fetchJson<Role[]>("/api/roles"),
         fetchJson<Office[]>("/api/offices"),
         fetchJson<Team[]>("/api/teams"),
         fetchJson<PayPlan[]>("/api/pay-plans"),
         fetchJson<CommissionRule[]>("/api/commission-rules"),
+        fetchJson<PersonListItem[]>("/api/people"),
       ]);
-      setData({ roles, offices, teams, payPlans, commissionRules });
+      setData({ roles, offices, teams, payPlans, commissionRules, people });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load settings");
     } finally {

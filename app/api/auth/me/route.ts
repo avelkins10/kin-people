@@ -18,7 +18,11 @@ export async function GET() {
     );
   }
 
-  const permissions = getRolePermissions(user.roleName ?? "");
+  const permissions =
+    Array.isArray((user as { rolePermissions?: string[] }).rolePermissions) &&
+    (user as { rolePermissions: string[] }).rolePermissions.length > 0
+      ? (user as { rolePermissions: string[] }).rolePermissions
+      : getRolePermissions(user.roleName ?? "");
 
   return NextResponse.json({
     user: {

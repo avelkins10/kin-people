@@ -5,6 +5,7 @@ import { payPlans, commissionRules, personPayPlans } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 const updatePayPlanSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -97,6 +98,14 @@ export async function PUT(
         .where(eq(payPlans.id, id))
         .returning();
 
+      await logActivity({
+        entityType: "pay_plan",
+        entityId: id,
+        action: "updated",
+        details: { previous: { name: existing.name, description: existing.description, isActive: existing.isActive }, new: { name: updated.name, description: updated.description, isActive: updated.isActive } },
+        actorId: user.id,
+      });
+
       return NextResponse.json(updated);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -163,6 +172,16 @@ export async function DELETE(
         .set({ isActive: false, updatedAt: new Date() })
         .where(eq(payPlans.id, id))
         .returning();
+
+      if (deleted) {
+        await logActivity({
+          entityType: "pay_plan",
+          entityId: id,
+          action: "deleted",
+          details: { name: deleted.name },
+          actorId: user.id,
+        });
+      }
 
       return NextResponse.json({ success: true, payPlan: deleted });
     } catch (error: any) {

@@ -9,9 +9,10 @@ import {
   payPlans,
 } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { withPermission } from "@/lib/auth/route-protection";
+import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
-import { getPersonWithDetails, createPersonHistoryRecord } from "@/lib/db/helpers/person-helpers";
+import { requirePermission } from "@/lib/auth/check-permission";
+import { getPersonWithDetails } from "@/lib/db/helpers/person-helpers";
 import { canManagePerson } from "@/lib/auth/visibility-rules";
 
 const schema = z.object({
@@ -27,10 +28,25 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return withPermission(Permission.MANAGE_OWN_OFFICE, async (req, user) => {
+  return withAuth(async (req, user) => {
     try {
       const body = await req.json();
       const validated = schema.parse(body);
+
+      // Fetch new role to determine required permission (only admins can assign Admin role)
+      const [newRoleRow] = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.id, validated.newRoleId))
+        .limit(1);
+      if (!newRoleRow) {
+        return NextResponse.json({ error: "Role not found" }, { status: 404 });
+      }
+      if (newRoleRow.name === "Admin") {
+        requirePermission(user, Permission.MANAGE_SETTINGS);
+      } else {
+        requirePermission(user, Permission.MANAGE_OWN_OFFICE);
+      }
 
       // Fetch current person data
       const currentPerson = await getPersonWithDetails(id);
@@ -41,20 +57,23 @@ export async function POST(
         );
       }
 
-      // Verify the target person is within the caller's allowed scope
-      const canManage = await canManagePerson(user, id);
-      if (!canManage) {
-        return NextResponse.json(
-          { error: "You do not have permission to manage this person" },
-          { status: 403 }
-        );
+      // When not assigning Admin, verify the target person is within the caller's allowed scope
+      if (newRoleRow.name !== "Admin") {
+        const canManage = await canManagePerson(user, id);
+        if (!canManage) {
+          return NextResponse.json(
+            { error: "You do not have permission to manage this person" },
+            { status: 403 }
+          );
+        }
       }
 
-      // Fetch old and new role names
-      const [oldRole, newRole] = await Promise.all([
-        db.select().from(roles).where(eq(roles.id, currentPerson.person.roleId)).limit(1),
-        db.select().from(roles).where(eq(roles.id, validated.newRoleId)).limit(1),
-      ]);
+      // Fetch old role
+      const [oldRole] = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.id, currentPerson.person.roleId))
+        .limit(1);
 
       // Use transaction to ensure atomicity
       await db.transaction(async (tx) => {
@@ -120,11 +139,11 @@ export async function POST(
           changeType: "role_change",
           previousValue: {
             role_id: currentPerson.person.roleId,
-            role_name: oldRole[0]?.name || "",
+            role_name: oldRole?.name ?? "",
           },
           newValue: {
             role_id: validated.newRoleId,
-            role_name: newRole[0]?.name || "",
+            role_name: newRoleRow.name,
           },
           effectiveDate: validated.effectiveDate,
           reason: validated.reason,

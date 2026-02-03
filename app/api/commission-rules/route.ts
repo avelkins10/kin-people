@@ -5,6 +5,7 @@ import { commissionRules, payPlans, roles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 const ruleTypeEnum = z.enum([
   "setter_commission",
@@ -88,7 +89,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
 export const POST = withPermission(
   Permission.MANAGE_SETTINGS,
-  async (req: NextRequest) => {
+  async (req, user) => {
     try {
       const body = await req.json();
       const validated = createCommissionRuleSchema.parse(body);
@@ -159,6 +160,16 @@ export const POST = withPermission(
           sortOrder: validated.sortOrder,
         })
         .returning();
+
+      if (newRule) {
+        await logActivity({
+          entityType: "commission_rule",
+          entityId: newRule.id,
+          action: "created",
+          details: { payPlanId: newRule.payPlanId, ruleType: newRule.ruleType, calcMethod: newRule.calcMethod, amount: newRule.amount },
+          actorId: user.id,
+        });
+      }
 
       return NextResponse.json(newRule, { status: 201 });
     } catch (error: any) {

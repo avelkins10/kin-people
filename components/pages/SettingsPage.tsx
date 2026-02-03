@@ -7,6 +7,8 @@ import { SettingsOfficesSection } from "@/components/settings/SettingsOfficesSec
 import { SettingsTeamsSection } from "@/components/settings/SettingsTeamsSection";
 import { SettingsPayPlansSection } from "@/components/settings/SettingsPayPlansSection";
 import { SettingsCommissionRulesSection } from "@/components/settings/SettingsCommissionRulesSection";
+import { SettingsHistorySection } from "@/components/settings/SettingsHistorySection";
+import { SettingsUsersSection } from "@/components/settings/SettingsUsersSection";
 
 export function SettingsPage() {
   const { data, loading, error, refetch } = useSettingsData();
@@ -31,6 +33,13 @@ export function SettingsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        <SettingsUsersSection
+          people={data.people}
+          roles={data.roles}
+          offices={data.offices}
+          loading={loading}
+          onRefetch={refetch}
+        />
         <SettingsRolesSection
           roles={data.roles}
           loading={loading}
@@ -61,6 +70,10 @@ export function SettingsPage() {
           loading={loading}
           onRefetch={refetch}
         />
+      </div>
+
+      <div className="mt-8">
+        <SettingsHistorySection />
       </div>
     </>
   );

@@ -5,6 +5,7 @@ import { payPlans, commissionRules, personPayPlans } from "@/lib/db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 export const GET = withAuth(async (req: NextRequest) => {
   try {
@@ -64,7 +65,7 @@ const createPayPlanSchema = z.object({
 
 export const POST = withPermission(
   Permission.MANAGE_SETTINGS,
-  async (req: NextRequest) => {
+  async (req, user) => {
     try {
       const body = await req.json();
       const validated = createPayPlanSchema.parse(body);
@@ -77,6 +78,16 @@ export const POST = withPermission(
           isActive: validated.isActive,
         })
         .returning();
+
+      if (newPayPlan) {
+        await logActivity({
+          entityType: "pay_plan",
+          entityId: newPayPlan.id,
+          action: "created",
+          details: { name: newPayPlan.name, description: newPayPlan.description },
+          actorId: user.id,
+        });
+      }
 
       return NextResponse.json(newPayPlan, { status: 201 });
     } catch (error: any) {

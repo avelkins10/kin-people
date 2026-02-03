@@ -14,6 +14,8 @@ import {
   GraduationCap,
   LayoutGrid,
 } from "lucide-react";
+import { PermissionGuard } from "@/components/auth/permission-guard";
+import { Permission } from "@/lib/permissions/types";
 export type Page =
 'overview' |
 'recruiting' |
@@ -182,16 +184,18 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-100 mt-auto">
-        <Link
-          href="/settings"
-          className={`w-full flex items-center px-4 py-3 rounded-sm transition-colors ${activePage === "settings" ? "text-black bg-gray-50" : "text-gray-500 hover:text-black hover:bg-gray-50"}`}
-          onClick={() => onNavigate("settings")}
-        >
-          <Settings className={`w-5 h-5 ${isOpen ? "mr-3" : "mx-auto"}`} />
-          {isOpen && (
-            <span className="font-bold tracking-tight text-xs">Settings</span>
-          )}
-        </Link>
+        <PermissionGuard permission={Permission.MANAGE_SETTINGS} fallback={null}>
+          <Link
+            href="/settings"
+            className={`w-full flex items-center px-4 py-3 rounded-sm transition-colors ${activePage === "settings" ? "text-black bg-gray-50" : "text-gray-500 hover:text-black hover:bg-gray-50"}`}
+            onClick={() => onNavigate("settings")}
+          >
+            <Settings className={`w-5 h-5 ${isOpen ? "mr-3" : "mx-auto"}`} />
+            {isOpen && (
+              <span className="font-bold tracking-tight text-xs">Settings</span>
+            )}
+          </Link>
+        </PermissionGuard>
         <Link
           href="/api/auth/logout"
           className="w-full flex items-center px-4 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors mt-1"

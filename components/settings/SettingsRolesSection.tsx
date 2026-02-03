@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Role } from "@/hooks/use-settings-data";
+import { Permission } from "@/lib/permissions/types";
+import { getRolePermissions } from "@/lib/permissions/roles";
 
 interface SettingsRolesSectionProps {
   roles: Role[];
@@ -42,16 +45,23 @@ export function SettingsRolesSection({
   const [formName, setFormName] = useState("");
   const [formLevel, setFormLevel] = useState(1);
   const [formDescription, setFormDescription] = useState("");
+  const [formPermissions, setFormPermissions] = useState<string[]>([]);
+
+  const allPermissions = Object.values(Permission) as string[];
+  const formatPermissionLabel = (p: string) =>
+    p.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
   const resetForm = () => {
     setFormName("");
     setFormLevel(1);
     setFormDescription("");
+    setFormPermissions([]);
     setEditRole(null);
   };
 
   const openAdd = () => {
     resetForm();
+    setFormPermissions([]);
     setAddOpen(true);
   };
 
@@ -60,6 +70,11 @@ export function SettingsRolesSection({
     setFormName(role.name);
     setFormLevel(role.level);
     setFormDescription(role.description ?? "");
+    setFormPermissions(
+      Array.isArray(role.permissions) && role.permissions.length > 0
+        ? (role.permissions as string[])
+        : getRolePermissions(role.name)
+    );
   };
 
   const handleCreate = async () => {
@@ -73,6 +88,7 @@ export function SettingsRolesSection({
           name: formName.trim(),
           level: formLevel,
           description: formDescription.trim() || undefined,
+          permissions: formPermissions.length > 0 ? formPermissions : undefined,
         }),
       });
       if (!res.ok) {
@@ -100,6 +116,7 @@ export function SettingsRolesSection({
           name: formName.trim(),
           level: formLevel,
           description: formDescription.trim() || null,
+          permissions: formPermissions,
         }),
       });
       if (!res.ok) {
@@ -226,6 +243,27 @@ export function SettingsRolesSection({
                 placeholder="Brief description"
               />
             </div>
+            <div className="grid gap-2">
+              <Label>Permissions (optional)</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 rounded-sm">
+                {allPermissions.map((p) => (
+                  <label
+                    key={p}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={formPermissions.includes(p)}
+                      onCheckedChange={(checked) => {
+                        setFormPermissions((prev) =>
+                          checked ? [...prev, p] : prev.filter((x) => x !== p)
+                        );
+                      }}
+                    />
+                    <span className="text-gray-700">{formatPermissionLabel(p)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
@@ -271,6 +309,27 @@ export function SettingsRolesSection({
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Brief description"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label>Permissions</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 rounded-sm">
+                {allPermissions.map((p) => (
+                  <label
+                    key={p}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={formPermissions.includes(p)}
+                      onCheckedChange={(checked) => {
+                        setFormPermissions((prev) =>
+                          checked ? [...prev, p] : prev.filter((x) => x !== p)
+                        );
+                      }}
+                    />
+                    <span className="text-gray-700">{formatPermissionLabel(p)}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
