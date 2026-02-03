@@ -8,39 +8,27 @@ import { NextRequest, NextResponse } from "next/server";
  * refreshes it if needed; updated cookies are returned with the response.
  */
 export async function updateSession(request: NextRequest) {
-  const response = NextResponse.next({ request });
+  let response = NextResponse.next({ request });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.log("[v0] updateSession: Missing Supabase env vars");
-    return response;
-  }
-
-  try {
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: Record<string, unknown>) {
-            response.cookies.set(name, value, options as { path?: string });
-          },
-          remove(name: string, options: Record<string, unknown>) {
-            response.cookies.set(name, "", { ...options, maxAge: 0 });
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
         },
-      }
-    );
+        set(name: string, value: string, options: Record<string, unknown>) {
+          response.cookies.set(name, value, options as { path?: string });
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          response.cookies.set(name, "", { ...options, maxAge: 0 });
+        },
+      },
+    }
+  );
 
-    await supabase.auth.getUser();
-  } catch (error) {
-    console.log("[v0] updateSession: Error:", error);
-  }
+  await supabase.auth.getUser();
 
   return response;
 }
