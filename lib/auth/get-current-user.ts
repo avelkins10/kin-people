@@ -24,11 +24,6 @@ export async function getCurrentUser() {
   }
 
   try {
-    // Check if db is available (may not be in v0 preview)
-    if (!db) {
-      return null;
-    }
-    
     const person = await db
       .select({
         id: people.id,
