@@ -9,12 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type Status = "loading" | "success" | "error";
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(2);
@@ -171,5 +171,34 @@ export default function ConfirmPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ConfirmFallback() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-8">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Confirming your email</CardTitle>
+          <CardDescription>
+            Please wait while we verify your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
+            aria-hidden
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={<ConfirmFallback />}>
+      <ConfirmContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
+import { Button } from '../ui/button';
 interface AddRecruitModalProps {
   isOpen: boolean;
   onClose: () => void;

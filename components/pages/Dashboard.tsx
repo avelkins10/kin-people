@@ -6,7 +6,7 @@ import { PipelineFilters } from '@/components/PipelineFilters';
 import { PipelineBoard } from '@/components/PipelineBoard';
 import { PipelineListView } from '@/components/PipelineListView';
 import { NeedsActionAlert } from '@/components/NeedsActionAlert';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Plus, Send, UserCheck, LayoutGrid, List } from 'lucide-react';
 import { useModals } from '@/components/ModalsContext';
 import { Candidate } from '@/components/CandidateCard';
@@ -225,13 +225,16 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" icon={<UserCheck className="w-4 h-4" />}>
+          <Button variant="outline">
+            <UserCheck className="w-4 h-4 mr-2" />
             Convert to Person
           </Button>
-          <Button variant="outline" icon={<Send className="w-4 h-4" />}>
+          <Button variant="outline">
+            <Send className="w-4 h-4 mr-2" />
             Send Agreement
           </Button>
-          <Button icon={<Plus className="w-4 h-4" />} onClick={openAddRecruit}>
+          <Button onClick={openAddRecruit}>
+            <Plus className="w-4 h-4 mr-2" />
             Add Recruit
           </Button>
         </div>

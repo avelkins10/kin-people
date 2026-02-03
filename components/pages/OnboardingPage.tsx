@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/MetricCard';
 import {
   GraduationCap,
@@ -283,10 +283,12 @@ export function OnboardingPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" icon={<User className="w-4 h-4" />}>
+          <Button variant="outline">
+            <User className="w-4 h-4 mr-2" />
             Assign Mentor
           </Button>
-          <Button icon={<GraduationCap className="w-4 h-4" />}>
+          <Button>
+            <GraduationCap className="w-4 h-4 mr-2" />
             Schedule Training
           </Button>
         </div>

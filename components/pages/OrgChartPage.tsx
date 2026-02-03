@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import {
   GitBranch,
   Search,
@@ -140,10 +140,14 @@ export function OrgChartPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" icon={<Search className="w-4 h-4" />}>
+          <Button variant="outline">
+            <Search className="w-4 h-4 mr-2" />
             Find Person
           </Button>
-          <Button icon={<GitBranch className="w-4 h-4" />}>Export Chart</Button>
+          <Button>
+            <GitBranch className="w-4 h-4 mr-2" />
+            Export Chart
+          </Button>
         </div>
       </header>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/MetricCard';
 import {
   DollarSign,
@@ -138,7 +138,8 @@ export function DealsPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button icon={<Plus className="w-4 h-4" />} onClick={openNewDeal}>
+          <Button onClick={openNewDeal}>
+            <Plus className="w-4 h-4 mr-2" />
             New Deal
           </Button>
         </div>

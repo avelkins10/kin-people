@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react';
 import { X } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;

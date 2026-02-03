@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/MetricCard';
 import { HiringVelocitySparkline } from '@/components/HiringVelocitySparkline';
 import { RecruiterActivityFeed } from '@/components/RecruiterActivityFeed';
@@ -87,17 +87,12 @@ export function OverviewPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            icon={<UserPlus className="w-4 h-4" />}
-            onClick={openAddRecruit}>
-
+          <Button variant="outline" onClick={openAddRecruit}>
+            <UserPlus className="w-4 h-4 mr-2" />
             Add Recruit
           </Button>
-          <Button
-            icon={<GraduationCap className="w-4 h-4" />}
-            onClick={() => navigateTo('onboarding')}>
-
+          <Button onClick={() => navigateTo('onboarding')}>
+            <GraduationCap className="w-4 h-4 mr-2" />
             View Onboarding
           </Button>
         </div>

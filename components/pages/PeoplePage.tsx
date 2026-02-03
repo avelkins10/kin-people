@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/MetricCard';
 import {
   Users,
@@ -114,10 +114,14 @@ export function PeoplePage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" icon={<Download className="w-4 h-4" />}>
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
-          <Button icon={<Plus className="w-4 h-4" />}>Add Person</Button>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Person
+          </Button>
         </div>
       </header>
 
