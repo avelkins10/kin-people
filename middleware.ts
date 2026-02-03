@@ -8,21 +8,15 @@ const isPublicRoute = (pathname: string) => {
 };
 
 export default async function middleware(request: NextRequest) {
-  console.log("[v0] Middleware: Processing", request.nextUrl.pathname);
-  
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
-  console.log("[v0] Middleware: SUPABASE_URL exists:", !!supabaseUrl);
-  console.log("[v0] Middleware: SUPABASE_ANON_KEY exists:", !!supabaseAnonKey);
-  
   // If Supabase env vars are missing, allow through (for preview)
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.log("[v0] Middleware: Missing env vars, allowing through");
     return NextResponse.next();
   }
 
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
 
   try {
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -43,7 +37,6 @@ export default async function middleware(request: NextRequest) {
     await supabase.auth.getUser();
 
     if (isPublicRoute(request.nextUrl.pathname)) {
-      console.log("[v0] Middleware: Public route, allowing through");
       return response;
     }
 
@@ -51,17 +44,13 @@ export default async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    console.log("[v0] Middleware: User exists:", !!user);
-
     if (!user) {
-      console.log("[v0] Middleware: No user, redirecting to login");
       const signInUrl = new URL("/login", request.url);
       return NextResponse.redirect(signInUrl);
     }
 
     return response;
-  } catch (error) {
-    console.log("[v0] Middleware: Error:", error);
+  } catch {
     return NextResponse.next();
   }
 }
