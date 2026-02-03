@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { recruits } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/route-protection";
 import { canSendDocumentToRecruit } from "@/lib/auth/visibility-rules";
 import { getRecruitWithDetails } from "@/lib/db/helpers/recruit-helpers";
@@ -58,6 +62,17 @@ export async function POST(
           return NextResponse.json({ error: message }, { status: 400 });
         }
         throw docError;
+      }
+
+      if (validated.documentType === "rep_agreement") {
+        await db
+          .update(recruits)
+          .set({
+            status: "agreement_sent",
+            agreementSentAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(recruits.id, id));
       }
 
       return NextResponse.json({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { documents } from "@/lib/db/schema";
+import { documents, recruits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { verifyWebhookSignature, downloadDocument } from "@/lib/integrations/signnow";
@@ -133,6 +133,21 @@ export async function POST(req: NextRequest) {
             ...timestamps,
           })
           .where(eq(documents.id, documentId));
+
+        if (document.recruitId && document.documentType === "rep_agreement") {
+          await db
+            .update(recruits)
+            .set({
+              status: "agreement_signed",
+              agreementSignedAt: new Date(),
+              ...(storagePath != null && { agreementDocumentPath: storagePath }),
+              updatedAt: new Date(),
+            })
+            .where(eq(recruits.id, document.recruitId));
+          console.log(
+            `${LOG_PREFIX} document.complete: recruitId=${document.recruitId} → status=agreement_signed`
+          );
+        }
 
         console.log(
           `${LOG_PREFIX} document.complete: documentId=${documentId}, storagePath=${storagePath ?? "none"}, status=signed`

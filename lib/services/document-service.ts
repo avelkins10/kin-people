@@ -132,12 +132,12 @@ function buildInviteOptions(
   const expirationDays = templateConfig.expirationDays ?? 30;
   const reminderDays = templateConfig.reminderFrequencyDays ?? 3;
   const subject =
-    documentType === "employment_agreement"
-      ? "Please sign your employment agreement"
+    documentType === "rep_agreement"
+      ? "Please sign your rep agreement"
       : `Please sign: ${templateConfig.displayName}`;
   const message =
-    documentType === "employment_agreement"
-      ? "Please review and sign your employment agreement."
+    documentType === "rep_agreement"
+      ? "Please review and sign your rep agreement."
       : `Please review and sign: ${templateConfig.displayName}.`;
   return {
     expirationDays,

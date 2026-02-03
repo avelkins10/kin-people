@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { withAuth } from "@/lib/auth/route-protection";
 import { canSendDocumentToPerson } from "@/lib/auth/visibility-rules";
 import { getPersonWithDetails } from "@/lib/db/helpers/person-helpers";

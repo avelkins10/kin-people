@@ -31,6 +31,8 @@ interface SendDocumentModalProps {
   documentType: string;
   open: boolean;
   onClose: () => void;
+  /** When set, modal is in "resend" mode: shows same summary, submit calls resend API */
+  resendDocumentId?: string;
 }
 
 function getDocumentTitle(documentType: string, displayName?: string): string {
@@ -124,7 +126,9 @@ export function SendDocumentModal({
   documentType,
   open,
   onClose,
+  resendDocumentId,
 }: SendDocumentModalProps) {
+  const isResendMode = Boolean(resendDocumentId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entityData, setEntityData] = useState<
@@ -219,38 +223,55 @@ export function SendDocumentModal({
     setLoading(true);
     setError(null);
 
-    const url =
-      entityType === "recruit"
-        ? `/api/recruits/${entityId}/send-document`
-        : `/api/people/${entityId}/send-document`;
-
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentType }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        setError((data as { error?: string }).error ?? "Failed to send document. Please try again.");
-        return;
-      }
-
-      const { documentId } = data as { documentId?: string };
-      if (documentId) {
-        toast({
-          title: "Document Sent",
-          description: `${templateConfig.displayName} sent to ${entityInfo.name}`,
+      if (isResendMode && resendDocumentId) {
+        const res = await fetch(`/api/documents/${resendDocumentId}/resend`, {
+          method: "POST",
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError((data as { error?: string }).error ?? "Failed to resend document. Please try again.");
+          return;
+        }
+        const documentTypeLabel =
+          documentType === "rep_agreement" ? "Rep Agreement" : templateConfig.displayName;
+        toast({
+          title: "Document resent",
+          description: `${documentTypeLabel} resent to ${entityInfo.name}`,
+        });
+      } else {
+        const url =
+          entityType === "recruit"
+            ? `/api/recruits/${entityId}/send-document`
+            : `/api/people/${entityId}/send-document`;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentType }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setError((data as { error?: string }).error ?? "Failed to send document. Please try again.");
+          return;
+        }
+        const { documentId } = data as { documentId?: string };
+        if (documentId) {
+          const description =
+            entityType === "recruit" && documentType === "rep_agreement"
+              ? `Rep Agreement sent to ${entityInfo.name}`
+              : `${templateConfig.displayName} sent to ${entityInfo.name}`;
+          toast({
+            title: "Document Sent",
+            description,
+          });
+        }
       }
 
       router.refresh();
       window.dispatchEvent(new CustomEvent("documents-updated"));
       onClose();
     } catch {
-      setError("Failed to send document. Please try again.");
+      setError(isResendMode ? "Failed to resend document. Please try again." : "Failed to send document. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -268,10 +289,9 @@ export function SendDocumentModal({
     !!entityInfo?.email &&
     entityInfo.email !== "—";
 
-  const modalTitle = getDocumentTitle(
-    documentType,
-    templateConfig?.displayName
-  );
+  const modalTitle = isResendMode
+    ? `Resend ${templateConfig?.displayName ?? documentType.replace(/_/g, " ")}`
+    : getDocumentTitle(documentType, templateConfig?.displayName);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -385,8 +405,10 @@ export function SendDocumentModal({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Sending...
+                {isResendMode ? "Resending..." : "Sending..."}
               </>
+            ) : isResendMode ? (
+              "Resend"
             ) : (
               "Send"
             )}

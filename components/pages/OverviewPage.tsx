@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/MetricCard";
 import { HiringVelocitySparkline } from "@/components/HiringVelocitySparkline";
@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useModals } from "@/components/ModalsContext";
+import { useDashboardStats, useOnboardingPeople, useRecruitingStats } from "@/hooks/use-dashboard-data";
 
 const PIPELINE_STAGE_CONFIG: { key: string; name: string; color: string }[] = [
   { key: "lead", name: "Lead", color: "bg-gray-400" },
@@ -46,81 +47,37 @@ interface OnboardingPerson {
 
 export function OverviewPage() {
   const { openAddRecruit, navigateTo } = useModals();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [onboardingPeople, setOnboardingPeople] = useState<OnboardingPerson[]>([]);
-  const [actionCount, setActionCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    setError(null);
-    try {
-      const res = await fetch("/api/dashboard/stats");
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to load dashboard stats");
-      }
-      const data = await res.json();
-      setStats(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load stats");
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Use React Query hooks - these run in parallel and cache results
+  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
+  const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingPeople();
+  const { data: recruitingStats, isLoading: recruitingLoading } = useRecruitingStats();
 
-  const fetchOnboardingPeople = useCallback(async () => {
-    try {
-      const res = await fetch("/api/people?status=onboarding");
-      if (!res.ok) return;
-      const data = await res.json();
-      const now = new Date();
-      setOnboardingPeople(
-        (data || []).slice(0, 5).map((p: any) => {
-          const name = p.name ?? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
-          const hireDate = p.hireDate ? new Date(p.hireDate) : null;
-          const daysIn = hireDate
-            ? Math.max(0, Math.floor((now.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24)))
-            : 0;
-          const progress = Math.min(100, Math.round((daysIn / 14) * 100));
-          return {
-            id: p.id,
-            name,
-            officeName: p.officeName ?? null,
-            daysIn,
-            progress,
-          };
-        })
-      );
-    } catch {
-      setOnboardingPeople([]);
-    }
-  }, []);
+  // Process onboarding people data
+  const onboardingPeople = useMemo(() => {
+    if (!onboardingData) return [];
+    const now = new Date();
+    return onboardingData.slice(0, 5).map((p: any) => {
+      const name = p.name ?? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+      const hireDate = p.hireDate ? new Date(p.hireDate) : null;
+      const daysIn = hireDate
+        ? Math.max(0, Math.floor((now.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24)))
+        : 0;
+      const progress = Math.min(100, Math.round((daysIn / 14) * 100));
+      return {
+        id: p.id,
+        name,
+        officeName: p.officeName ?? null,
+        daysIn,
+        progress,
+      };
+    });
+  }, [onboardingData]);
 
-  const fetchRecruitingStats = useCallback(async () => {
-    try {
-      const res = await fetch("/api/recruiting/stats");
-      if (!res.ok) return;
-      const data = await res.json();
-      const count = Array.isArray(data?.actionItems) ? data.actionItems.length : 0;
-      setActionCount(count);
-    } catch {
-      setActionCount(null);
-    }
-  }, []);
+  const actionCount = recruitingStats?.actionItems?.length ?? null;
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    fetchOnboardingPeople();
-  }, [fetchOnboardingPeople]);
-
-  useEffect(() => {
-    fetchRecruitingStats();
-  }, [fetchRecruitingStats]);
+  const loading = statsLoading;
+  const error = statsError ? (statsError as Error).message : null;
 
   const pipelineStages = PIPELINE_STAGE_CONFIG.map((cfg) => {
     let count = 0;
@@ -303,7 +260,7 @@ export function OverviewPage() {
                     <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold shrink-0">
                       {hire.name
                         .split(" ")
-                        .map((n) => n[0])
+                        .map((n: string) => n[0])
                         .join("")
                         .slice(0, 2)}
                     </div>

@@ -57,12 +57,10 @@ export function SettingsIntegrationsSection() {
               </span>
               {status.signnow && (
                 <Link
-                  href="/api/signnow/templates"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/settings/organization?tab=documents"
                   className="ml-2 text-sm text-indigo-600 hover:underline"
                 >
-                  Templates
+                  Configure templates
                 </Link>
               )}
             </dd>

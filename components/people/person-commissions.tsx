@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useCommissions } from "@/hooks/use-commissions-data";
 
 interface PersonCommissionsProps {
   personId: string;
@@ -34,81 +35,31 @@ interface Commission {
 }
 
 export function PersonCommissions({ personId }: PersonCommissionsProps) {
-  const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    async function fetchCommissions() {
-      try {
-        // Fetch deals where person is setter OR closer separately
-        const [setterResponse, closerResponse] = await Promise.all([
-          fetch(`/api/deals?setterId=${personId}`),
-          fetch(`/api/deals?closerId=${personId}`),
-        ]);
+  // Fetch commissions for this person - React Query caches this
+  const { data: commissionsData = [], isLoading: loading } = useCommissions({
+    personId,
+  });
 
-        const setterDeals = setterResponse.ok ? await setterResponse.json() : [];
-        const closerDeals = closerResponse.ok ? await closerResponse.json() : [];
-
-        // Merge and deduplicate by deal ID
-        const dealMap = new Map();
-        [...setterDeals, ...closerDeals].forEach((deal) => {
-          if (!dealMap.has(deal.deal.id)) {
-            dealMap.set(deal.deal.id, deal);
-          }
-        });
-
-        const deals = Array.from(dealMap.values());
-          
-          // Fetch commissions for each deal
-          const allCommissions: Commission[] = [];
-          for (const deal of deals) {
-            const commResponse = await fetch(`/api/deals/${deal.deal.id}`);
-            if (commResponse.ok) {
-              const dealData = await commResponse.json();
-              const personCommissions = (dealData.commissions || []).filter(
-                (c: { personId: string }) => c.personId === personId
-              );
-              
-              // Add deal info to each commission
-              const commissionsWithDeal = personCommissions.map((c: Commission) => ({
-                ...c,
-                deal: {
-                  id: deal.deal.id,
-                  customerName: deal.deal.customerName,
-                  closeDate: deal.deal.closeDate,
-                  dealType: deal.deal.dealType,
-                },
-              }));
-              
-              allCommissions.push(...commissionsWithDeal);
-            }
-          }
-
-          // Group by deal
-          const grouped = allCommissions.reduce((acc, comm) => {
-            const dealId = comm.dealId;
-            if (!acc[dealId]) {
-              acc[dealId] = [];
-            }
-            acc[dealId].push(comm);
-            return acc;
-          }, {} as Record<string, Commission[]>);
-
-          // Flatten and sort by date
-          const sorted = Object.values(grouped)
-            .flat()
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-          setCommissions(sorted);
-      } catch (error) {
-        console.error("Error fetching commissions:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchCommissions();
-  }, [personId]);
+  // Transform the data to match the expected shape and sort by date
+  const commissions = commissionsData
+    .map((c: any) => ({
+      id: c.commission.id,
+      dealId: c.commission.dealId,
+      commissionType: c.commission.commissionType,
+      amount: c.commission.amount,
+      status: c.commission.status,
+      calcDetails: c.commission.calcDetails || null,
+      createdAt: c.commission.createdAt,
+      deal: c.deal ? {
+        id: c.deal.id,
+        customerName: c.deal.customerName || null,
+        closeDate: null,
+        dealType: null,
+      } : undefined,
+    }))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   function formatCurrency(value: string): string {
     return new Intl.NumberFormat("en-US", {

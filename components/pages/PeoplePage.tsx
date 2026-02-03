@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Shield,
   Loader2,
 } from "lucide-react";
+import { usePeople, useOffices, useRoles } from "@/hooks/use-people-data";
 
 type PersonStatus = "active" | "onboarding" | "inactive" | "terminated";
 type SetterTier = "Rookie" | "Veteran" | "Team Lead" | null;
@@ -82,11 +83,6 @@ function exportToCsv(people: PersonRow[]) {
 export function PeoplePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [people, setPeople] = useState<PersonRow[]>([]);
-  const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
-  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const officeId = searchParams.get("officeId") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -103,66 +99,35 @@ export function PeoplePage() {
     [router, searchParams]
   );
 
-  const fetchPeople = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (officeId) params.set("officeId", officeId);
-      if (status) params.set("status", status);
-      if (roleLevel) params.set("roleLevel", roleLevel);
-      if (roleId) params.set("roleId", roleId);
-      const res = await fetch(`/api/people?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to load people (${res.status})`);
-      }
-      const data = await res.json();
-      setPeople(
-        data.map((p: any) => ({
-          id: p.id,
-          name: p.name ?? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
-          roleName: p.roleName ?? null,
-          officeName: p.officeName ?? null,
-          status: p.status ?? null,
-          setterTier: p.setterTier ?? null,
-          managerName: p.managerName ?? null,
-        }))
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load people");
-      setPeople([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [officeId, status, roleLevel, roleId]);
+  // Use React Query hooks - these cache and deduplicate requests
+  const {
+    data: peopleData,
+    isLoading: loading,
+    error: queryError
+  } = usePeople({
+    officeId: officeId || undefined,
+    status: status || undefined,
+    roleId: roleId || undefined,
+  });
 
-  const fetchOfficesAndRoles = useCallback(async () => {
-    try {
-      const [offRes, rolesRes] = await Promise.all([
-        fetch("/api/offices?active=true"),
-        fetch("/api/roles?active=true"),
-      ]);
-      if (offRes.ok) {
-        const data = await offRes.json();
-        setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));
-      }
-      if (rolesRes.ok) {
-        const data = await rolesRes.json();
-        setRoles(data.map((r: any) => ({ id: r.id, name: r.name })));
-      }
-    } catch {
-      // Non-blocking
-    }
-  }, []);
+  const { data: offices = [] } = useOffices();
+  const { data: roles = [] } = useRoles();
 
-  useEffect(() => {
-    fetchPeople();
-  }, [fetchPeople]);
+  const error = queryError ? (queryError as Error).message : null;
 
-  useEffect(() => {
-    fetchOfficesAndRoles();
-  }, [fetchOfficesAndRoles]);
+  // Transform people data
+  const people = useMemo(() => {
+    if (!peopleData) return [];
+    return peopleData.map((p: any) => ({
+      id: p.id,
+      name: p.name ?? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
+      roleName: p.roleName ?? null,
+      officeName: p.officeName ?? null,
+      status: p.status ?? null,
+      setterTier: p.setterTier ?? null,
+      managerName: p.managerName ?? null,
+    }));
+  }, [peopleData]);
 
   const total = people.length;
   const activeCount = people.filter((p) => (p.status || "").toLowerCase() === "active").length;
@@ -344,7 +309,7 @@ export function PeoplePage() {
                         <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold shrink-0">
                           {person.name
                             .split(" ")
-                            .map((n) => n[0])
+                            .map((n: string) => n[0])
                             .join("")
                             .slice(0, 2)}
                         </div>

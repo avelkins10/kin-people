@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ExpiredDocumentsBanner } from "@/components/documents/expired-documents-banner";
 import { RecruitingKanban } from "@/components/recruiting/recruiting-kanban";
@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Plus, Send, UserCheck, LayoutGrid, List, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
 import { useModals } from "@/components/ModalsContext";
 import type { RecruitListItem } from "@/types/recruiting";
+import { useRecruits } from "@/hooks/use-recruiting-data";
+import { useRecruitingStats } from "@/hooks/use-dashboard-data";
+import { usePeople, useOffices } from "@/hooks/use-people-data";
 
 const PIPELINE_STATUSES = [
   "lead",
@@ -25,17 +28,6 @@ export function Dashboard() {
   const { openAddRecruit } = useModals();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [recruits, setRecruits] = useState<RecruitListItem[]>([]);
-  const [stats, setStats] = useState<{
-    inPipeline: number;
-    byStatus: Record<string, number>;
-    startingSoonCount: number;
-    actionItems: Array<{ recruitId: string; reason: string; message: string }>;
-  } | null>(null);
-  const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
-  const [people, setPeople] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const status = searchParams.get("status") ?? "";
   const recruiterId = searchParams.get("recruiterId") ?? "";
@@ -65,87 +57,45 @@ export function Dashboard() {
     [router, searchParams]
   );
 
-  const fetchRecruits = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (status) params.set("status", status);
-      if (recruiterId) params.set("recruiterId", recruiterId);
-      if (officeId) params.set("officeId", officeId);
-      if (expiredDocuments) params.set("expiredDocuments", expiredDocuments);
-      const res = await fetch(`/api/recruits?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to load recruits");
-      }
-      const data = await res.json();
-      setRecruits(data ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load recruits");
-      setRecruits([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [status, recruiterId, officeId, expiredDocuments]);
+  // Use React Query hooks - these cache and deduplicate requests
+  const {
+    data: recruits = [],
+    isLoading: loading,
+    error: queryError,
+    refetch: refetchRecruits
+  } = useRecruits({
+    status: status || undefined,
+    recruiterId: recruiterId || undefined,
+    officeId: officeId || undefined,
+  });
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch("/api/recruiting/stats");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
-    } catch {
-      setStats(null);
-    }
-  }, []);
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useRecruitingStats();
+  const { data: offices = [] } = useOffices();
+  const { data: people = [] } = usePeople({});
 
-  const fetchOfficesAndPeople = useCallback(async () => {
-    try {
-      const [offRes, peopleRes] = await Promise.all([
-        fetch("/api/offices?active=true"),
-        fetch("/api/people?roleLevel=manager"),
-      ]);
-      if (offRes.ok) {
-        const data = await offRes.json();
-        setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));
-      }
-      if (peopleRes.ok) {
-        const data = await peopleRes.json();
-        setPeople(
-          data.map((p: any) => ({
-            id: p.id,
-            firstName: p.firstName,
-            lastName: p.lastName,
-          }))
-        );
-      }
-    } catch {
-      // Non-blocking
-    }
-  }, []);
+  const error = queryError ? (queryError as Error).message : null;
 
-  useEffect(() => {
-    fetchRecruits();
-  }, [fetchRecruits]);
+  // Debug: Log loading states
+  if (typeof window !== 'undefined') {
+    console.log('Dashboard loading states:', {
+      recruitsLoading: loading,
+      statsLoading,
+      recruitsCount: recruits.length,
+      hasStats: !!stats,
+      error,
+      statsError: statsError ? (statsError as Error).message : null
+    });
+  }
 
+  // Handle recruits-updated event for refetching
   useEffect(() => {
     const handler = () => {
-      fetchRecruits();
-      fetchStats();
+      refetchRecruits();
+      refetchStats();
     };
     window.addEventListener("recruits-updated", handler);
     return () => window.removeEventListener("recruits-updated", handler);
-  }, [fetchRecruits, fetchStats]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    fetchOfficesAndPeople();
-  }, [fetchOfficesAndPeople]);
+  }, [refetchRecruits, refetchStats]);
 
   const actionItems = stats?.actionItems ?? [];
   const inPipeline = stats?.inPipeline ?? 0;

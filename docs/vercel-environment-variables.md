@@ -24,17 +24,26 @@ Use **Production** (and optionally **Preview**) for each variable.
 
 ---
 
-## Optional (SignNow)
+## Optional (SignNow document management)
 
-Only if you use SignNow integration:
+Required only if you use the SignNow document management feature (send/track documents for recruits and people):
 
-| Name | Description |
-|------|-------------|
-| `SIGNNOW_API_KEY` | SignNow API key |
-| `SIGNNOW_API_SECRET` | SignNow API secret |
-| `SIGNNOW_TEMPLATE_ID` | SignNow template ID |
-| `SIGNNOW_WEBHOOK_SECRET` | SignNow webhook secret |
-| `SIGNNOW_FROM_EMAIL` | From email for SignNow (e.g. `noreply@yourdomain.com`) |
+| Name | Description | Where to get it |
+|------|-------------|-----------------|
+| `SIGNNOW_API_KEY` | SignNow API key | SignNow developer / app settings |
+| `SIGNNOW_API_SECRET` | SignNow API secret | SignNow developer / app settings |
+| `SIGNNOW_WEBHOOK_SECRET` | Secret used to verify webhook payloads (HMAC-SHA256) | SignNow webhook configuration; leave unset to skip verification |
+| `SIGNNOW_FROM_EMAIL` | From address for invite emails (e.g. `noreply@yourdomain.com`) | Your sending domain |
+
+**Webhook URL (configure in SignNow dashboard):**
+
+- Set the webhook URL to: `https://<your-production-domain>/api/webhooks/signnow`
+- Use your production domain (e.g. `https://your-app.vercel.app` or custom domain).
+- The app handles: `document.open`, `document.fieldinvite.signed`, `invite.expired`, `document.complete`.
+
+**Legacy (single template):** `SIGNNOW_TEMPLATE_ID` is optional if you use the document templates feature (Settings → Organization → Documents); templates are configured per document type in the app.
+
+See **docs/signnow-document-management.md** for user/admin guides and **docs/signnow-go-live.md** for deployment steps.
 
 ---
 

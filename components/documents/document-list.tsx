@@ -3,14 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { DocumentItem } from "@/components/documents/document-item";
 import { toast } from "@/components/ui/use-toast";
+import { formatDocumentType } from "@/lib/utils/document-utils";
 import type { DocumentWithDetails } from "@/lib/db/helpers/document-helpers";
 
 interface DocumentListProps {
   entityType: "recruit" | "person";
   entityId: string;
+  onResendClick?: (item: DocumentWithDetails) => void;
 }
 
-export function DocumentList({ entityType, entityId }: DocumentListProps) {
+export function DocumentList({ entityType, entityId, onResendClick }: DocumentListProps) {
   const [documents, setDocuments] = useState<DocumentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +104,23 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
     }
   }
 
+  function getEntityName(item: DocumentWithDetails): string {
+    if (item.recruit) {
+      return `${item.recruit.firstName} ${item.recruit.lastName}`.trim() || "Recruit";
+    }
+    if (item.person) {
+      return `${item.person.firstName} ${item.person.lastName}`.trim() || "Employee";
+    }
+    return "recipient";
+  }
+
   async function handleResend(documentId: string) {
+    const item = documents.find((d) => d.document.id === documentId);
+    const documentTypeLabel = item
+      ? formatDocumentType(item.document.documentType)
+      : "Document";
+    const entityName = item ? getEntityName(item) : "recipient";
+
     try {
       const res = await fetch(`/api/documents/${documentId}/resend`, {
         method: "POST",
@@ -115,7 +133,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
       }
       toast({
         title: "Document resent",
-        description: "A new document has been sent for signature.",
+        description: `${documentTypeLabel} resent to ${entityName}`,
       });
       window.dispatchEvent(new CustomEvent("documents-updated"));
       fetchDocuments();
@@ -160,6 +178,7 @@ export function DocumentList({ entityType, entityId }: DocumentListProps) {
           onView={handleView}
           onDownload={handleDownload}
           onResend={handleResend}
+          onResendClick={onResendClick}
         />
       ))}
     </div>

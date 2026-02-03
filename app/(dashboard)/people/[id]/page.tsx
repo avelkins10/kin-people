@@ -11,6 +11,7 @@ import { PersonCommissions } from "@/components/people/person-commissions";
 import { PersonDocuments } from "@/components/people/person-documents";
 import { PersonRecruits } from "@/components/people/person-recruits";
 import { SendDocumentModalWrapper } from "@/components/people/modals/send-document-modal-wrapper";
+import { SendDocumentModal } from "@/components/documents/send-document-modal";
 import type { PersonWithDetails } from "@/types/people";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function PersonDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendDocModalOpen, setSendDocModalOpen] = useState(false);
+  const [resendDocument, setResendDocument] = useState<{ documentId: string; documentType: string } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -146,7 +148,15 @@ export default function PersonDetailPage() {
           <PersonCommissions personId={id} />
         </TabsContent>
         <TabsContent value="documents">
-          <PersonDocuments personId={id} />
+          <PersonDocuments
+            personId={id}
+            onResendClick={(item) =>
+              setResendDocument({
+                documentId: item.document.id,
+                documentType: item.document.documentType,
+              })
+            }
+          />
         </TabsContent>
         <TabsContent value="recruits">
           <PersonRecruits personId={id} />
@@ -158,6 +168,17 @@ export default function PersonDetailPage() {
         open={sendDocModalOpen}
         onClose={() => setSendDocModalOpen(false)}
       />
+
+      {resendDocument && (
+        <SendDocumentModal
+          entityType="person"
+          entityId={id}
+          documentType={resendDocument.documentType}
+          open={true}
+          onClose={() => setResendDocument(null)}
+          resendDocumentId={resendDocument.documentId}
+        />
+      )}
     </div>
   );
 }

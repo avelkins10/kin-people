@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useDeals } from "@/hooks/use-deals-data";
+import { useCommissions } from "@/hooks/use-commissions-data";
 
 interface PersonDealsProps {
   personId: string;
@@ -47,57 +49,41 @@ interface Deal {
 }
 
 export function PersonDeals({ personId }: PersonDealsProps) {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Fetch deals where person is setter - React Query caches this
+  const { data: setterDeals = [], isLoading: setterLoading } = useDeals({
+    setterId: personId,
+  });
 
-  useEffect(() => {
-    async function fetchDeals() {
-      try {
-        // Fetch deals where person is setter OR closer separately
-        const [setterResponse, closerResponse] = await Promise.all([
-          fetch(`/api/deals?setterId=${personId}`),
-          fetch(`/api/deals?closerId=${personId}`),
-        ]);
+  // Fetch deals where person is closer - React Query caches this
+  const { data: closerDeals = [], isLoading: closerLoading } = useDeals({
+    closerId: personId,
+  });
 
-        const setterDeals = setterResponse.ok ? await setterResponse.json() : [];
-        const closerDeals = closerResponse.ok ? await closerResponse.json() : [];
+  // Fetch all commissions for this person - React Query caches this
+  const { data: commissions = [] } = useCommissions({ personId });
 
-        // Merge and deduplicate by deal ID
-        const dealMap = new Map<string, Deal>();
-        [...setterDeals, ...closerDeals].forEach((deal: Deal) => {
-          if (!dealMap.has(deal.deal.id)) {
-            dealMap.set(deal.deal.id, deal);
-          }
-        });
-
-        const personDeals = Array.from(dealMap.values());
-
-          // Fetch commissions for each deal
-          const dealsWithCommissions = await Promise.all(
-            personDeals.map(async (deal: Deal) => {
-              const commResponse = await fetch(`/api/deals/${deal.deal.id}`);
-              if (commResponse.ok) {
-                const dealData = await commResponse.json();
-                return {
-                  ...deal,
-                  commissions: dealData.commissions?.filter(
-                    (c: { personId: string }) => c.personId === personId
-                  ) || [],
-                };
-              }
-              return deal;
-            })
-          );
-
-          setDeals(dealsWithCommissions);
-      } catch (error) {
-        console.error("Error fetching deals:", error);
-      } finally {
-        setLoading(false);
+  // Merge deals and attach commissions
+  const deals = useMemo(() => {
+    // Merge and deduplicate by deal ID
+    const dealMap = new Map<string, any>();
+    [...setterDeals, ...closerDeals].forEach((deal: any) => {
+      if (!dealMap.has(deal.deal.id)) {
+        dealMap.set(deal.deal.id, deal);
       }
-    }
-    fetchDeals();
-  }, [personId]);
+    });
+
+    const personDeals = Array.from(dealMap.values());
+
+    // Attach commissions to deals
+    return personDeals.map((deal) => ({
+      ...deal,
+      commissions: commissions.filter(
+        (c: any) => c.commission.dealId === deal.deal.id
+      ),
+    }));
+  }, [setterDeals, closerDeals, commissions]);
+
+  const loading = setterLoading || closerLoading;
 
   function formatCurrency(value: string): string {
     return new Intl.NumberFormat("en-US", {

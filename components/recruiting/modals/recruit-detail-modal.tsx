@@ -44,6 +44,7 @@ export function RecruitDetailModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showSendDocument, setShowSendDocument] = useState(false);
+  const [resendDocument, setResendDocument] = useState<{ documentId: string; documentType: string } | null>(null);
   const [showConvert, setShowConvert] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
@@ -473,7 +474,16 @@ export function RecruitDetailModal({
             {/* Documents */}
             <div>
               <h3 className="font-semibold mb-3">Documents</h3>
-              <DocumentList entityType="recruit" entityId={recruitId} />
+              <DocumentList
+                entityType="recruit"
+                entityId={recruitId}
+                onResendClick={(item) =>
+                  setResendDocument({
+                    documentId: item.document.id,
+                    documentType: item.document.documentType,
+                  })
+                }
+              />
             </div>
 
             {/* Notes */}
@@ -586,6 +596,17 @@ export function RecruitDetailModal({
           documentType="rep_agreement"
           open={showSendDocument}
           onClose={handleSendDocumentClose}
+        />
+      )}
+
+      {resendDocument && (
+        <SendDocumentModal
+          entityType="recruit"
+          entityId={recruitId}
+          documentType={resendDocument.documentType}
+          open={true}
+          onClose={() => setResendDocument(null)}
+          resendDocumentId={resendDocument.documentId}
         />
       )}
 

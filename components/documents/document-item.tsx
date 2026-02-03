@@ -23,6 +23,8 @@ export interface DocumentItemProps {
   onView: (documentId: string) => Promise<void>;
   onDownload: (documentId: string) => Promise<void>;
   onResend: (documentId: string) => Promise<void>;
+  /** When provided, Resend button opens this callback (e.g. to open resend modal) instead of calling onResend */
+  onResendClick?: (item: DocumentWithDetails) => void;
 }
 
 function DocumentTypeBadge({ documentType }: { documentType: string }) {
@@ -42,7 +44,7 @@ function toDocumentStatus(status: string | null | undefined): DocumentStatus {
   return VALID_STATUSES.includes(s as DocumentStatus) ? (s as DocumentStatus) : DocumentStatus.pending;
 }
 
-export function DocumentItem({ item, onView, onDownload, onResend }: DocumentItemProps) {
+export function DocumentItem({ item, onView, onDownload, onResend, onResendClick }: DocumentItemProps) {
   const { document } = item;
   const status = toDocumentStatus(document.status);
   const totalSigners = document.totalSigners ?? 1;
@@ -76,6 +78,10 @@ export function DocumentItem({ item, onView, onDownload, onResend }: DocumentIte
   }
 
   async function handleResend() {
+    if (onResendClick) {
+      onResendClick(item);
+      return;
+    }
     setLoadingResend(true);
     try {
       await onResend(document.id);

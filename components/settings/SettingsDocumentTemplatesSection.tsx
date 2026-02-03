@@ -107,6 +107,9 @@ export function SettingsDocumentTemplatesSection({
           Document Templates
         </h3>
       </div>
+      <p className="text-sm text-gray-500 mb-4">
+        Document template IDs and signer rules. API keys and webhooks are set in your deployment (see Integrations).
+      </p>
 
       {loading ? (
         <div className="space-y-3">
@@ -211,7 +214,7 @@ export function SettingsDocumentTemplatesSection({
         <DocumentTemplateModal
           open={modalOpen}
           onClose={closeModal}
-          template={editTemplate}
+          template={editTemplate as any}
           documentType={modalDocumentType.type}
           documentTypeLabel={modalDocumentType.label}
           onSuccess={onRefetch}

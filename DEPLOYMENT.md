@@ -29,15 +29,16 @@ The deployment follows a sequential approach: first establishing the GitHub repo
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API → anon public | Public key for client-side auth |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API → service_role | **Keep secret** - used for server-side operations |
 
-**Optional Variables** (if SignNow integration is enabled):
+**Optional Variables** (if SignNow document management is enabled):
 
 | Variable Name | Source | Notes |
 |---------------|--------|-------|
 | `SIGNNOW_API_KEY` | SignNow Dashboard | API credentials |
 | `SIGNNOW_API_SECRET` | SignNow Dashboard | API credentials |
-| `SIGNNOW_TEMPLATE_ID` | SignNow Dashboard | Template for agreements |
-| `SIGNNOW_WEBHOOK_SECRET` | SignNow Dashboard | Webhook validation |
-| `SIGNNOW_FROM_EMAIL` | Configuration | Email for sending agreements (e.g., `noreply@yourdomain.com`) |
+| `SIGNNOW_WEBHOOK_SECRET` | SignNow webhook config | Verify webhook payloads (HMAC-SHA256) |
+| `SIGNNOW_FROM_EMAIL` | Configuration | From address for invite emails (e.g., `noreply@yourdomain.com`) |
+
+Configure webhook URL in SignNow: `https://<your-production-domain>/api/webhooks/signnow`. See `file:docs/signnow-go-live.md` and `file:docs/signnow-document-management.md`.
 
 **Recommended Variable**:
 - `NEXT_PUBLIC_APP_URL`: Set to your production URL (e.g., `https://kin-people-app.vercel.app` or custom domain)
@@ -65,6 +66,7 @@ The deployment follows a sequential approach: first establishing the GitHub repo
 **Migration Files to be Applied**:
 - `file:drizzle/0000_futuristic_sabra.sql` - Migrates `people.auth_user_id` from varchar to UUID and adds `recruits.agreement_document_path`
 - `file:drizzle/0001_supabase_agreements_bucket_rls.sql` - Creates `agreements` Storage bucket and RLS policies
+- `file:drizzle/0005_documents_and_templates.sql` - Creates `documents` and `document_templates` tables (SignNow document management); seeds 4 document types
 
 **Execution Steps**:
 - Set the production `DATABASE_URL` in your local environment (temporarily in `.env.local` or export it)
@@ -261,7 +263,7 @@ sequenceDiagram
 | Category | Variables | Count |
 |----------|-----------|-------|
 | **Required** | DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY | 4 |
-| **Optional (SignNow)** | SIGNNOW_API_KEY, SIGNNOW_API_SECRET, SIGNNOW_TEMPLATE_ID, SIGNNOW_WEBHOOK_SECRET, SIGNNOW_FROM_EMAIL | 5 |
+| **Optional (SignNow)** | SIGNNOW_API_KEY, SIGNNOW_API_SECRET, SIGNNOW_WEBHOOK_SECRET, SIGNNOW_FROM_EMAIL | 4 |
 | **Recommended** | NEXT_PUBLIC_APP_URL | 1 |
 
 ---
@@ -269,10 +271,11 @@ sequenceDiagram
 ## Critical Success Factors
 
 1. **Environment Variables**: All required Supabase credentials must be correctly configured in Vercel
-2. **Database Migrations**: Both migration files must run successfully on production Supabase
+2. **Database Migrations**: All migration files (including `0005_documents_and_templates.sql` if using SignNow document management) must run successfully on production Supabase
 3. **Authentication**: Supabase Auth must be properly integrated with session management working
 4. **Storage Setup**: The `agreements` bucket and RLS policies must be created for document handling
 5. **Route Protection**: Middleware must correctly protect authenticated routes and redirect unauthenticated users
+6. **SignNow (optional)**: If using document management, set SignNow env vars, run migrations for `documents`/`document_templates`, and register the webhook URL per `file:docs/signnow-go-live.md`
 
 ---
 

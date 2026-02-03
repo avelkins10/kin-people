@@ -199,7 +199,7 @@ export function DocumentTemplateModal({
           <DialogDescription>
             {template
               ? "Update the document template settings."
-              : `Set up the SignNow template and signer requirements for ${documentTypeLabel}.`}
+              : `Set up the document template and signer requirements for ${documentTypeLabel}.`}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -218,7 +218,7 @@ export function DocumentTemplateModal({
             </div>
 
             <div>
-              <Label htmlFor="signnowTemplate">SignNow Template</Label>
+              <Label htmlFor="signnowTemplate">Template</Label>
               <Select
                 value={formData.signnowTemplateId || "none"}
                 onValueChange={(v) =>
@@ -250,7 +250,7 @@ export function DocumentTemplateModal({
               {templatesLoading && (
                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading SignNow templates…
+                  Loading templates…
                 </p>
               )}
             </div>

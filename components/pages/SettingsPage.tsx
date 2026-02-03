@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSettingsData } from "@/hooks/use-settings-data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsOverview } from "@/components/settings/settings-overview";
@@ -28,8 +29,34 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const TAB_VALUES = [
+  "overview",
+  "users",
+  "roles",
+  "offices",
+  "teams",
+  "documents",
+  "pay-plans",
+  "commission-rules",
+  "onboarding",
+  "history",
+  "integrations",
+] as const;
+
 export function SettingsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab =
+    tabFromUrl && (TAB_VALUES as readonly string[]).includes(tabFromUrl)
+      ? tabFromUrl
+      : "users";
+
   const { data, loading, error, refetch } = useSettingsData();
+
+  function handleTabChange(value: string) {
+    router.push(`/settings/organization?tab=${value}`);
+  }
 
   const activePayPlans = data.payPlans.filter((p) => p.isActive).length;
   const totalCommissionRules = data.commissionRules.length;
@@ -53,7 +80,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      <Tabs defaultValue="users" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList
           className={cn(
             "w-full justify-start gap-0.5 rounded-none border-b border-gray-200 bg-transparent p-0 h-auto min-h-10",

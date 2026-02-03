@@ -37,7 +37,7 @@ async function listDocumentsWithFilters(
     conditions.push(eq(documents.documentType, filters.documentType));
   }
 
-  let query = db
+  const baseQuery = db
     .select({
       document: documents,
       recruit: {
@@ -62,12 +62,13 @@ async function listDocumentsWithFilters(
     .from(documents)
     .leftJoin(recruits, eq(documents.recruitId, recruits.id))
     .leftJoin(people, eq(documents.personId, people.id))
-    .leftJoin(createdByPerson, eq(documents.createdById, createdByPerson.id));
+    .leftJoin(createdByPerson, eq(documents.createdById, createdByPerson.id))
+    .$dynamic();
 
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
-  }
-  const rows = await query
+  const rows = await (conditions.length > 0
+    ? baseQuery.where(and(...conditions))
+    : baseQuery
+  )
     .orderBy(desc(documents.createdAt))
     .limit(filters.limit ?? 100);
 
