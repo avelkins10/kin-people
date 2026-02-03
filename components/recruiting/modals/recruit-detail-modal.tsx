@@ -87,6 +87,7 @@ export function RecruitDetailModal({
       if (response.ok) {
         await fetchRecruit();
         await fetchHistory();
+        window.dispatchEvent(new CustomEvent("recruits-updated"));
         router.refresh();
       } else {
         alert("Failed to update status");

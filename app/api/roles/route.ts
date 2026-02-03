@@ -5,6 +5,7 @@ import { roles } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 export const GET = withAuth(async (req: NextRequest) => {
   try {
@@ -37,7 +38,7 @@ const createRoleSchema = z.object({
   sortOrder: z.number().int().optional().default(0),
 });
 
-export const POST = withPermission(Permission.MANAGE_SETTINGS, async (req: NextRequest) => {
+export const POST = withPermission(Permission.MANAGE_SETTINGS, async (req, user) => {
   try {
     const body = await req.json();
     const validated = createRoleSchema.parse(body);
@@ -52,6 +53,16 @@ export const POST = withPermission(Permission.MANAGE_SETTINGS, async (req: NextR
         sortOrder: validated.sortOrder ?? 0,
       })
       .returning();
+
+    if (newRole) {
+      await logActivity({
+        entityType: "role",
+        entityId: newRole.id,
+        action: "created",
+        details: { name: newRole.name, level: newRole.level, description: newRole.description },
+        actorId: user.id,
+      });
+    }
 
     return NextResponse.json(newRole, { status: 201 });
   } catch (error: unknown) {

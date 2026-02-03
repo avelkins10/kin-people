@@ -5,6 +5,7 @@ import { offices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 export const GET = withAuth(async (req: NextRequest) => {
   try {
@@ -36,7 +37,7 @@ const createOfficeSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req: NextRequest) => {
+export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req, user) => {
   try {
     const body = await req.json();
     const validated = createOfficeSchema.parse(body);
@@ -50,6 +51,16 @@ export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req: Ne
         isActive: validated.isActive ?? true,
       })
       .returning();
+
+    if (newOffice) {
+      await logActivity({
+        entityType: "office",
+        entityId: newOffice.id,
+        action: "created",
+        details: { name: newOffice.name, region: newOffice.region, address: newOffice.address },
+        actorId: user.id,
+      });
+    }
 
     return NextResponse.json(newOffice, { status: 201 });
   } catch (error: unknown) {

@@ -119,6 +119,15 @@ export function Dashboard() {
   }, [fetchRecruits]);
 
   useEffect(() => {
+    const handler = () => {
+      fetchRecruits();
+      fetchStats();
+    };
+    window.addEventListener("recruits-updated", handler);
+    return () => window.removeEventListener("recruits-updated", handler);
+  }, [fetchRecruits, fetchStats]);
+
+  useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 

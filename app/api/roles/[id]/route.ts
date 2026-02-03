@@ -3,8 +3,9 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { roles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { withAuth, withPermission } from "@/lib/auth/route-protection";
+import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 const updateRoleSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -18,11 +19,16 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return withPermission(Permission.MANAGE_SETTINGS, async (req, _user) => {
+  return withPermission(Permission.MANAGE_SETTINGS, async (req, user) => {
     try {
       const { id } = await params;
       const body = await req.json();
       const validated = updateRoleSchema.parse(body);
+
+      const [previous] = await db.select().from(roles).where(eq(roles.id, id)).limit(1);
+      if (!previous) {
+        return NextResponse.json({ error: "Role not found" }, { status: 404 });
+      }
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() };
       if (validated.name !== undefined) updateData.name = validated.name;
@@ -40,6 +46,15 @@ export async function PATCH(
       if (!updated) {
         return NextResponse.json({ error: "Role not found" }, { status: 404 });
       }
+
+      await logActivity({
+        entityType: "role",
+        entityId: id,
+        action: "updated",
+        details: { previous: { name: previous.name, level: previous.level, description: previous.description, isActive: previous.isActive }, new: { name: updated.name, level: updated.level, description: updated.description, isActive: updated.isActive } },
+        actorId: user.id,
+      });
+
       return NextResponse.json(updated);
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
@@ -61,7 +76,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return withPermission(Permission.MANAGE_SETTINGS, async (_req, _user) => {
+  return withPermission(Permission.MANAGE_SETTINGS, async (_req, user) => {
     try {
       const { id } = await params;
       const [role] = await db
@@ -73,6 +88,15 @@ export async function DELETE(
       if (!role) {
         return NextResponse.json({ error: "Role not found" }, { status: 404 });
       }
+
+      await logActivity({
+        entityType: "role",
+        entityId: id,
+        action: "deleted",
+        details: { name: role.name },
+        actorId: user.id,
+      });
+
       return NextResponse.json({ success: true });
     } catch (error: unknown) {
       console.error("Error deleting role:", error);

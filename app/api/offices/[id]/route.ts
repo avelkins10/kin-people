@@ -5,6 +5,7 @@ import { offices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 const updateOfficeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -17,11 +18,16 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return withPermission(Permission.MANAGE_ALL_OFFICES, async (req, _user) => {
+  return withPermission(Permission.MANAGE_ALL_OFFICES, async (req, user) => {
     try {
       const { id } = await params;
       const body = await req.json();
       const validated = updateOfficeSchema.parse(body);
+
+      const [previous] = await db.select().from(offices).where(eq(offices.id, id)).limit(1);
+      if (!previous) {
+        return NextResponse.json({ error: "Office not found" }, { status: 404 });
+      }
 
       const updateData: Record<string, unknown> = { updatedAt: new Date() };
       if (validated.name !== undefined) updateData.name = validated.name;
@@ -38,6 +44,15 @@ export async function PATCH(
       if (!updated) {
         return NextResponse.json({ error: "Office not found" }, { status: 404 });
       }
+
+      await logActivity({
+        entityType: "office",
+        entityId: id,
+        action: "updated",
+        details: { previous: { name: previous.name, region: previous.region, address: previous.address, isActive: previous.isActive }, new: { name: updated.name, region: updated.region, address: updated.address, isActive: updated.isActive } },
+        actorId: user.id,
+      });
+
       return NextResponse.json(updated);
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
@@ -59,7 +74,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return withPermission(Permission.MANAGE_ALL_OFFICES, async (_req, _user) => {
+  return withPermission(Permission.MANAGE_ALL_OFFICES, async (_req, user) => {
     try {
       const { id } = await params;
       const [office] = await db
@@ -71,6 +86,15 @@ export async function DELETE(
       if (!office) {
         return NextResponse.json({ error: "Office not found" }, { status: 404 });
       }
+
+      await logActivity({
+        entityType: "office",
+        entityId: id,
+        action: "deleted",
+        details: { name: office.name },
+        actorId: user.id,
+      });
+
       return NextResponse.json({ success: true });
     } catch (error: unknown) {
       console.error("Error deleting office:", error);

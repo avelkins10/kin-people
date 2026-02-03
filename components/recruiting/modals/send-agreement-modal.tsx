@@ -128,6 +128,7 @@ export function SendAgreementModal({
       }
 
       alert("Agreement sent successfully!");
+      window.dispatchEvent(new CustomEvent("recruits-updated"));
       onClose();
       router.refresh();
     } catch (error) {

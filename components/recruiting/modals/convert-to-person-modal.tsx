@@ -75,6 +75,7 @@ export function ConvertToPersonModal({
       }
 
       const result = await response.json();
+      window.dispatchEvent(new CustomEvent("recruits-updated"));
       alert("Recruit converted successfully!");
       router.push(`/people/${result.personId}`);
     } catch (error) {

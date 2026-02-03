@@ -5,6 +5,7 @@ import { teams, offices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 export const GET = withAuth(async (req: NextRequest) => {
   try {
@@ -49,7 +50,7 @@ const createTeamSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-export const POST = withPermission(Permission.MANAGE_OWN_TEAM, async (req: NextRequest) => {
+export const POST = withPermission(Permission.MANAGE_OWN_TEAM, async (req, user) => {
   try {
     const body = await req.json();
     const validated = createTeamSchema.parse(body);
@@ -63,6 +64,16 @@ export const POST = withPermission(Permission.MANAGE_OWN_TEAM, async (req: NextR
         isActive: validated.isActive ?? true,
       })
       .returning();
+
+    if (newTeam) {
+      await logActivity({
+        entityType: "team",
+        entityId: newTeam.id,
+        action: "created",
+        details: { name: newTeam.name, officeId: newTeam.officeId },
+        actorId: user.id,
+      });
+    }
 
     return NextResponse.json(newTeam, { status: 201 });
   } catch (error: unknown) {

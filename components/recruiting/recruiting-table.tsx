@@ -68,7 +68,6 @@ function getStatusBadgeVariant(status: string) {
 }
 
 export function RecruitingTable({ initialRecruits }: RecruitingTableProps) {
-  const [recruits] = useState<RecruitListItem[]>(initialRecruits);
   const [selectedRecruit, setSelectedRecruit] =
     useState<RecruitListItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,8 +76,8 @@ export function RecruitingTable({ initialRecruits }: RecruitingTableProps) {
 
   const statusFilter = searchParams.get("status") || "";
 
-  // Filter recruits
-  const filteredRecruits = recruits.filter((item) => {
+  // Filter recruits (use initialRecruits so list updates after refetch)
+  const filteredRecruits = initialRecruits.filter((item) => {
     const recruit = item.recruit;
     const matchesStatus = !statusFilter || recruit.status === statusFilter;
     const matchesSearch =

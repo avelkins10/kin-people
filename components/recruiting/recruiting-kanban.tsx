@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -222,6 +222,10 @@ function Column({
 export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
   const [recruits, setRecruits] = useState<RecruitListItem[]>(initialRecruits);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRecruits(initialRecruits);
+  }, [initialRecruits]);
   const [selectedRecruit, setSelectedRecruit] =
     useState<RecruitListItem | null>(null);
   const router = useRouter();
@@ -293,6 +297,7 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
         throw new Error("Failed to update status");
       }
 
+      window.dispatchEvent(new CustomEvent("recruits-updated"));
       router.refresh();
     } catch (error) {
       console.error("Error updating recruit status:", error);
