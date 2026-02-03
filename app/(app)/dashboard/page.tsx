@@ -27,12 +27,15 @@ const pipelineStages = [
 ];
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
-  if (!user) {
+  if (!currentUser) {
     const { redirect } = await import("next/navigation");
     redirect("/login");
+    return null; // This ensures TypeScript knows we exit here
   }
+
+  const user = currentUser; // Now user is definitely not null
 
   const headersList = await headers();
   const cookieHeader = headersList.get("cookie");
