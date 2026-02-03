@@ -14,14 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const timedOutRef = useRef(false);
 
   async function handleLogin(e: React.FormEvent) {
@@ -59,8 +57,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      // Full page redirect so the next request includes the new session cookies
+      window.location.href = "/";
     } catch (err) {
       clearTimeout(timeoutId);
       if (!timedOutRef.current) {
