@@ -131,7 +131,7 @@ export default async function SettingsPage({
                     {role.name}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
-                    {role.hierarchyLevel || 0} hierarchy level
+                    Level {role.level || 0}
                   </div>
                 </div>
                 <button className="p-1 opacity-0 group-hover:opacity-100 transition-opacity">
