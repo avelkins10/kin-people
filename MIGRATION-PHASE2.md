@@ -35,9 +35,9 @@ Complete all verification steps before proceeding to Phase 3 (code migration).
 
 ### Step 2: Run Import Script
 
-```bash
+\`\`\`bash
 ./scripts/import-to-supabase.sh
-```
+\`\`\`
 
 The script will:
 - Load Supabase `DATABASE_URL` from `supabase-credentials.md` or environment (`SUPABASE_DATABASE_URL` or `DATABASE_URL`)
@@ -48,16 +48,16 @@ The script will:
 - Report success (green) or failure (red)
 
 **Set URL explicitly (optional):**
-```bash
+\`\`\`bash
 export SUPABASE_DATABASE_URL='postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres'
 ./scripts/import-to-supabase.sh
-```
+\`\`\`
 
 ### Step 3: Verify Import
 
-```bash
+\`\`\`bash
 ./scripts/verify-supabase-import.sh
-```
+\`\`\`
 
 The script will:
 - Connect to Supabase using `DATABASE_URL`
@@ -76,16 +76,16 @@ The script will:
 
 You must supply **both** connections explicitly (Neon and Supabase). The script fails if `NEON_DATABASE_URL` is missing or if both URLs resolve to the same value (e.g. comparing Supabase to itself).
 
-```bash
+\`\`\`bash
 ./scripts/compare-row-counts.sh NEON_DATABASE_URL [SUPABASE_DATABASE_URL]
-```
+\`\`\`
 
 Or set both URLs and run without arguments:
-```bash
+\`\`\`bash
 export NEON_DATABASE_URL='postgresql://...'      # Neon (source), e.g. from .env.local before migration
 export SUPABASE_DATABASE_URL='postgresql://...' # Supabase (target), e.g. from supabase-credentials.md
 ./scripts/compare-row-counts.sh
-```
+\`\`\`
 
 The script will:
 - Query row counts from both databases (using `pg_stat_user_tables`)
@@ -95,9 +95,9 @@ The script will:
 
 ### Step 5: Test Data Integrity
 
-```bash
+\`\`\`bash
 ./scripts/test-data-integrity.sh
-```
+\`\`\`
 
 The script will:
 - **Foreign key / orphan checks**: Ensure no orphaned rows (e.g. `people.manager_id`, `person_teams.person_id`, `deals.person_id`, `commissions.deal_id`, `recruits.recruiter_id`, etc.)
@@ -128,13 +128,13 @@ If you prefer not to use the import script:
 
 ### Using psql Directly
 
-```bash
+\`\`\`bash
 # Set your Supabase connection string
 export SUPABASE_DATABASE_URL='postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres'
 
 # Run import
 psql "$SUPABASE_DATABASE_URL" < backups/neon_backup.sql
-```
+\`\`\`
 
 ### Handling Large Backup Files
 

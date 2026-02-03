@@ -1,16 +1,30 @@
 import { getCurrentUser } from "@/lib/auth/get-current-user";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { headers } from "next/headers";
 import { hasPermission } from "@/lib/auth/check-permission";
 import { Permission } from "@/lib/permissions/types";
+import { headers } from "next/headers";
+import Link from "next/link";
 import {
-  RecentDealsWidget,
-  type RecentDealItem,
-} from "@/components/dashboard/recent-deals-widget";
-import { RecruitingPipelineWidget } from "@/components/dashboard/recruiting-pipeline-widget";
-import { TeamPerformanceWidget } from "@/components/dashboard/team-performance-widget";
+  UserPlus,
+  TrendingUp,
+  GraduationCap,
+  Clock,
+  Users,
+  CheckCircle,
+  ChevronRight,
+} from "lucide-react";
+import { MetricCard } from "@/components/shared/metric-card";
+import { AlertBanner } from "@/components/shared/alert-banner";
+import { ActivityFeed } from "@/components/shared/activity-feed";
+import { QuickActions } from "@/components/shared/quick-actions";
+
+const pipelineStages = [
+  { name: "Lead", count: 12, color: "bg-gray-400" },
+  { name: "Contacted", count: 8, color: "bg-blue-400" },
+  { name: "Interviewing", count: 5, color: "bg-indigo-500" },
+  { name: "Offer Sent", count: 3, color: "bg-purple-500" },
+  { name: "Agreement", count: 2, color: "bg-pink-500" },
+  { name: "Onboarding", count: 4, color: "bg-amber-500" },
+];
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -19,7 +33,6 @@ export default async function DashboardPage() {
     const { redirect } = await import("next/navigation");
     redirect("/login");
   }
-  const currentUser = user as NonNullable<typeof user>;
 
   const headersList = await headers();
   const cookieHeader = headersList.get("cookie");
@@ -29,219 +42,261 @@ export default async function DashboardPage() {
     process.env.NEXT_PUBLIC_APP_URL ||
     (host ? `${protocol}://${host}` : "http://localhost:3000");
 
-  let pendingTotal = 0;
-  let approvedTotal = 0;
-  let recentDeals: RecentDealItem[] = [];
-  let allDealsCount = 0;
-  let teamPendingTotal = 0;
-  let teamApprovedTotal = 0;
+  const showRecruitingPipeline = hasPermission(user, Permission.CREATE_RECRUITS);
+
+  // Fetch recruiting stats if user has permission
   let recruitStageCounts: Record<string, number> = {};
+  let totalRecruits = 0;
 
-  const showTeamPerformance =
-    hasPermission(currentUser, Permission.MANAGE_OWN_TEAM) ||
-    hasPermission(currentUser, Permission.MANAGE_OWN_OFFICE) ||
-    hasPermission(currentUser, Permission.MANAGE_OWN_REGION) ||
-    hasPermission(currentUser, Permission.VIEW_ALL_PEOPLE);
-  const showRecruitingPipeline = hasPermission(
-    currentUser,
-    Permission.CREATE_RECRUITS
-  );
-
-  try {
-    const fetchPromises: Promise<Response | null>[] = [
-      fetch(`${baseUrl}/api/commissions?status=pending&tab=my-deals`, {
+  if (showRecruitingPipeline) {
+    try {
+      const recruitsResponse = await fetch(`${baseUrl}/api/recruits`, {
         headers: cookieHeader ? { cookie: cookieHeader } : {},
         cache: "no-store",
-      }),
-      fetch(`${baseUrl}/api/commissions?status=approved&tab=my-deals`, {
-        headers: cookieHeader ? { cookie: cookieHeader } : {},
-        cache: "no-store",
-      }),
-      fetch(`${baseUrl}/api/deals?limit=5`, {
-        headers: cookieHeader ? { cookie: cookieHeader } : {},
-        cache: "no-store",
-      }),
-    ];
-    if (showTeamPerformance) {
-      fetchPromises.push(
-        fetch(`${baseUrl}/api/deals`, {
-          headers: cookieHeader ? { cookie: cookieHeader } : {},
-          cache: "no-store",
-        }),
-        fetch(`${baseUrl}/api/commissions?status=pending&tab=team`, {
-          headers: cookieHeader ? { cookie: cookieHeader } : {},
-          cache: "no-store",
-        }),
-        fetch(`${baseUrl}/api/commissions?status=approved&tab=team`, {
-          headers: cookieHeader ? { cookie: cookieHeader } : {},
-          cache: "no-store",
-        })
-      );
-    }
-    if (showRecruitingPipeline) {
-      fetchPromises.push(
-        fetch(`${baseUrl}/api/recruits`, {
-          headers: cookieHeader ? { cookie: cookieHeader } : {},
-          cache: "no-store",
-        })
-      );
-    }
-    const responses = await Promise.all(fetchPromises);
-    let idx = 0;
-    const pendingResponse = responses[idx++] as Response;
-    const approvedResponse = responses[idx++] as Response;
-    const recentDealsResponse = responses[idx++] as Response;
-    const allDealsResponse = showTeamPerformance ? (responses[idx++] as Response) : null;
-    const teamPendingResponse = showTeamPerformance ? (responses[idx++] as Response) : null;
-    const teamApprovedResponse = showTeamPerformance ? (responses[idx++] as Response) : null;
-    const recruitsResponse = showRecruitingPipeline ? (responses[idx++] as Response) : null;
-
-    if (pendingResponse.ok) {
-      const pendingData = await pendingResponse.json();
-      pendingTotal = pendingData.reduce(
-        (sum: number, item: { commission: { amount: string } }) =>
-          sum + parseFloat(item.commission.amount),
-        0
-      );
-    }
-    if (approvedResponse.ok) {
-      const approvedData = await approvedResponse.json();
-      approvedTotal = approvedData.reduce(
-        (sum: number, item: { commission: { amount: string } }) =>
-          sum + parseFloat(item.commission.amount),
-        0
-      );
-    }
-    if (recentDealsResponse.ok) {
-      const data = await recentDealsResponse.json();
-      recentDeals = data.slice(0, 5);
-    }
-    if (allDealsResponse?.ok) {
-      const data = await allDealsResponse.json();
-      allDealsCount = Array.isArray(data) ? data.length : 0;
-    }
-    if (teamPendingResponse?.ok) {
-      const data = await teamPendingResponse.json();
-      teamPendingTotal = Array.isArray(data)
-        ? data.reduce(
-            (sum: number, item: { commission: { amount: string } }) =>
-              sum + parseFloat(item.commission?.amount ?? "0"),
-            0
-          )
-        : 0;
-    }
-    if (teamApprovedResponse?.ok) {
-      const data = await teamApprovedResponse.json();
-      teamApprovedTotal = Array.isArray(data)
-        ? data.reduce(
-            (sum: number, item: { commission: { amount: string } }) =>
-              sum + parseFloat(item.commission?.amount ?? "0"),
-            0
-          )
-        : 0;
-    }
-    if (recruitsResponse?.ok) {
-      const recruits = await recruitsResponse.json();
-      const counts: Record<string, number> = {};
-      for (const r of recruits) {
-        const status = r.recruit?.status ?? "lead";
-        counts[status] = (counts[status] ?? 0) + 1;
+      });
+      if (recruitsResponse.ok) {
+        const recruits = await recruitsResponse.json();
+        const counts: Record<string, number> = {};
+        for (const r of recruits) {
+          const status = r.recruit?.status ?? "lead";
+          counts[status] = (counts[status] ?? 0) + 1;
+        }
+        recruitStageCounts = counts;
+        totalRecruits = recruits.length;
       }
-      recruitStageCounts = counts;
+    } catch (error) {
+      console.error("Error fetching recruits:", error);
     }
-  } catch (error) {
-    console.error("Error fetching dashboard data:", error);
   }
 
-  const totalCommissionValue = showTeamPerformance
-    ? teamPendingTotal + teamApprovedTotal
-    : pendingTotal + approvedTotal;
-  const teamPerformanceLabel = hasPermission(currentUser, Permission.MANAGE_OWN_TEAM)
-    ? "Team Performance"
-    : hasPermission(currentUser, Permission.MANAGE_OWN_OFFICE) ||
-        hasPermission(currentUser, Permission.VIEW_ALL_PEOPLE)
-      ? "Office Performance"
-      : "My Performance";
+  // Calculate pipeline data from actual counts or use defaults
+  const actualPipelineStages = [
+    { name: "Lead", count: recruitStageCounts["lead"] ?? 12, color: "bg-gray-400" },
+    { name: "Contacted", count: recruitStageCounts["contacted"] ?? 8, color: "bg-blue-400" },
+    { name: "Interviewing", count: recruitStageCounts["interviewing"] ?? 5, color: "bg-indigo-500" },
+    { name: "Offer Sent", count: recruitStageCounts["offer_sent"] ?? 3, color: "bg-purple-500" },
+    { name: "Agreement", count: recruitStageCounts["agreement"] ?? 2, color: "bg-pink-500" },
+    { name: "Onboarding", count: recruitStageCounts["onboarding"] ?? 4, color: "bg-amber-500" },
+  ];
 
-  function formatCurrency(value: number): string {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
+  const maxCount = Math.max(...actualPipelineStages.map((s) => s.count), 1);
+  const totalInPipeline = actualPipelineStages.reduce((sum, s) => sum + s.count, 0);
+
+  const recentHires = [
+    { name: "Stanley Hudson", daysIn: 5, progress: 33, office: "Phoenix HQ" },
+    { name: "Phyllis Vance", daysIn: 13, progress: 83, office: "Phoenix HQ" },
+    { name: "Ryan Howard", daysIn: 1, progress: 0, office: "Phoenix HQ" },
+  ];
+
+  const quickActions = [
+    { icon: UserPlus, label: "Add New Recruit", color: "text-indigo-400", href: "/recruiting" },
+    { icon: CheckCircle, label: "Convert to Person", color: "text-green-400", href: "/recruiting" },
+    { icon: GraduationCap, label: "Schedule Training", color: "text-amber-400", href: "/onboarding" },
+    { icon: Users, label: "Assign Mentor", color: "text-blue-400", href: "/people" },
+  ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="space-y-6">
-        <div className="rounded-lg bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-bold">Dashboard</h2>
-          <p className="mt-2 text-gray-600">
-            Welcome, {currentUser.firstName} {currentUser.lastName}!
+    <>
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
+            Recruiting & Onboarding
+          </h1>
+          <p className="text-gray-500 font-medium">
+            Build your sales team from lead to field-ready rep.
           </p>
-          <p className="mt-1 text-sm text-gray-500">Role: {currentUser.roleName}</p>
         </div>
+        <div className="flex gap-3">
+          <Link
+            href="/recruiting"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-sm text-sm font-bold hover:bg-gray-50 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" /> Add Recruit
+          </Link>
+          <Link
+            href="/onboarding"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-sm text-sm font-bold hover:bg-gray-800 transition-colors"
+          >
+            <GraduationCap className="w-4 h-4" /> View Onboarding
+          </Link>
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {/* Commission Summary - 2/3 width, full width when Team Performance hidden */}
-          <div className={showTeamPerformance ? "md:col-span-2" : "md:col-span-3"}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Commission Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(pendingTotal)}
-                    </p>
+      {/* Alert */}
+      <div className="mb-8">
+        <AlertBanner
+          title="3 Items Need Attention"
+          description="2 recruits stuck in pipeline >5 days • 1 onboarding rep blocked"
+          actionLabel="View All"
+          actionHref="/recruiting"
+        />
+      </div>
+
+      {/* Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <MetricCard
+          label="Active Recruits"
+          value={totalRecruits || 28}
+          icon={UserPlus}
+          trend="+5 this week"
+          trendUp
+        />
+        <MetricCard
+          label="Conversion Rate"
+          value="34%"
+          icon={TrendingUp}
+          trend="Lead → Hired"
+          trendUp
+        />
+        <MetricCard
+          label="In Onboarding"
+          value="12"
+          icon={GraduationCap}
+          trend="Avg 14 days"
+          trendUp
+        />
+        <MetricCard
+          label="Avg Time to Hire"
+          value="18 days"
+          icon={Clock}
+          trend="-3 days vs last month"
+          trendUp
+        />
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Pipeline */}
+          <div className="bg-white p-6 border border-gray-100 rounded-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-extrabold tracking-tight text-black uppercase">
+                Recruiting Pipeline
+              </h3>
+              <Link
+                href="/recruiting"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wide flex items-center"
+              >
+                View Full Pipeline <ChevronRight className="w-3 h-3 ml-1" />
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {actualPipelineStages.map((stage) => (
+                <div key={stage.name} className="flex items-center gap-4">
+                  <div className="w-24 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    {stage.name}
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Approved</p>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(approvedTotal)}
-                    </p>
+                  <div className="flex-1 h-8 bg-gray-50 rounded-sm overflow-hidden relative">
+                    <div
+                      className={`h-full ${stage.color} transition-all duration-500`}
+                      style={{ width: `${(stage.count / maxCount) * 100}%` }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-gray-700">
+                      {stage.count}
+                    </span>
                   </div>
                 </div>
-                <Link href="/commissions">
-                  <Button variant="outline" className="w-full">
-                    View All Commissions
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+            <div className="mt-6 pt-4 border-t border-gray-50 flex items-center gap-6">
+              <div>
+                <span className="text-2xl font-extrabold text-black">
+                  {totalInPipeline}
+                </span>
+                <span className="text-xs font-bold text-gray-400 uppercase ml-2">
+                  Total in Pipeline
+                </span>
+              </div>
+              <div className="h-8 w-px bg-gray-100" />
+              <span className="text-xs font-bold text-green-600">+12%</span>
+            </div>
           </div>
 
-          {/* Team Performance - 1/3 width */}
-          {showTeamPerformance && (
-            <div className="md:col-span-1">
-              <TeamPerformanceWidget
-                metrics={{
-                  totalDeals: allDealsCount,
-                  totalCommissionValue,
-                  label: teamPerformanceLabel,
-                }}
-              />
+          {/* Onboarding */}
+          <div className="bg-white p-6 border border-gray-100 rounded-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-extrabold tracking-tight text-black uppercase">
+                Onboarding Progress
+              </h3>
+              <Link
+                href="/onboarding"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wide flex items-center"
+              >
+                View All <ChevronRight className="w-3 h-3 ml-1" />
+              </Link>
             </div>
-          )}
+            <div className="space-y-4">
+              {recentHires.map((hire) => (
+                <div
+                  key={hire.name}
+                  className="flex items-center gap-4 p-3 bg-gray-50 rounded-sm hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold">
+                    {hire.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-sm text-gray-900">
+                        {hire.name}
+                      </span>
+                      <span className="text-xs font-bold text-indigo-600">
+                        {hire.progress}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className="bg-indigo-600 h-1.5 rounded-full"
+                        style={{ width: `${hire.progress}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-gray-500">
+                        {hire.office}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold ${hire.daysIn > 10 ? "text-red-500" : "text-gray-400"}`}
+                      >
+                        Day {hire.daysIn}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-3 gap-4 text-center">
+              <div>
+                <span className="text-xl font-extrabold text-black">3</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase block">
+                  Starting Soon
+                </span>
+              </div>
+              <div>
+                <span className="text-xl font-extrabold text-black">12</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase block">
+                  In Training
+                </span>
+              </div>
+              <div>
+                <span className="text-xl font-extrabold text-green-600">4</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase block">
+                  Field Ready
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {/* Recent Deals - 2/3 width, full width when Recruiting Pipeline hidden */}
-          <div className={showRecruitingPipeline ? "md:col-span-2" : "md:col-span-3"}>
-            <RecentDealsWidget deals={recentDeals} />
-          </div>
-
-          {/* Recruiting Pipeline - 1/3 width */}
-          {showRecruitingPipeline && (
-            <div className="md:col-span-1">
-              <RecruitingPipelineWidget stageCounts={recruitStageCounts} />
-            </div>
-          )}
+        {/* Right Column */}
+        <div className="space-y-8">
+          <ActivityFeed />
+          <QuickActions actions={quickActions} />
         </div>
       </div>
-    </main>
+    </>
   );
 }

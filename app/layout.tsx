@@ -7,6 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Kin People App",
   description: "Sales team management and commission tracking",
+    generator: 'v0.app'
 };
 
 export default function RootLayout({

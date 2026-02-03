@@ -31,9 +31,9 @@ The testing plan focuses on validating the Supabase integration across four crit
 ### 1. Install Dependencies and Verify Package Configuration
 
 **Commands:**
-```bash
+\`\`\`bash
 npm install
-```
+\`\`\`
 
 **Verification:**
 - [ ] `@supabase/supabase-js@^2.39.0` is installed in `node_modules`
@@ -49,9 +49,9 @@ npm install
 ### 2. Verify Database Migration Script
 
 **Commands:**
-```bash
+\`\`\`bash
 npm run db:migrate
-```
+\`\`\`
 
 **Validation:**
 - [ ] Script connects to Supabase database successfully
@@ -69,9 +69,9 @@ npm run db:migrate
 ### 3. Verify Drizzle Studio Connection
 
 **Commands:**
-```bash
+\`\`\`bash
 npm run db:studio
-```
+\`\`\`
 
 **Validation:**
 - [ ] Studio opens at `http://localhost:4983` (or configured port)
@@ -87,9 +87,9 @@ npm run db:studio
 ### 4. Test Application Startup and Authentication
 
 **Commands:**
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 
 **Authentication:**
 - [ ] Navigate to `http://localhost:3000`
@@ -301,7 +301,7 @@ All query Supabase successfully.
 
 ## Database Connection Diagram
 
-```mermaid
+\`\`\`mermaid
 sequenceDiagram
     participant App as Next.js Application
     participant DB as lib/db/index.ts
@@ -323,4 +323,4 @@ sequenceDiagram
     SB-->>PG: Return results
     PG-->>Drizzle: Return data
     Drizzle-->>App: Return typed results
-```
+\`\`\`

@@ -39,9 +39,9 @@ Phase 1 ensures data safety by creating a complete backup of your Neon database 
 ### Step 2: Document Supabase Credentials
 
 1. Copy the credentials template:
-   ```bash
+   \`\`\`bash
    cp supabase-credentials.template.md supabase-credentials.md
-   ```
+   \`\`\`
 
 2. Navigate to **Project Settings > API** in Supabase dashboard:
    - Copy **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
@@ -64,9 +64,9 @@ Phase 1 ensures data safety by creating a complete backup of your Neon database 
 
 Run the export script to create a complete backup:
 
-```bash
+\`\`\`bash
 ./scripts/export-neon-db.sh
-```
+\`\`\`
 
 The script will:
 - Check for `DATABASE_URL` in environment or `.env.local`
@@ -83,7 +83,7 @@ The script will:
 
 If you prefer to run `pg_dump` manually:
 
-```bash
+\`\`\`bash
 # Set DATABASE_URL if not in .env.local
 export DATABASE_URL="postgresql://user:pass@host.neon.tech/dbname?sslmode=require"
 
@@ -92,15 +92,15 @@ mkdir -p backups
 
 # Export database
 pg_dump --clean --if-exists --no-owner --no-acl $DATABASE_URL > backups/neon_backup.sql
-```
+\`\`\`
 
 ### Step 4: Verify Backup Integrity
 
 Run the verification script:
 
-```bash
+\`\`\`bash
 ./scripts/verify-backup.sh
-```
+\`\`\`
 
 The script verifies:
 - ✅ Backup file exists and is non-empty
@@ -121,7 +121,7 @@ The script verifies:
 
 **Manual Verification (Alternative):**
 
-```bash
+\`\`\`bash
 # Check file size
 ls -lh backups/neon_backup.sql
 
@@ -138,14 +138,14 @@ grep "COPY roles" backups/neon_backup.sql
 grep "COPY deals" backups/neon_backup.sql
 grep "COPY org_snapshots" backups/neon_backup.sql
 grep "COPY activity_log" backups/neon_backup.sql
-```
+\`\`\`
 
 ### Step 5: Create Backup Metadata
 
 1. Copy the metadata template:
-   ```bash
+   \`\`\`bash
    cp backup-metadata.template.txt backup-metadata.txt
-   ```
+   \`\`\`
 
 2. Fill in the metadata:
    - Backup date and time
@@ -161,14 +161,14 @@ grep "COPY activity_log" backups/neon_backup.sql
 
 Before backup, you can get row counts:
 
-```sql
+\`\`\`sql
 SELECT 
   schemaname,
   tablename,
   n_live_tup as row_count
 FROM pg_stat_user_tables
 ORDER BY tablename;
-```
+\`\`\`
 
 Add these counts to the metadata file for reference.
 
@@ -182,10 +182,10 @@ Add these counts to the metadata file for reference.
    - Encrypted local storage
    - Secure backup service
 3. **Compression** (Optional): Compress to save space:
-   ```bash
+   \`\`\`bash
    gzip backups/neon_backup.sql
    # Creates: backups/neon_backup.sql.gz
-   ```
+   \`\`\`
 4. **Version Control**: **DO NOT** commit backup files to public repositories
    - Backup files are already in `.gitignore`
    - Use encrypted storage for backup files

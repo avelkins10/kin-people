@@ -14,21 +14,21 @@
 Navigate to **Project Settings > API** in Supabase dashboard:
 
 ### Project URL
-```
+\`\`\`
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-```
+\`\`\`
 **Actual Value**: `[Paste your Project URL here]`
 
 ### Anon/Public Key
-```
+\`\`\`
 NEXT_PUBLIC_SUPABASE_ANON_KEY=[your-anon-key]
-```
+\`\`\`
 **Actual Value**: `[Paste your Anon Key here]`
 
 ### Service Role Key
-```
+\`\`\`
 SUPABASE_SERVICE_ROLE_KEY=[your-service-role-key]
-```
+\`\`\`
 **Actual Value**: `[Paste your Service Role Key here]`
 
 ⚠️ **IMPORTANT**: Never expose the Service Role Key client-side. It has full database access.
@@ -38,20 +38,20 @@ SUPABASE_SERVICE_ROLE_KEY=[your-service-role-key]
 Navigate to **Project Settings > Database** in Supabase dashboard:
 
 ### Connection String (Standard)
-```
+\`\`\`
 DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.<project-ref>.supabase.co:5432/postgres
-```
+\`\`\`
 **Actual Value**: `[Paste your connection string here]`
 
 ### Direct Connection String
-```
+\`\`\`
 [Paste direct connection string if different from above]
-```
+\`\`\`
 
 ### Connection Pooling String (Recommended for Serverless)
-```
+\`\`\`
 [Paste connection pooling string here]
-```
+\`\`\`
 
 ## Instructions
 

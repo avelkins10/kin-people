@@ -9,9 +9,9 @@ Scripts for Neon → Supabase migration (Phase 1: backup, Phase 2: import and va
 Exports the Neon database to a SQL backup file.
 
 **Usage:**
-```bash
+\`\`\`bash
 ./scripts/export-neon-db.sh
-```
+\`\`\`
 
 **Requirements:**
 - `DATABASE_URL` in environment or `.env.local` (Neon connection string)
@@ -26,9 +26,9 @@ Exports the Neon database to a SQL backup file.
 Verifies the Neon backup file contains expected tables and basic structure.
 
 **Usage:**
-```bash
+\`\`\`bash
 ./scripts/verify-backup.sh
-```
+\`\`\`
 
 **Requirements:**
 - `backups/neon_backup.sql` exists (run `export-neon-db.sh` first)
@@ -44,10 +44,10 @@ Verifies the Neon backup file contains expected tables and basic structure.
 Imports the Neon backup into the Supabase database.
 
 **Usage:**
-```bash
+\`\`\`bash
 export SUPABASE_DATABASE_URL='postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres'
 ./scripts/import-to-supabase.sh
-```
+\`\`\`
 
 Or rely on `DATABASE_URL` or `supabase-credentials.md` (see script for parsing).
 
@@ -65,9 +65,9 @@ Or rely on `DATABASE_URL` or `supabase-credentials.md` (see script for parsing).
 Verifies the Supabase database after import: table list, row counts, primary/foreign keys.
 
 **Usage:**
-```bash
+\`\`\`bash
 ./scripts/verify-supabase-import.sh
-```
+\`\`\`
 
 **Requirements:**
 - Supabase `DATABASE_URL` (or `SUPABASE_DATABASE_URL`) set or in `supabase-credentials.md`
@@ -82,7 +82,7 @@ Verifies the Supabase database after import: table list, row counts, primary/for
 Compares row counts between Neon and Supabase for all `public` tables.
 
 **Usage:**
-```bash
+\`\`\`bash
 # With env vars
 export NEON_DATABASE_URL='postgresql://...'
 export SUPABASE_DATABASE_URL='postgresql://...'
@@ -90,7 +90,7 @@ export SUPABASE_DATABASE_URL='postgresql://...'
 
 # Or with arguments
 ./scripts/compare-row-counts.sh "$NEON_DATABASE_URL" "$SUPABASE_DATABASE_URL"
-```
+\`\`\`
 
 **Requirements:**
 - `psql` installed
@@ -105,9 +105,9 @@ export SUPABASE_DATABASE_URL='postgresql://...'
 Runs integrity checks on Supabase: orphan checks for main foreign keys, sample counts, basic consistency.
 
 **Usage:**
-```bash
+\`\`\`bash
 ./scripts/test-data-integrity.sh
-```
+\`\`\`
 
 **Requirements:**
 - Supabase `DATABASE_URL` (or `SUPABASE_DATABASE_URL`) set or in `supabase-credentials.md`
@@ -122,22 +122,22 @@ Runs integrity checks on Supabase: orphan checks for main foreign keys, sample c
 ### Full migration (Phase 1 → Phase 2)
 
 1. **Backup from Neon**
-   ```bash
+   \`\`\`bash
    ./scripts/export-neon-db.sh
    ./scripts/verify-backup.sh
-   ```
+   \`\`\`
 
 2. **Import to Supabase**
-   ```bash
+   \`\`\`bash
    ./scripts/import-to-supabase.sh
-   ```
+   \`\`\`
 
 3. **Validate**
-   ```bash
+   \`\`\`bash
    ./scripts/verify-supabase-import.sh
    ./scripts/compare-row-counts.sh   # set NEON_DATABASE_URL and SUPABASE_DATABASE_URL
    ./scripts/test-data-integrity.sh
-   ```
+   \`\`\`
 
 4. Review all reports in `backups/` and complete the Phase 2 checklist in `MIGRATION-PHASE2.md`.
 
@@ -145,11 +145,11 @@ Runs integrity checks on Supabase: orphan checks for main foreign keys, sample c
 
 If you imported manually (e.g. via Supabase SQL Editor or `psql`):
 
-```bash
+\`\`\`bash
 ./scripts/verify-supabase-import.sh
 ./scripts/compare-row-counts.sh
 ./scripts/test-data-integrity.sh
-```
+\`\`\`
 
 ---
 

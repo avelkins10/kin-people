@@ -14,7 +14,7 @@ Run the following in the Supabase Dashboard → SQL Editor (or via migrations) a
 
 **Option B – SQL** (if your project allows bucket creation via SQL)
 
-```sql
+\`\`\`sql
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'agreements',
@@ -24,15 +24,15 @@ VALUES (
   ARRAY['application/pdf']
 )
 ON CONFLICT (id) DO NOTHING;
-```
+\`\`\`
 
 ## 2. Enable RLS on storage.objects
 
 RLS is usually already enabled on `storage.objects`. If not:
 
-```sql
+\`\`\`sql
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-```
+\`\`\`
 
 ## 3. RLS policies
 
@@ -45,7 +45,7 @@ These policies assume:
 
 (Recruiter or converted person for that recruit.)
 
-```sql
+\`\`\`sql
 CREATE POLICY "Users can view their own agreements"
 ON storage.objects FOR SELECT
 TO authenticated
@@ -58,13 +58,13 @@ USING (
        OR r.converted_to_person_id IN (SELECT id FROM people WHERE auth_user_id = auth.uid())
   )
 );
-```
+\`\`\`
 
 **Policy 2: Admins can view all agreements**
 
 (Users with role name `Admin` or `Owner`.)
 
-```sql
+\`\`\`sql
 CREATE POLICY "Admins can view all agreements"
 ON storage.objects FOR SELECT
 TO authenticated
@@ -77,7 +77,7 @@ USING (
       AND r.name IN ('Admin', 'Owner')
   )
 );
-```
+\`\`\`
 
 **Service role**
 
@@ -85,7 +85,7 @@ The service role key bypasses RLS. No extra policy is needed for server-side upl
 
 ## 4. Drop policies (if re-running)
 
-```sql
+\`\`\`sql
 DROP POLICY IF EXISTS "Users can view their own agreements" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can view all agreements" ON storage.objects;
-```
+\`\`\`

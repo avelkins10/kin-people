@@ -67,7 +67,7 @@ The system defines granular permissions in `lib/permissions/types.ts`:
 
 Use `withAuth()` to protect routes that require authentication:
 
-```typescript
+\`\`\`typescript
 import { withAuth } from "@/lib/auth/route-protection";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -75,13 +75,13 @@ export const GET = withAuth(async (req, user) => {
   // user is guaranteed to be authenticated
   return NextResponse.json({ user });
 });
-```
+\`\`\`
 
 #### Permission-Based Protection
 
 Use `withPermission()` to protect routes that require specific permissions:
 
-```typescript
+\`\`\`typescript
 import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { NextRequest, NextResponse } from "next/server";
@@ -94,24 +94,24 @@ export const GET = withPermission(
     return NextResponse.json({ people });
   }
 );
-```
+\`\`\`
 
 ### Server-Side Helpers
 
 #### Get Current User
 
-```typescript
+\`\`\`typescript
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 
 const user = await getCurrentUser();
 if (!user) {
   // Not authenticated
 }
-```
+\`\`\`
 
 #### Check Permissions
 
-```typescript
+\`\`\`typescript
 import { hasPermission, requirePermission } from "@/lib/auth/check-permission";
 import { Permission } from "@/lib/permissions/types";
 
@@ -121,11 +121,11 @@ if (hasPermission(user, Permission.APPROVE_COMMISSIONS)) {
 
 // Or throw error if permission denied
 requirePermission(user, Permission.APPROVE_COMMISSIONS);
-```
+\`\`\`
 
 #### Visibility Rules
 
-```typescript
+\`\`\`typescript
 import { canViewPerson, getVisibilityFilter } from "@/lib/auth/visibility-rules";
 
 // Check if user can view a specific person
@@ -134,7 +134,7 @@ const canView = await canViewPerson(user, targetPersonId);
 // Get filter criteria for queries
 const filter = getVisibilityFilter(user);
 // Returns: null (all), { officeId }, { id }, etc.
-```
+\`\`\`
 
 ### Client-Side Components
 
@@ -142,26 +142,26 @@ const filter = getVisibilityFilter(user);
 
 Conditionally render components based on permissions:
 
-```tsx
+\`\`\`tsx
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { Permission } from "@/lib/permissions/types";
 
 <PermissionGuard permission={Permission.APPROVE_COMMISSIONS}>
   <ApproveButton />
 </PermissionGuard>
-```
+\`\`\`
 
 #### Role Guard
 
 Conditionally render components based on roles:
 
-```tsx
+\`\`\`tsx
 import { RoleGuard } from "@/components/auth/role-guard";
 
 <RoleGuard allowedRoles={["Admin", "Regional Manager"]}>
   <AdminPanel />
 </RoleGuard>
-```
+\`\`\`
 
 ## Data Visibility Rules
 
@@ -174,7 +174,7 @@ The system automatically filters data based on user roles:
 
 ### Applying Visibility Filters
 
-```typescript
+\`\`\`typescript
 import { applyCommissionVisibilityFilter } from "@/lib/auth/visibility-rules";
 import { db } from "@/lib/db";
 import { commissions, people } from "@/lib/db/schema";
@@ -183,13 +183,13 @@ const user = await getCurrentUser();
 const query = db.select().from(commissions).innerJoin(people, ...);
 const filteredQuery = applyCommissionVisibilityFilter(user, query);
 const results = await filteredQuery;
-```
+\`\`\`
 
 ## Environment Variables
 
 Required environment variables (see `.env.example`):
 
-```env
+\`\`\`env
 # Supabase Auth and database access
 NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
@@ -197,7 +197,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # Database
 DATABASE_URL=postgresql://...
-```
+\`\`\`
 
 - **NEXT_PUBLIC_SUPABASE_URL** - Supabase project URL (client-side auth and API)
 - **NEXT_PUBLIC_SUPABASE_ANON_KEY** - Supabase anonymous key for client-side auth and session validation
@@ -225,12 +225,12 @@ When a new user signs up via Supabase Auth:
 
 Mock user helpers are available in `lib/auth/__tests__/test-helpers.ts`:
 
-```typescript
+\`\`\`typescript
 import { createMockAdmin, createMockSalesRep } from "@/lib/auth/__tests__/test-helpers";
 
 const admin = createMockAdmin();
 const rep = createMockSalesRep();
-```
+\`\`\`
 
 ## Security Considerations
 

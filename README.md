@@ -21,21 +21,21 @@ Sales team management and commission tracking application built with Next.js, Su
 
 1. Clone the repository and install dependencies:
 
-```bash
+\`\`\`bash
 npm install
-```
+\`\`\`
 
 2. Set up environment variables:
 
 Copy `.env.example` to `.env.local` and fill in the values:
 
-```bash
+\`\`\`bash
 cp .env.example .env.local
-```
+\`\`\`
 
 Required environment variables:
 
-```env
+\`\`\`env
 # Database (Supabase PostgreSQL)
 DATABASE_URL=postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?sslmode=require
 
@@ -43,11 +43,11 @@ DATABASE_URL=postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/
 NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
+\`\`\`
 
 3. Set up the database:
 
-```bash
+\`\`\`bash
 # Generate migrations
 npm run db:generate
 
@@ -57,13 +57,13 @@ npm run db:migrate
 # Seed the database with initial data (roles, offices, etc.)
 # Note: You'll need to create a seed script runner or use tsx
 tsx lib/db/seed.ts
-```
+\`\`\`
 
 4. Run the development server:
 
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
@@ -86,7 +86,7 @@ See `docs/authentication.md` for detailed authentication and authorization docum
 
 ## Project Structure
 
-```
+\`\`\`
 /app
   /(auth)          # Authentication pages (login, signup)
   /api             # API routes
@@ -102,7 +102,7 @@ See `docs/authentication.md` for detailed authentication and authorization docum
   /db              # Database configuration and schema
 /docs              # Documentation
 middleware.ts      # Supabase authentication middleware
-```
+\`\`\`
 
 ## Authentication & Authorization
 

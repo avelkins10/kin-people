@@ -38,7 +38,7 @@
 - Set up Clerk authentication
 - Install shadcn/ui and Tailwind CSS
 - Create project folder structure:
-  ```
+  \`\`\`
   /app
     /api
     /(auth)
@@ -51,7 +51,7 @@
     /utils
     /validations (zod schemas)
   /types
-  ```
+  \`\`\`
 - Set up environment variables template (.env.example)
 - Create base layout with Clerk auth wrapper
 
@@ -189,7 +189,7 @@
   - POST /api/deals/[id]/calculate-commissions (manual trigger)
   - Auto-trigger on deal close
 - **Core Logic (create as lib/commissions/calculate.ts):**
-  ```typescript
+  \`\`\`typescript
   async function calculateCommissions(dealId: string) {
     // 1. Get deal with rep info
     // 2. Get or create org_snapshot for rep as of close_date
@@ -199,7 +199,7 @@
     // 6. Walk recruited_by chain for overrides
     // 7. Create commission records
   }
-  ```
+  \`\`\`
 - **Org Snapshot Logic:**
   - Capture: role_id, role_name, office_id, office_name, reports_to_id, reports_to_name, recruited_by_id, recruited_by_name, pay_plan_id, pay_plan_name, team_ids, team_names
   - Store in org_snapshots table
@@ -444,7 +444,7 @@ Permissions are configurable per role. Default structure:
 ## Database Schema
 
 ### Drizzle Schema Files Structure
-```
+\`\`\`
 /lib/db/
   schema/
     roles.ts
@@ -466,11 +466,11 @@ Permissions are configurable per role. Default structure:
     index.ts (exports all)
   index.ts (connection + db instance)
   migrate.ts
-```
+\`\`\`
 
 ### SQL Schema (Reference for Drizzle)
 
-```sql
+\`\`\`sql
 -- =====================
 -- CONFIGURATION TABLES
 -- =====================
@@ -888,13 +888,13 @@ CREATE INDEX idx_activity_created ON activity_log(created_at);
 -- Commission rules
 CREATE INDEX idx_commission_rules_pay_plan ON commission_rules(pay_plan_id);
 CREATE INDEX idx_commission_rules_active ON commission_rules(is_active);
-```
+\`\`\`
 
 ---
 
 ## API Endpoints (Full Reference)
 
-```
+\`\`\`
 # =====================
 # AUTH
 # =====================
@@ -1041,7 +1041,7 @@ POST   /api/webhooks/signnow  # document signed events
 # =====================
 GET    /api/activity  # activity log with filters
 GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
-```
+\`\`\`
 
 ---
 
@@ -1049,7 +1049,7 @@ GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
 
 ### Flow 1: New Recruit → Signed → Onboarded → Active Rep
 
-```
+\`\`\`
 1. Recruiter creates recruit
    └─ POST /api/recruits
    └─ Assigns: recruiter_id, target_office_id, target_team_id, target_reports_to_id, target_role_id, target_pay_plan_id
@@ -1093,11 +1093,11 @@ GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
    └─ Creates org_snapshot for today
    └─ Links recruit.converted_to_person_id
    └─ Status: 'converted'
-```
+\`\`\`
 
 ### Flow 2: Deal Closes → Commissions Calculated
 
-```
+\`\`\`
 1. Deal created (manual entry for MVP)
    └─ POST /api/deals
    └─ Creates deal record with rep_id, deal details
@@ -1141,11 +1141,11 @@ GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
       └─ org_snapshot_id = snapshot used
 
 4. Commission records ready for approval
-```
+\`\`\`
 
 ### Flow 3: Person Promotion
 
-```
+\`\`\`
 1. Admin promotes rep to Team Lead
    └─ POST /api/people/[id]/change-role
    └─ Body: { new_role_id: 'uuid', effective_date: '2025-02-01', reason: 'Promoted based on Q4 performance' }
@@ -1167,11 +1167,11 @@ GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
    └─ Creates person_history record (type: 'pay_plan_change')
 
 4. Future deals by this person's downline will use new role for override calculations
-```
+\`\`\`
 
 ### Flow 4: Payroll Run
 
-```
+\`\`\`
 1. Admin opens payroll for pay period
    └─ GET /api/payroll/pending?start=2025-01-01&end=2025-01-15
    └─ Returns all commissions with status = 'pending' or 'approved' in date range
@@ -1195,7 +1195,7 @@ GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
    └─ POST /api/payroll/mark-paid
    └─ Body: { commission_ids: [...] }
    └─ Updates status to 'paid', sets paid_at
-```
+\`\`\`
 
 ---
 
@@ -1204,15 +1204,15 @@ GET    /api/activity/[entityType]/[entityId]  # activity for specific entity
 **Purpose:** Send and track rep agreements
 
 **Environment Variables:**
-```
+\`\`\`
 SIGNNOW_API_KEY=your_api_key
 SIGNNOW_API_URL=https://api.signnow.com
 SIGNNOW_TEMPLATE_ID=your_template_id
 SIGNNOW_WEBHOOK_SECRET=your_webhook_secret
-```
+\`\`\`
 
 **API Flow:**
-```typescript
+\`\`\`typescript
 // lib/signnow/client.ts
 
 // 1. Create document from template
@@ -1268,10 +1268,10 @@ async function getDocumentDownloadUrl(documentId: string) {
   });
   return response.json(); // returns { link: 'download_url' }
 }
-```
+\`\`\`
 
 **Webhook Handler:**
-```typescript
+\`\`\`typescript
 // app/api/webhooks/signnow/route.ts
 
 export async function POST(request: Request) {
@@ -1313,13 +1313,13 @@ export async function POST(request: Request) {
   
   return new Response('OK', { status: 200 });
 }
-```
+\`\`\`
 
 ---
 
 ## UI Pages Structure
 
-```
+\`\`\`
 /app
 ├── /(auth)
 │   ├── /login
@@ -1363,13 +1363,13 @@ export async function POST(request: Request) {
 │           └── page.tsx
 └── /api
     └── (all API routes as specified above)
-```
+\`\`\`
 
 ---
 
 ## Environment Variables Template
 
-```env
+\`\`\`env
 # Database
 DATABASE_URL=postgresql://user:pass@host/dbname
 
@@ -1395,7 +1395,7 @@ R2_ENDPOINT=
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+\`\`\`
 
 ---
 
