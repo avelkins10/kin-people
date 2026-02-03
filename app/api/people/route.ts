@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { people, roles, offices } from "@/lib/db/schema";
 import { eq, gte, sql, and } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+
+const managerAlias = alias(people, "manager");
 
 const createPersonSchema = z.object({
   firstName: z.string().min(1).max(100),
@@ -22,7 +25,9 @@ export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const roleLevel = searchParams.get("roleLevel");
+    const roleId = searchParams.get("roleId");
     const status = searchParams.get("status");
+    const officeId = searchParams.get("officeId");
 
     let query = db
       .select({
@@ -34,11 +39,15 @@ export const GET = withAuth(async (req: NextRequest) => {
         hireDate: people.hireDate,
         officeId: people.officeId,
         officeName: offices.name,
+        roleName: roles.name,
+        setterTier: people.setterTier,
         name: sql<string>`CONCAT(${people.firstName}, ' ', ${people.lastName})`,
+        managerName: sql<string | null>`CONCAT(${managerAlias.firstName}, ' ', ${managerAlias.lastName})`,
       })
       .from(people)
       .innerJoin(roles, eq(people.roleId, roles.id))
-      .leftJoin(offices, eq(people.officeId, offices.id));
+      .leftJoin(offices, eq(people.officeId, offices.id))
+      .leftJoin(managerAlias, eq(people.reportsToId, managerAlias.id));
 
     const conditions: ReturnType<typeof eq>[] = [];
     if (roleLevel === "manager") {
@@ -46,6 +55,12 @@ export const GET = withAuth(async (req: NextRequest) => {
     }
     if (status) {
       conditions.push(eq(people.status, status));
+    }
+    if (officeId) {
+      conditions.push(eq(people.officeId, officeId));
+    }
+    if (roleId) {
+      conditions.push(eq(people.roleId, roleId));
     }
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;

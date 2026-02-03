@@ -1,8 +1,10 @@
 "use client";
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { MetricCard } from '@/components/MetricCard';
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/MetricCard";
 import {
   Users,
   UserCheck,
@@ -13,97 +15,162 @@ import {
   Filter,
   MoreHorizontal,
   MapPin,
-  Shield } from
-'lucide-react';
-type PersonStatus = 'Active' | 'Onboarding' | 'Inactive' | 'Terminated';
-type SetterTier = 'Rookie' | 'Veteran' | 'Team Lead';
-interface Person {
+  Shield,
+  Loader2,
+} from "lucide-react";
+
+type PersonStatus = "active" | "onboarding" | "inactive" | "terminated";
+type SetterTier = "Rookie" | "Veteran" | "Team Lead" | null;
+
+interface PersonRow {
   id: string;
   name: string;
-  role: string;
-  office: string;
-  status: PersonStatus;
-  setterTier: SetterTier;
-  manager: string;
-  avatar?: string;
+  roleName: string | null;
+  officeName: string | null;
+  status: string | null;
+  setterTier: string | null;
+  managerName: string | null;
 }
-const people: Person[] = [
-{
-  id: '1',
-  name: 'Sarah Jenkins',
-  role: 'Team Lead',
-  office: 'Phoenix HQ',
-  status: 'Active',
-  setterTier: 'Team Lead',
-  manager: 'Mike Ross'
-},
-{
-  id: '2',
-  name: 'James Chen',
-  role: 'Sales Rep',
-  office: 'Denver',
-  status: 'Active',
-  setterTier: 'Veteran',
-  manager: 'Sarah Jenkins'
-},
-{
-  id: '3',
-  name: 'Emily Davis',
-  role: 'Sales Rep',
-  office: 'Austin',
-  status: 'Onboarding',
-  setterTier: 'Rookie',
-  manager: 'Alex Doe'
-},
-{
-  id: '4',
-  name: 'Michael Scott',
-  role: 'Regional Manager',
-  office: 'Dallas',
-  status: 'Active',
-  setterTier: 'Team Lead',
-  manager: '-'
-},
-{
-  id: '5',
-  name: 'Dwight Schrute',
-  role: 'Sales Rep',
-  office: 'Phoenix HQ',
-  status: 'Terminated',
-  setterTier: 'Veteran',
-  manager: 'Michael Scott'
-}];
+
+function getStatusDisplay(status: string | null): string {
+  if (!status) return "—";
+  const s = status.toLowerCase();
+  if (s === "active") return "Active";
+  if (s === "onboarding") return "Onboarding";
+  if (s === "inactive") return "Inactive";
+  if (s === "terminated") return "Terminated";
+  return status;
+}
+
+function getStatusStyles(status: string | null): string {
+  const s = (status || "").toLowerCase();
+  if (s === "active") return "bg-green-100 text-green-700 border-green-200";
+  if (s === "onboarding") return "bg-amber-100 text-amber-700 border-amber-200";
+  if (s === "inactive") return "bg-gray-100 text-gray-600 border-gray-200";
+  if (s === "terminated") return "bg-red-100 text-red-700 border-red-200";
+  return "bg-gray-100 text-gray-600 border-gray-200";
+}
+
+function getTierStyles(tier: string | null): string {
+  if (!tier) return "text-gray-500";
+  if (tier === "Team Lead") return "text-indigo-600 font-extrabold";
+  if (tier === "Veteran") return "text-blue-600 font-bold";
+  if (tier === "Rookie") return "text-gray-500 font-medium";
+  return "text-gray-500";
+}
+
+function exportToCsv(people: PersonRow[]) {
+  const headers = ["Name", "Role", "Office", "Status", "Setter Tier", "Manager"];
+  const rows = people.map((p) => [
+    p.name,
+    p.roleName ?? "",
+    p.officeName ?? "",
+    getStatusDisplay(p.status),
+    p.setterTier ?? "",
+    p.managerName ?? "",
+  ]);
+  const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `people-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function PeoplePage() {
-  const getStatusStyles = (status: PersonStatus) => {
-    switch (status) {
-      case 'Active':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'Onboarding':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'Inactive':
-        return 'bg-gray-100 text-gray-600 border-gray-200';
-      case 'Terminated':
-        return 'bg-red-100 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [people, setPeople] = useState<PersonRow[]>([]);
+  const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
+  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const officeId = searchParams.get("officeId") ?? "";
+  const status = searchParams.get("status") ?? "";
+  const roleLevel = searchParams.get("roleLevel") ?? "";
+  const roleId = searchParams.get("roleId") ?? "";
+
+  const updateFilter = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) params.set(key, value);
+      else params.delete(key);
+      router.push(`/people?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const fetchPeople = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (officeId) params.set("officeId", officeId);
+      if (status) params.set("status", status);
+      if (roleLevel) params.set("roleLevel", roleLevel);
+      if (roleId) params.set("roleId", roleId);
+      const res = await fetch(`/api/people?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to load people (${res.status})`);
+      }
+      const data = await res.json();
+      setPeople(
+        data.map((p: any) => ({
+          id: p.id,
+          name: p.name ?? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
+          roleName: p.roleName ?? null,
+          officeName: p.officeName ?? null,
+          status: p.status ?? null,
+          setterTier: p.setterTier ?? null,
+          managerName: p.managerName ?? null,
+        }))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load people");
+      setPeople([]);
+    } finally {
+      setLoading(false);
     }
-  };
-  const getTierStyles = (tier: SetterTier) => {
-    switch (tier) {
-      case 'Team Lead':
-        return 'text-indigo-600 font-extrabold';
-      case 'Veteran':
-        return 'text-blue-600 font-bold';
-      case 'Rookie':
-        return 'text-gray-500 font-medium';
-      default:
-        return 'text-gray-500';
+  }, [officeId, status, roleLevel, roleId]);
+
+  const fetchOfficesAndRoles = useCallback(async () => {
+    try {
+      const [offRes, rolesRes] = await Promise.all([
+        fetch("/api/offices?active=true"),
+        fetch("/api/roles?active=true"),
+      ]);
+      if (offRes.ok) {
+        const data = await offRes.json();
+        setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));
+      }
+      if (rolesRes.ok) {
+        const data = await rolesRes.json();
+        setRoles(data.map((r: any) => ({ id: r.id, name: r.name })));
+      }
+    } catch {
+      // Non-blocking
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchPeople();
+  }, [fetchPeople]);
+
+  useEffect(() => {
+    fetchOfficesAndRoles();
+  }, [fetchOfficesAndRoles]);
+
+  const total = people.length;
+  const activeCount = people.filter((p) => (p.status || "").toLowerCase() === "active").length;
+  const onboardingCount = people.filter((p) => (p.status || "").toLowerCase() === "onboarding").length;
+  const terminatedCount = people.filter((p) => (p.status || "").toLowerCase() === "terminated").length;
+
   return (
     <>
-      {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
@@ -114,167 +181,225 @@ export function PeoplePage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => exportToCsv(people)}
+            disabled={loading || people.length === 0}
+          >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Person
+          <Button asChild>
+            <Link href="/people/new">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Person
+            </Link>
           </Button>
         </div>
       </header>
 
-      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <MetricCard
           label="Total Team"
-          value="47"
+          value={loading ? "—" : total}
           icon={Users}
-          trend="+3 this month"
-          trendUp={true} />
-
+          trend={total ? `${activeCount} active` : "No data"}
+          trendUp={true}
+        />
         <MetricCard
           label="Active Reps"
-          value="38"
+          value={loading ? "—" : activeCount}
           icon={UserCheck}
-          trend="81% of total"
-          trendUp={true} />
-
+          trend={total ? `${total ? Math.round((activeCount / total) * 100) : 0}% of total` : "—"}
+          trendUp={true}
+        />
         <MetricCard
           label="In Onboarding"
-          value="6"
+          value={loading ? "—" : onboardingCount}
           icon={GraduationCap}
-          trend="Avg 14 days"
-          trendUp={true} />
-
+          trend="Onboarding"
+          trendUp={true}
+        />
         <MetricCard
           label="Terminated"
-          value="2"
+          value={loading ? "—" : terminatedCount}
           icon={UserX}
-          trend="This month"
-          trendUp={false} />
-
+          trend="Terminated"
+          trendUp={false}
+        />
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6 p-4 bg-white border border-gray-100 rounded-sm">
         <div className="flex items-center gap-2 text-gray-500 mr-2">
           <Filter className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase tracking-wide">
-            Filters
-          </span>
+          <span className="text-xs font-bold uppercase tracking-wide">Filters</span>
         </div>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Office: All</option>
-          <option>Phoenix HQ</option>
-          <option>Denver</option>
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={officeId}
+          onChange={(e) => updateFilter("officeId", e.target.value)}
+        >
+          <option value="">Office: All</option>
+          {offices.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
         </select>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Role: All</option>
-          <option>Sales Rep</option>
-          <option>Team Lead</option>
-          <option>Manager</option>
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={roleLevel || roleId || ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            const params = new URLSearchParams(searchParams.toString());
+            if (v === "manager") {
+              params.set("roleLevel", "manager");
+              params.delete("roleId");
+            } else if (v) {
+              params.set("roleId", v);
+              params.delete("roleLevel");
+            } else {
+              params.delete("roleLevel");
+              params.delete("roleId");
+            }
+            router.push(`/people?${params.toString()}`);
+          }}
+        >
+          <option value="">Role: All</option>
+          <option value="manager">Managers only</option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
         </select>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Status: All</option>
-          <option>Active</option>
-          <option>Onboarding</option>
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={status}
+          onChange={(e) => updateFilter("status", e.target.value)}
+        >
+          <option value="">Status: All</option>
+          <option value="active">Active</option>
+          <option value="onboarding">Onboarding</option>
+          <option value="inactive">Inactive</option>
+          <option value="terminated">Terminated</option>
         </select>
       </div>
 
-      {/* Table */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white border border-gray-100 rounded-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Office
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Setter Tier
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Manager
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {people.map((person) =>
-              <tr
-                key={person.id}
-                className="hover:bg-gray-50 transition-colors group">
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold">
-                        {person.name.
-                      split(' ').
-                      map((n) => n[0]).
-                      join('')}
-                      </div>
-                      <span className="font-bold text-black">
-                        {person.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Shield className="w-3 h-3 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {person.role}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {person.office}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-sm uppercase tracking-wide border ${getStatusStyles(person.status)}`}>
-
-                      {person.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                    className={`text-xs uppercase tracking-wide ${getTierStyles(person.setterTier)}`}>
-
-                      {person.setterTier}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {person.manager}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button className="text-gray-400 hover:text-black transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-gray-500" aria-busy="true">
+              <Loader2 className="w-8 h-8 animate-spin mr-2" />
+              Loading people…
+            </div>
+          ) : people.length === 0 ? (
+            <div className="py-16 text-center text-gray-500">
+              No people match your filters. Try adjusting filters or add a person.
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Office
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Setter Tier
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Manager
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider text-right">
+                    Actions
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {people.map((person) => (
+                  <tr
+                    key={person.id}
+                    className="hover:bg-gray-50 transition-colors group"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/people/${person.id}`}
+                        className="flex items-center gap-3 font-bold text-black hover:text-indigo-600"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold shrink-0">
+                          {person.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .slice(0, 2)}
+                        </div>
+                        {person.name}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="w-3 h-3 text-gray-400 shrink-0" />
+                        <span className="text-sm font-medium text-gray-700">
+                          {person.roleName ?? "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                        <span className="text-sm font-medium text-gray-700">
+                          {person.officeName ?? "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-sm uppercase tracking-wide border ${getStatusStyles(person.status)}`}
+                      >
+                        {getStatusDisplay(person.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`text-xs uppercase tracking-wide ${getTierStyles(person.setterTier)}`}
+                      >
+                        {person.setterTier ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {person.managerName ?? "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <Link
+                        href={`/people/${person.id}`}
+                        className="text-gray-400 hover:text-black transition-colors inline-flex"
+                        aria-label={`View ${person.name}`}
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-    </>);
-
+    </>
+  );
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { MetricCard } from '@/components/MetricCard';
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/MetricCard";
 import {
   DollarSign,
   CheckCircle,
@@ -13,121 +15,175 @@ import {
   MoreHorizontal,
   Sun,
   Wind,
-  Home } from
-'lucide-react';
-import { useModals } from '@/components/ModalsContext';
-type DealStatus =
-'Sold' |
-'Pending' |
-'Permitted' |
-'Scheduled' |
-'Installed' |
-'PTO' |
-'Cancelled';
-type DealType = 'Solar' | 'HVAC' | 'Roofing';
-interface Deal {
+  Home,
+  Loader2,
+} from "lucide-react";
+import { useModals } from "@/components/ModalsContext";
+import { format } from "date-fns";
+
+interface DealRow {
   id: string;
-  customer: string;
-  setter: string;
-  closer: string;
-  type: DealType;
-  systemSize: string;
-  value: string;
-  status: DealStatus;
-  date: string;
+  customerName: string | null;
+  dealType: string;
+  systemSizeKw: string | null;
+  dealValue: string;
+  status: string;
+  setterName: string;
+  closerName: string;
+  setterId: string | null;
+  closerId: string | null;
+  closeDate: string | null;
+  saleDate: string | null;
 }
-const deals: Deal[] = [
-{
-  id: '1',
-  customer: 'John Smith',
-  setter: 'James Chen',
-  closer: 'Sarah Jenkins',
-  type: 'Solar',
-  systemSize: '8.4 kW',
-  value: '$32,500',
-  status: 'PTO',
-  date: 'Oct 24, 2023'
-},
-{
-  id: '2',
-  customer: 'Alice Johnson',
-  setter: 'Emily Davis',
-  closer: 'Mike Ross',
-  type: 'HVAC',
-  systemSize: '-',
-  value: '$12,800',
-  status: 'Installed',
-  date: 'Oct 23, 2023'
-},
-{
-  id: '3',
-  customer: 'Bob Wilson',
-  setter: 'James Chen',
-  closer: 'James Chen',
-  type: 'Solar',
-  systemSize: '12.2 kW',
-  value: '$48,000',
-  status: 'Permitted',
-  date: 'Oct 22, 2023'
-},
-{
-  id: '4',
-  customer: 'Carol White',
-  setter: 'Dwight Schrute',
-  closer: 'Michael Scott',
-  type: 'Roofing',
-  systemSize: '-',
-  value: '$22,100',
-  status: 'Pending',
-  date: 'Oct 21, 2023'
-},
-{
-  id: '5',
-  customer: 'David Brown',
-  setter: 'Emily Davis',
-  closer: 'Sarah Jenkins',
-  type: 'Solar',
-  systemSize: '6.8 kW',
-  value: '$24,500',
-  status: 'Sold',
-  date: 'Oct 20, 2023'
-}];
+
+function getStatusStyles(status: string): string {
+  const s = (status || "").toLowerCase();
+  if (s === "pto") return "bg-green-100 text-green-700 border-green-200";
+  if (s === "installed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  if (s === "scheduled") return "bg-blue-100 text-blue-700 border-blue-200";
+  if (s === "permitted") return "bg-indigo-100 text-indigo-700 border-indigo-200";
+  if (s === "sold") return "bg-amber-100 text-amber-700 border-amber-200";
+  if (s === "pending") return "bg-gray-100 text-gray-700 border-gray-200";
+  if (s === "cancelled") return "bg-red-100 text-red-700 border-red-200";
+  return "bg-gray-100 text-gray-700";
+}
+
+function getStatusDisplay(status: string): string {
+  if (!status) return "—";
+  const s = status.toLowerCase();
+  if (s === "pto") return "PTO";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function getTypeIcon(type: string) {
+  const t = (type || "").toLowerCase();
+  if (t === "solar") return <Sun className="w-4 h-4 text-amber-500 shrink-0" />;
+  if (t === "hvac") return <Wind className="w-4 h-4 text-blue-500 shrink-0" />;
+  if (t === "roofing") return <Home className="w-4 h-4 text-red-500 shrink-0" />;
+  return null;
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  try {
+    return format(new Date(dateStr), "MMM d, yyyy");
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatCurrency(value: string): string {
+  const n = parseFloat(value);
+  if (Number.isNaN(n)) return value;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
+}
 
 export function DealsPage() {
   const { openNewDeal } = useModals();
-  const getStatusStyles = (status: DealStatus) => {
-    switch (status) {
-      case 'PTO':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'Installed':
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'Scheduled':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'Permitted':
-        return 'bg-indigo-100 text-indigo-700 border-indigo-200';
-      case 'Sold':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'Pending':
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-      case 'Cancelled':
-        return 'bg-red-100 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-700';
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [deals, setDeals] = useState<DealRow[]>([]);
+  const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const officeId = searchParams.get("officeId") ?? "";
+  const status = searchParams.get("status") ?? "";
+  const dealType = searchParams.get("dealType") ?? "";
+  const startDate = searchParams.get("startDate") ?? "";
+  const endDate = searchParams.get("endDate") ?? "";
+
+  const updateFilter = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) params.set(key, value);
+      else params.delete(key);
+      router.push(`/deals?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const fetchDeals = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (officeId) params.set("officeId", officeId);
+      if (status) params.set("status", status);
+      if (dealType) params.set("dealType", dealType);
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      const res = await fetch(`/api/deals?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to load deals (${res.status})`);
+      }
+      const data = await res.json();
+      setDeals(
+        data.map((row: any) => {
+          const d = row.deal || row;
+          const setter = row.setter;
+          const closer = row.closer;
+          return {
+            id: d.id,
+            customerName: d.customerName ?? null,
+            dealType: d.dealType ?? "",
+            systemSizeKw: d.systemSizeKw ?? null,
+            dealValue: d.dealValue ?? "0",
+            status: d.status ?? "",
+            setterName: setter
+              ? `${setter.firstName ?? ""} ${setter.lastName ?? ""}`.trim()
+              : "—",
+            closerName: closer
+              ? `${closer.firstName ?? ""} ${closer.lastName ?? ""}`.trim()
+              : "—",
+            setterId: setter?.id ?? null,
+            closerId: closer?.id ?? null,
+            closeDate: d.closeDate ?? null,
+            saleDate: d.saleDate ?? null,
+          };
+        })
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load deals");
+      setDeals([]);
+    } finally {
+      setLoading(false);
     }
-  };
-  const getTypeIcon = (type: DealType) => {
-    switch (type) {
-      case 'Solar':
-        return <Sun className="w-4 h-4 text-amber-500" />;
-      case 'HVAC':
-        return <Wind className="w-4 h-4 text-blue-500" />;
-      case 'Roofing':
-        return <Home className="w-4 h-4 text-red-500" />;
+  }, [officeId, status, dealType, startDate, endDate]);
+
+  const fetchOffices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/offices?active=true");
+      if (res.ok) {
+        const data = await res.json();
+        setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));
+      }
+    } catch {
+      // Non-blocking
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDeals();
+  }, [fetchDeals]);
+
+  useEffect(() => {
+    fetchOffices();
+  }, [fetchOffices]);
+
+  const totalValue = deals.reduce((sum, d) => sum + (parseFloat(d.dealValue) || 0), 0);
+  const soldCount = deals.filter((d) => (d.status || "").toLowerCase() === "sold").length;
+  const ptoCount = deals.filter((d) => (d.status || "").toLowerCase() === "pto").length;
+  const installedCount = deals.filter((d) => (d.status || "").toLowerCase() === "installed").length;
+
   return (
     <>
-      {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
@@ -145,155 +201,227 @@ export function DealsPage() {
         </div>
       </header>
 
-      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <MetricCard
           label="Total Revenue"
-          value="$142.5k"
+          value={loading ? "—" : formatCurrency(String(totalValue))}
           icon={DollarSign}
-          trend="+12% vs last month"
-          trendUp={true} />
-
+          trend={deals.length ? `${deals.length} deals` : "No data"}
+          trendUp={true}
+        />
         <MetricCard
           label="Deals Sold"
-          value="18"
+          value={loading ? "—" : soldCount}
           icon={Zap}
-          trend="5 this week"
-          trendUp={true} />
-
+          trend="Sold"
+          trendUp={true}
+        />
         <MetricCard
           label="Install Pending"
-          value="8"
+          value={loading ? "—" : installedCount}
           icon={Clock}
-          trend="Avg 12 days"
-          trendUp={true} />
-
+          trend="Installed"
+          trendUp={true}
+        />
         <MetricCard
           label="PTO Complete"
-          value="4"
+          value={loading ? "—" : ptoCount}
           icon={CheckCircle}
-          trend="This month"
-          trendUp={true} />
-
+          trend="PTO"
+          trendUp={true}
+        />
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6 p-4 bg-white border border-gray-100 rounded-sm">
         <div className="flex items-center gap-2 text-gray-500 mr-2">
           <Filter className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase tracking-wide">
-            Filters
-          </span>
+          <span className="text-xs font-bold uppercase tracking-wide">Filters</span>
         </div>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Status: All</option>
-          <option>Sold</option>
-          <option>Installed</option>
-          <option>PTO</option>
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={status}
+          onChange={(e) => updateFilter("status", e.target.value)}
+        >
+          <option value="">Status: All</option>
+          <option value="sold">Sold</option>
+          <option value="pending">Pending</option>
+          <option value="permitted">Permitted</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="installed">Installed</option>
+          <option value="pto">PTO</option>
+          <option value="cancelled">Cancelled</option>
         </select>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Type: All</option>
-          <option>Solar</option>
-          <option>HVAC</option>
-          <option>Roofing</option>
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={dealType}
+          onChange={(e) => updateFilter("dealType", e.target.value)}
+        >
+          <option value="">Type: All</option>
+          <option value="solar">Solar</option>
+          <option value="hvac">HVAC</option>
+          <option value="roofing">Roofing</option>
         </select>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Office: All</option>
-          <option>Phoenix HQ</option>
-          <option>Denver</option>
+        <select
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={officeId}
+          onChange={(e) => updateFilter("officeId", e.target.value)}
+        >
+          <option value="">Office: All</option>
+          {offices.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
         </select>
+        <input
+          type="date"
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={startDate}
+          onChange={(e) => updateFilter("startDate", e.target.value)}
+          placeholder="Start"
+        />
+        <input
+          type="date"
+          className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+          value={endDate}
+          onChange={(e) => updateFilter("endDate", e.target.value)}
+          placeholder="End"
+        />
       </div>
 
-      {/* Table */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white border border-gray-100 rounded-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Value
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  System Size
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Setter / Closer
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {deals.map((deal) =>
-              <tr
-                key={deal.id}
-                className="hover:bg-gray-50 transition-colors group">
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-bold text-black">
-                      {deal.customer}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {getTypeIcon(deal.type)}
-                      <span className="text-sm font-medium text-gray-700">
-                        {deal.type}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-mono font-bold text-black">
-                      {deal.value}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {deal.systemSize}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-gray-900">
-                        S: {deal.setter}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        C: {deal.closer}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-sm uppercase tracking-wide border ${getStatusStyles(deal.status)}`}>
-
-                      {deal.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {deal.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button className="text-gray-400 hover:text-black transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-gray-500" aria-busy="true">
+              <Loader2 className="w-8 h-8 animate-spin mr-2" />
+              Loading deals…
+            </div>
+          ) : deals.length === 0 ? (
+            <div className="py-16 text-center text-gray-500">
+              No deals match your filters. Try adjusting filters or create a new deal.
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Value
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    System Size
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Setter / Closer
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider text-right">
+                    Actions
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {deals.map((deal) => (
+                  <tr key={deal.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-bold text-black">
+                        {deal.customerName ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(deal.dealType)}
+                        <span className="text-sm font-medium text-gray-700 capitalize">
+                          {deal.dealType || "—"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono font-bold text-black">
+                        {formatCurrency(deal.dealValue)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {deal.systemSizeKw ? `${deal.systemSizeKw} kW` : "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-gray-900">
+                          S:{" "}
+                          {deal.setterId ? (
+                            <Link
+                              href={`/people/${deal.setterId}`}
+                              className="text-indigo-600 hover:underline"
+                            >
+                              {deal.setterName}
+                            </Link>
+                          ) : (
+                            deal.setterName
+                          )}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          C:{" "}
+                          {deal.closerId ? (
+                            <Link
+                              href={`/people/${deal.closerId}`}
+                              className="text-indigo-600 hover:underline"
+                            >
+                              {deal.closerName}
+                            </Link>
+                          ) : (
+                            deal.closerName
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-sm uppercase tracking-wide border ${getStatusStyles(deal.status)}`}
+                      >
+                        {getStatusDisplay(deal.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(deal.closeDate || deal.saleDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      {deal.closerId ? (
+                        <Link
+                          href={`/people/${deal.closerId}`}
+                          className="text-gray-400 hover:text-black transition-colors inline-flex"
+                          aria-label={`View closer ${deal.closerName}`}
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </Link>
+                      ) : (
+                        <span className="text-gray-300">
+                          <MoreHorizontal className="w-5 h-5" />
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-    </>);
-
+    </>
+  );
 }

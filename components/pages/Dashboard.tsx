@@ -1,220 +1,137 @@
 "use client";
 
-import React, { useState } from 'react';
-import { PipelineMetrics } from '@/components/PipelineMetrics';
-import { PipelineFilters } from '@/components/PipelineFilters';
-import { PipelineBoard } from '@/components/PipelineBoard';
-import { PipelineListView } from '@/components/PipelineListView';
-import { NeedsActionAlert } from '@/components/NeedsActionAlert';
-import { Button } from '@/components/ui/button';
-import { Plus, Send, UserCheck, LayoutGrid, List } from 'lucide-react';
-import { useModals } from '@/components/ModalsContext';
-import { Candidate } from '@/components/CandidateCard';
-// Shared candidate data for both views
-const candidatesData: {
-  stage: string;
-  stageLabel: string;
-  items: Candidate[];
-}[] = [
-{
-  stage: 'lead',
-  stageLabel: 'Lead',
-  items: [
-  {
-    id: '1',
-    name: 'Sarah Miller',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Phoenix HQ',
-    recruiterName: 'Mike Ross',
-    recruiterInitials: 'MR',
-    source: 'LinkedIn',
-    priority: 'high',
-    daysInStage: 2
-  },
-  {
-    id: '2',
-    name: 'James Chen',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Denver',
-    recruiterName: 'Sarah Jenkins',
-    recruiterInitials: 'SJ',
-    source: 'Indeed',
-    priority: 'medium',
-    daysInStage: 1
-  },
-  {
-    id: '3',
-    name: 'Emily Davis',
-    targetRole: 'Team Lead',
-    targetOffice: 'Austin',
-    recruiterName: 'Alex Doe',
-    recruiterInitials: 'AD',
-    source: 'Referral',
-    priority: 'high',
-    daysInStage: 4
-  }]
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { RecruitingKanban } from "@/components/recruiting/recruiting-kanban";
+import { RecruitingTable } from "@/components/recruiting/recruiting-table";
+import { Button } from "@/components/ui/button";
+import { Plus, Send, UserCheck, LayoutGrid, List, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
+import { useModals } from "@/components/ModalsContext";
+import type { RecruitListItem } from "@/types/recruiting";
 
-},
-{
-  stage: 'contacted',
-  stageLabel: 'Contacted',
-  items: [
-  {
-    id: '4',
-    name: 'Michael Scott',
-    targetRole: 'Manager',
-    targetOffice: 'Dallas',
-    recruiterName: 'Mike Ross',
-    recruiterInitials: 'MR',
-    source: 'Direct',
-    priority: 'medium',
-    daysInStage: 6
-  },
-  {
-    id: '5',
-    name: 'Dwight Schrute',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Phoenix HQ',
-    recruiterName: 'Sarah Jenkins',
-    recruiterInitials: 'SJ',
-    source: 'ZipRecruiter',
-    priority: 'low',
-    daysInStage: 2
-  }]
+const PIPELINE_STATUSES = [
+  "lead",
+  "contacted",
+  "interviewing",
+  "offer_sent",
+  "agreement_sent",
+  "agreement_signed",
+] as const;
 
-},
-{
-  stage: 'interviewing',
-  stageLabel: 'Interviewing',
-  items: [
-  {
-    id: '6',
-    name: 'Jim Halpert',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Denver',
-    recruiterName: 'Alex Doe',
-    recruiterInitials: 'AD',
-    source: 'Referral',
-    priority: 'high',
-    daysInStage: 1
-  },
-  {
-    id: '7',
-    name: 'Pam Beesly',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Austin',
-    recruiterName: 'Sarah Jenkins',
-    recruiterInitials: 'SJ',
-    source: 'Indeed',
-    priority: 'medium',
-    daysInStage: 3
-  }]
+type ViewMode = "kanban" | "list";
 
-},
-{
-  stage: 'offerSent',
-  stageLabel: 'Offer Sent',
-  items: [
-  {
-    id: '8',
-    name: 'Ryan Howard',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Phoenix HQ',
-    recruiterName: 'Mike Ross',
-    recruiterInitials: 'MR',
-    source: 'LinkedIn',
-    priority: 'high',
-    daysInStage: 2
-  }]
-
-},
-{
-  stage: 'agreementSent',
-  stageLabel: 'Agreement Sent',
-  items: [
-  {
-    id: '9',
-    name: 'Kelly Kapoor',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Dallas',
-    recruiterName: 'Alex Doe',
-    recruiterInitials: 'AD',
-    source: 'ZipRecruiter',
-    priority: 'medium',
-    daysInStage: 1
-  }]
-
-},
-{
-  stage: 'agreementSigned',
-  stageLabel: 'Agreement Signed',
-  items: [
-  {
-    id: '10',
-    name: 'Toby Flenderson',
-    targetRole: 'Team Lead',
-    targetOffice: 'Denver',
-    recruiterName: 'Sarah Jenkins',
-    recruiterInitials: 'SJ',
-    source: 'Direct',
-    priority: 'low',
-    daysInStage: 0
-  }]
-
-},
-{
-  stage: 'onboarding',
-  stageLabel: 'Onboarding',
-  items: [
-  {
-    id: '11',
-    name: 'Stanley Hudson',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Phoenix HQ',
-    recruiterName: 'Mike Ross',
-    recruiterInitials: 'MR',
-    source: 'Referral',
-    priority: 'medium',
-    daysInStage: 5
-  },
-  {
-    id: '12',
-    name: 'Phyllis Vance',
-    targetRole: 'Sales Rep',
-    targetOffice: 'Austin',
-    recruiterName: 'Sarah Jenkins',
-    recruiterInitials: 'SJ',
-    source: 'Indeed',
-    priority: 'medium',
-    daysInStage: 12
-  }]
-
-},
-{
-  stage: 'converted',
-  stageLabel: 'Converted',
-  items: [
-  {
-    id: '13',
-    name: 'Creed Bratton',
-    targetRole: 'Regional Director',
-    targetOffice: 'Dallas',
-    recruiterName: 'Alex Doe',
-    recruiterInitials: 'AD',
-    source: 'Direct',
-    priority: 'high',
-    daysInStage: 1
-  }]
-
-}];
-
-type ViewMode = 'kanban' | 'list';
 export function Dashboard() {
   const { openAddRecruit } = useModals();
-  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [recruits, setRecruits] = useState<RecruitListItem[]>([]);
+  const [stats, setStats] = useState<{
+    inPipeline: number;
+    byStatus: Record<string, number>;
+    startingSoonCount: number;
+    actionItems: Array<{ recruitId: string; reason: string; message: string }>;
+  } | null>(null);
+  const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
+  const [people, setPeople] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+
+  const status = searchParams.get("status") ?? "";
+  const recruiterId = searchParams.get("recruiterId") ?? "";
+  const officeId = searchParams.get("officeId") ?? "";
+
+  const updateFilter = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) params.set(key, value);
+      else params.delete(key);
+      router.push(`/recruiting?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const fetchRecruits = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (recruiterId) params.set("recruiterId", recruiterId);
+      if (officeId) params.set("officeId", officeId);
+      const res = await fetch(`/api/recruits?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to load recruits");
+      }
+      const data = await res.json();
+      const pipelineOnly = (data || []).filter((item: RecruitListItem) =>
+        PIPELINE_STATUSES.includes(item.recruit?.status as (typeof PIPELINE_STATUSES)[number])
+      );
+      setRecruits(pipelineOnly);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load recruits");
+      setRecruits([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [status, recruiterId, officeId]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/recruiting/stats");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch {
+      setStats(null);
+    }
+  }, []);
+
+  const fetchOfficesAndPeople = useCallback(async () => {
+    try {
+      const [offRes, peopleRes] = await Promise.all([
+        fetch("/api/offices?active=true"),
+        fetch("/api/people?roleLevel=manager"),
+      ]);
+      if (offRes.ok) {
+        const data = await offRes.json();
+        setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));
+      }
+      if (peopleRes.ok) {
+        const data = await peopleRes.json();
+        setPeople(
+          data.map((p: any) => ({
+            id: p.id,
+            firstName: p.firstName,
+            lastName: p.lastName,
+          }))
+        );
+      }
+    } catch {
+      // Non-blocking
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecruits();
+  }, [fetchRecruits]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  useEffect(() => {
+    fetchOfficesAndPeople();
+  }, [fetchOfficesAndPeople]);
+
+  const actionItems = stats?.actionItems ?? [];
+  const inPipeline = stats?.inPipeline ?? 0;
+  const startingSoon = stats?.startingSoonCount ?? 0;
+
   return (
     <>
-      {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
@@ -225,11 +142,11 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => router.push("/recruiting")}>
             <UserCheck className="w-4 h-4 mr-2" />
             Convert to Person
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => router.push("/recruiting")}>
             <Send className="w-4 h-4 mr-2" />
             Send Agreement
           </Button>
@@ -241,46 +158,175 @@ export function Dashboard() {
       </header>
 
       {/* Metrics */}
-      <PipelineMetrics />
-
-      {/* Alert Section */}
-      <div className="shrink-0">
-        <NeedsActionAlert />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
+        <div className="bg-[#0a0a0a] text-white p-5 rounded-sm flex flex-col justify-between h-32">
+          <div className="flex justify-between items-start">
+            <span className="text-gray-400 text-xs font-bold tracking-wide uppercase">
+              Active Recruits
+            </span>
+          </div>
+          <div className="mt-auto">
+            <div className="text-3xl font-extrabold tracking-tighter leading-none mb-2">
+              {loading ? "—" : inPipeline}
+            </div>
+            <div className="text-[10px] font-medium text-gray-400">
+              In pipeline
+            </div>
+          </div>
+        </div>
+        <div className="bg-[#0a0a0a] text-white p-5 rounded-sm flex flex-col justify-between h-32">
+          <div className="flex justify-between items-start">
+            <span className="text-gray-400 text-xs font-bold tracking-wide uppercase">
+              Starting Soon
+            </span>
+          </div>
+          <div className="mt-auto">
+            <div className="text-3xl font-extrabold tracking-tighter leading-none mb-2">
+              {loading ? "—" : startingSoon}
+            </div>
+            <div className="text-[10px] font-medium text-gray-400">
+              Agreement signed / Onboarding
+            </div>
+          </div>
+        </div>
+        <div className="bg-[#0a0a0a] text-white p-5 rounded-sm flex flex-col justify-between h-32">
+          <div className="flex justify-between items-start">
+            <span className="text-gray-400 text-xs font-bold tracking-wide uppercase">
+              In Pipeline (view)
+            </span>
+          </div>
+          <div className="mt-auto">
+            <div className="text-3xl font-extrabold tracking-tighter leading-none mb-2">
+              {loading ? "—" : recruits.length}
+            </div>
+            <div className="text-[10px] font-medium text-gray-400">
+              After filters
+            </div>
+          </div>
+        </div>
+        <div className="bg-[#0a0a0a] text-white p-5 rounded-sm flex flex-col justify-between h-32">
+          <div className="flex justify-between items-start">
+            <span className="text-gray-400 text-xs font-bold tracking-wide uppercase">
+              Action Items
+            </span>
+          </div>
+          <div className="mt-auto">
+            <div className="text-3xl font-extrabold tracking-tighter leading-none mb-2">
+              {actionItems.length}
+            </div>
+            <div className="text-[10px] font-medium text-gray-400">
+              Need attention
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Filters + View Toggle */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 shrink-0">
-        <div className="flex-1">
-          <PipelineFilters />
+      {actionItems.length > 0 && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-sm mb-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-bold text-gray-900 text-sm">
+              {actionItems.length} Candidate{actionItems.length !== 1 ? "s" : ""} Need Attention
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {actionItems
+                .slice(0, 3)
+                .map((a) => a.message)
+                .join(" • ")}
+              {actionItems.length > 3 ? ` • +${actionItems.length - 3} more` : ""}
+            </p>
+          </div>
+          <button
+            className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center whitespace-nowrap"
+            onClick={() => router.push("/recruiting")}
+          >
+            View Pipeline <ChevronRight className="w-3 h-3 ml-1" />
+          </button>
         </div>
+      )}
 
-        {/* View Toggle */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 shrink-0">
+        <div className="flex flex-wrap gap-3 p-4 bg-white border border-gray-100 rounded-sm flex-1">
+          <span className="text-xs font-bold uppercase tracking-wide text-gray-500 self-center mr-2">
+            Filters
+          </span>
+          <select
+            className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+            value={status}
+            onChange={(e) => updateFilter("status", e.target.value)}
+          >
+            <option value="">Status: All</option>
+            {PIPELINE_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s.replace("_", " ")}
+              </option>
+            ))}
+          </select>
+          <select
+            className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+            value={officeId}
+            onChange={(e) => updateFilter("officeId", e.target.value)}
+          >
+            <option value="">Office: All</option>
+            {offices.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide"
+            value={recruiterId}
+            onChange={(e) => updateFilter("recruiterId", e.target.value)}
+          >
+            <option value="">Recruiter: All</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.firstName} {p.lastName}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center bg-white border border-gray-100 rounded-sm p-1 h-fit self-start sm:self-center">
           <button
-            onClick={() => setViewMode('kanban')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold uppercase tracking-wide transition-all ${viewMode === 'kanban' ? 'bg-black text-white' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}>
-
+            onClick={() => setViewMode("kanban")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold uppercase tracking-wide transition-all ${
+              viewMode === "kanban" ? "bg-black text-white" : "text-gray-500 hover:text-black hover:bg-gray-50"
+            }`}
+          >
             <LayoutGrid className="w-4 h-4" />
             Kanban
           </button>
           <button
-            onClick={() => setViewMode('list')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold uppercase tracking-wide transition-all ${viewMode === 'list' ? 'bg-black text-white' : 'text-gray-500 hover:text-black hover:bg-gray-50'}`}>
-
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold uppercase tracking-wide transition-all ${
+              viewMode === "list" ? "bg-black text-white" : "text-gray-500 hover:text-black hover:bg-gray-50"
+            }`}
+          >
             <List className="w-4 h-4" />
             List
           </button>
         </div>
       </div>
 
-      {/* Content - Kanban or List */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="flex-1 min-h-0">
-        {viewMode === 'kanban' ?
-        <PipelineBoard /> :
-
-        <PipelineListView candidates={candidatesData} />
-        }
+        {loading ? (
+          <div className="flex items-center justify-center py-24 text-gray-500" aria-busy="true">
+            <Loader2 className="w-8 h-8 animate-spin mr-2" />
+            Loading pipeline…
+          </div>
+        ) : viewMode === "kanban" ? (
+          <RecruitingKanban initialRecruits={recruits} />
+        ) : (
+          <RecruitingTable initialRecruits={recruits} />
+        )}
       </div>
-    </>);
-
+    </>
+  );
 }

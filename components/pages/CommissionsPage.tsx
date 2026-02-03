@@ -1,111 +1,205 @@
 "use client";
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { MetricCard } from '@/components/MetricCard';
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/MetricCard";
 import {
   DollarSign,
-  Briefcase,
   Calendar,
   Download,
-  Filter,
-  MoreHorizontal,
   CheckCircle,
   Clock,
-  AlertCircle } from
-'lucide-react';
-type CommissionStatus = 'Pending' | 'Approved' | 'Paid' | 'Held' | 'Void';
-type CommissionType = 'Setter' | 'Closer' | 'Self Gen' | 'Override';
-interface Commission {
-  id: string;
-  person: string;
-  dealRef: string;
-  type: CommissionType;
-  amount: string;
-  status: CommissionStatus;
-  date: string;
+  Loader2,
+} from "lucide-react";
+import { CommissionsTabs } from "@/components/commissions/commissions-tabs";
+import { Permission } from "@/lib/permissions/types";
+
+function getMonthRange(): { start: string; end: string } {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
 }
-const commissions: Commission[] = [
-{
-  id: '1',
-  person: 'Sarah Jenkins',
-  dealRef: 'Smith - Solar 8.4kW',
-  type: 'Closer',
-  amount: '$2,450.00',
-  status: 'Approved',
-  date: 'Oct 24, 2023'
-},
-{
-  id: '2',
-  person: 'James Chen',
-  dealRef: 'Smith - Solar 8.4kW',
-  type: 'Setter',
-  amount: '$850.00',
-  status: 'Approved',
-  date: 'Oct 24, 2023'
-},
-{
-  id: '3',
-  person: 'Mike Ross',
-  dealRef: 'Team Override - Oct',
-  type: 'Override',
-  amount: '$1,240.00',
-  status: 'Pending',
-  date: 'Oct 25, 2023'
-},
-{
-  id: '4',
-  person: 'Emily Davis',
-  dealRef: 'Wilson - Solar 12.2kW',
-  type: 'Setter',
-  amount: '$1,100.00',
-  status: 'Paid',
-  date: 'Oct 15, 2023'
-},
-{
-  id: '5',
-  person: 'James Chen',
-  dealRef: 'Brown - Solar 6.8kW',
-  type: 'Self Gen',
-  amount: '$3,200.00',
-  status: 'Pending',
-  date: 'Oct 20, 2023'
-}];
 
 export function CommissionsPage() {
-  const getStatusStyles = (status: CommissionStatus) => {
-    switch (status) {
-      case 'Paid':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'Approved':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'Pending':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'Held':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'Void':
-        return 'bg-gray-100 text-gray-600 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-700';
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [commissionsData, setCommissionsData] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [canApprove, setCanApprove] = useState(false);
+  const [canRunPayroll, setCanRunPayroll] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [runningPayroll, setRunningPayroll] = useState(false);
+  const [payrollStart, setPayrollStart] = useState("");
+  const [payrollEnd, setPayrollEnd] = useState("");
+  const [summary, setSummary] = useState<{
+    totalCommissions: number;
+    totalPeople: number;
+    pendingAmount: number;
+  } | null>(null);
+
+  const tab = searchParams.get("tab") || "my-deals";
+  const status = searchParams.get("status") ?? "";
+  const dealType = searchParams.get("dealType") ?? "";
+  const commissionType = searchParams.get("commissionType") ?? "";
+  const dateStart = searchParams.get("dateStart") ?? "";
+  const dateEnd = searchParams.get("dateEnd") ?? "";
+
+  const fetchCommissions = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      params.set("tab", tab);
+      if (status) params.set("status", status);
+      if (dealType) params.set("dealType", dealType);
+      if (commissionType) params.set("commissionType", commissionType);
+      if (dateStart) params.set("dateStart", dateStart);
+      if (dateEnd) params.set("dateEnd", dateEnd);
+      const res = await fetch(`/api/commissions?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to load commissions (${res.status})`);
+      }
+      const data = await res.json();
+      setCommissionsData(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load commissions");
+      setCommissionsData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [tab, status, dealType, commissionType, dateStart, dateEnd]);
+
+  const fetchMe = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUserId(data.user?.id ?? "");
+        const perms = data.permissions ?? [];
+        setCanApprove(perms.includes(Permission.APPROVE_COMMISSIONS));
+        setCanRunPayroll(perms.includes(Permission.RUN_PAYROLL));
+      }
+    } catch {
+      // Non-blocking
+    }
+  }, []);
+
+  const fetchSummary = useCallback(async () => {
+    if (!canRunPayroll) return;
+    const { start, end } = getMonthRange();
+    try {
+      const res = await fetch(
+        `/api/payroll/summary?startDate=${start}&endDate=${end}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSummary(data);
+      }
+    } catch {
+      setSummary(null);
+    }
+  }, [canRunPayroll]);
+
+  useEffect(() => {
+    fetchCommissions();
+  }, [fetchCommissions]);
+
+  useEffect(() => {
+    fetchMe();
+  }, [fetchMe]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
+  useEffect(() => {
+    const { start, end } = getMonthRange();
+    if (!payrollStart) setPayrollStart(start);
+    if (!payrollEnd) setPayrollEnd(end);
+  }, []);
+
+  const handleExportPayroll = async () => {
+    const start = payrollStart || getMonthRange().start;
+    const end = payrollEnd || getMonthRange().end;
+    setExporting(true);
+    try {
+      const res = await fetch("/api/payroll/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: start, endDate: end }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll-${start}-to-${end}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
     }
   };
-  const getStatusIcon = (status: CommissionStatus) => {
-    switch (status) {
-      case 'Paid':
-        return <CheckCircle className="w-3 h-3 mr-1" />;
-      case 'Approved':
-        return <CheckCircle className="w-3 h-3 mr-1" />;
-      case 'Pending':
-        return <Clock className="w-3 h-3 mr-1" />;
-      case 'Held':
-        return <AlertCircle className="w-3 h-3 mr-1" />;
-      default:
-        return null;
+
+  const handleRunPayroll = async () => {
+    const start = payrollStart || getMonthRange().start;
+    const end = payrollEnd || getMonthRange().end;
+    setRunningPayroll(true);
+    try {
+      const periodRes = await fetch(
+        `/api/payroll/period?startDate=${start}&endDate=${end}`
+      );
+      if (!periodRes.ok) throw new Error("Failed to load period");
+      const periodList = await periodRes.json();
+      const approvedIds = (periodList || [])
+        .filter((r: any) => (r.status || "").toLowerCase() === "approved")
+        .map((r: any) => r.id);
+      if (approvedIds.length === 0) {
+        alert("No approved commissions in this period to mark as paid.");
+        setRunningPayroll(false);
+        return;
+      }
+      const markRes = await fetch("/api/payroll/mark-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commissionIds: approvedIds }),
+      });
+      if (!markRes.ok) {
+        const data = await markRes.json().catch(() => ({}));
+        throw new Error(data.error || "Mark paid failed");
+      }
+      await fetchCommissions();
+      await fetchSummary();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Run payroll failed");
+    } finally {
+      setRunningPayroll(false);
     }
   };
+
+  const pendingPayout = summary?.pendingAmount ?? 0;
+  const nextPayrollLabel = (() => {
+    const n = new Date();
+    n.setMonth(n.getMonth() + 1);
+    n.setDate(1);
+    return n.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  })();
+
   return (
     <>
-      {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
@@ -115,168 +209,126 @@ export function CommissionsPage() {
             Track earnings, approve payouts, and manage payroll.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export Payroll
-          </Button>
-          <Button>
-            <DollarSign className="w-4 h-4 mr-2" />
-            Run Payroll
-          </Button>
-        </div>
+        {canRunPayroll && (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm"
+                value={payrollStart}
+                onChange={(e) => setPayrollStart(e.target.value)}
+                aria-label="Payroll start date"
+              />
+              <span className="text-gray-500">to</span>
+              <input
+                type="date"
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm"
+                value={payrollEnd}
+                onChange={(e) => setPayrollEnd(e.target.value)}
+                aria-label="Payroll end date"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleExportPayroll}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Export Payroll
+            </Button>
+            <Button onClick={handleRunPayroll} disabled={runningPayroll}>
+              {runningPayroll ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <DollarSign className="w-4 h-4 mr-2" />
+              )}
+              Run Payroll
+            </Button>
+          </div>
+        )}
       </header>
 
-      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
         <MetricCard
           label="Pending Payout"
-          value="$12,450"
+          value={
+            summary != null
+              ? new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(pendingPayout)
+              : "—"
+          }
           icon={Clock}
           trend="Next cycle"
-          trendUp={true} />
-
+          trendUp={true}
+        />
         <MetricCard
-          label="Approved"
-          value="$8,200"
+          label="Approved / Paid (period)"
+          value={
+            summary != null
+              ? new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(Math.max(0, (summary?.totalCommissions ?? 0) - pendingPayout))
+              : "—"
+          }
           icon={CheckCircle}
           trend="Ready to pay"
-          trendUp={true} />
-
+          trendUp={true}
+        />
         <MetricCard
-          label="Paid YTD"
-          value="$145.2k"
+          label="Total (period)"
+          value={
+            summary != null
+              ? new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(summary?.totalCommissions ?? 0)
+              : "—"
+          }
           icon={DollarSign}
-          trend="+24% vs last year"
-          trendUp={true} />
-
+          trend={summary ? `${summary?.totalPeople ?? 0} people` : "—"}
+          trendUp={true}
+        />
         <MetricCard
           label="Next Payroll"
-          value="Nov 1"
+          value={nextPayrollLabel}
           icon={Calendar}
-          trend="In 5 days"
-          trendUp={true} />
-
+          trend="Next month"
+          trendUp={true}
+        />
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button className="px-6 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 uppercase tracking-wide">
-          All Commissions
-        </button>
-        <button className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-black border-b-2 border-transparent hover:border-gray-200 transition-colors uppercase tracking-wide">
-          My Earnings
-        </button>
-        <button className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-black border-b-2 border-transparent hover:border-gray-200 transition-colors uppercase tracking-wide">
-          Team Overrides
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6 p-4 bg-white border border-gray-100 rounded-sm">
-        <div className="flex items-center gap-2 text-gray-500 mr-2">
-          <Filter className="w-4 h-4" />
-          <span className="text-xs font-bold uppercase tracking-wide">
-            Filters
-          </span>
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm">
+          {error}
         </div>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Status: All</option>
-          <option>Pending</option>
-          <option>Approved</option>
-          <option>Paid</option>
-        </select>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Type: All</option>
-          <option>Setter</option>
-          <option>Closer</option>
-          <option>Override</option>
-        </select>
-        <select className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-2 px-3 rounded-sm uppercase tracking-wide">
-          <option>Person: All</option>
-          <option>Sarah Jenkins</option>
-          <option>James Chen</option>
-        </select>
-      </div>
+      )}
 
-      {/* Table */}
-      <div className="bg-white border border-gray-100 rounded-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Person
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Deal Reference
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-4 text-xs font-extrabold text-gray-500 uppercase tracking-wider text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {commissions.map((comm) =>
-              <tr
-                key={comm.id}
-                className="hover:bg-gray-50 transition-colors group">
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-bold text-black">{comm.person}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-3 h-3 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {comm.dealRef}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                      {comm.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-mono font-bold text-black">
-                      {comm.amount}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-sm uppercase tracking-wide border flex items-center w-fit ${getStatusStyles(comm.status)}`}>
-
-                      {getStatusIcon(comm.status)}
-                      {comm.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {comm.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button className="text-gray-400 hover:text-black transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-gray-500" aria-busy="true">
+          <Loader2 className="w-8 h-8 animate-spin mr-2" />
+          Loading commissions…
         </div>
-      </div>
-    </>);
-
+      ) : (
+        <CommissionsTabs
+          activeTab={tab}
+          commissionsData={commissionsData}
+          currentUserId={currentUserId}
+          canApprove={canApprove}
+        />
+      )}
+    </>
+  );
 }

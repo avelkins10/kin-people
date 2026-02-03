@@ -1,135 +1,74 @@
 "use client";
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  GitBranch,
-  Search,
-  ZoomIn,
-  ZoomOut,
-  ChevronDown,
-  User,
-  MapPin } from
-'lucide-react';
-interface OrgNode {
-  id: string;
-  name: string;
-  role: string;
-  office: string;
-  teamSize: number;
-  avatar?: string;
-  children?: OrgNode[];
-}
-const orgData: OrgNode = {
-  id: '1',
-  name: 'Michael Scott',
-  role: 'Regional Manager',
-  office: 'Dallas',
-  teamSize: 42,
-  children: [
-  {
-    id: '2',
-    name: 'Sarah Jenkins',
-    role: 'Team Lead',
-    office: 'Phoenix HQ',
-    teamSize: 12,
-    children: [
-    {
-      id: '4',
-      name: 'James Chen',
-      role: 'Sales Rep',
-      office: 'Phoenix HQ',
-      teamSize: 0
-    },
-    {
-      id: '5',
-      name: 'Dwight Schrute',
-      role: 'Sales Rep',
-      office: 'Phoenix HQ',
-      teamSize: 0
-    }]
+import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { OrgChartControls } from "@/components/org-chart/org-chart-controls";
+import { OrgTreeView } from "@/components/org-chart/org-tree-view";
+import { OrgListView } from "@/components/org-chart/org-list-view";
+import { buildOrgTree } from "@/lib/db/helpers/org-chart-helpers";
+import type { PersonData, RelationshipType } from "@/types/org-chart";
+import { GitBranch, Search, Loader2 } from "lucide-react";
 
-  },
-  {
-    id: '3',
-    name: 'Mike Ross',
-    role: 'Team Lead',
-    office: 'Denver',
-    teamSize: 8,
-    children: [
-    {
-      id: '6',
-      name: 'Emily Davis',
-      role: 'Sales Rep',
-      office: 'Denver',
-      teamSize: 0
-    }]
-
-  }]
-
-};
-function OrgNodeCard({ node }: {node: OrgNode;}) {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="w-64 bg-white border border-gray-200 rounded-sm shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group p-4 relative z-10">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center text-sm font-bold shrink-0">
-            {node.name.
-            split(' ').
-            map((n) => n[0]).
-            join('')}
-          </div>
-          <div>
-            <h4 className="font-bold text-sm text-gray-900 leading-tight group-hover:text-indigo-600 transition-colors">
-              {node.name}
-            </h4>
-            <p className="text-xs font-medium text-indigo-600 mt-0.5">
-              {node.role}
-            </p>
-            <div className="flex items-center text-[10px] text-gray-500 mt-1">
-              <MapPin className="w-3 h-3 mr-1" />
-              {node.office}
-            </div>
-          </div>
-        </div>
-        {node.teamSize > 0 &&
-        <div className="mt-3 pt-2 border-t border-gray-50 flex justify-between items-center">
-            <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wide">
-              Team
-            </span>
-            <span className="text-xs font-bold text-black flex items-center">
-              <User className="w-3 h-3 mr-1 text-gray-400" />
-              {node.teamSize}
-            </span>
-          </div>
-        }
-      </div>
-      {node.children && node.children.length > 0 &&
-      <div className="flex flex-col items-center">
-          <div className="h-8 w-px bg-gray-300"></div>
-          <div className="flex gap-8 relative">
-            {/* Horizontal connecting line */}
-            <div className="absolute top-0 left-32 right-32 h-px bg-gray-300 -translate-y-px"></div>
-            {node.children.map((child) =>
-          <div
-            key={child.id}
-            className="flex flex-col items-center pt-8 relative">
-
-                {/* Vertical line from horizontal bar to child */}
-                <div className="absolute top-0 left-1/2 h-8 w-px bg-gray-300 -translate-x-1/2"></div>
-                <OrgNodeCard node={child} />
-              </div>
-          )}
-          </div>
-        </div>
-      }
-    </div>);
-
-}
 export function OrgChartPage() {
+  const searchParams = useSearchParams();
+  const [people, setPeople] = useState<PersonData[]>([]);
+  const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const view = (searchParams.get("view") || "reports_to") as RelationshipType;
+  const officeId = searchParams.get("office") || "";
+  const search = searchParams.get("search") || "";
+  const mode = searchParams.get("mode") || "tree";
+
+  const fetchOffices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/offices?active=true");
+      if (res.ok) {
+        const data = await res.json();
+        setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));
+      }
+    } catch {
+      setOffices([]);
+    }
+  }, []);
+
+  const fetchOrgChart = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      params.set("view", view);
+      if (officeId) params.set("office", officeId);
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/org-chart?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to load org chart");
+      }
+      const data = await res.json();
+      setPeople(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load org chart");
+      setPeople([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [view, officeId, search]);
+
+  useEffect(() => {
+    fetchOffices();
+  }, [fetchOffices]);
+
+  useEffect(() => {
+    fetchOrgChart();
+  }, [fetchOrgChart]);
+
+  const tree = buildOrgTree(people, view);
+
   return (
     <>
-      {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
@@ -140,54 +79,54 @@ export function OrgChartPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
-            <Search className="w-4 h-4 mr-2" />
-            Find Person
+          <Button variant="outline" asChild>
+            <a href="#search">
+              <Search className="w-4 h-4 mr-2" />
+              Find Person
+            </a>
           </Button>
-          <Button>
+          <Button variant="outline">
             <GitBranch className="w-4 h-4 mr-2" />
             Export Chart
           </Button>
         </div>
       </header>
 
-      {/* Controls */}
-      <div className="flex justify-between items-center mb-8 p-4 bg-white border border-gray-100 rounded-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase text-gray-500">
-              View:
-            </span>
-            <button className="flex items-center text-sm font-bold text-black hover:text-indigo-600 transition-colors">
-              Reports To
-              <ChevronDown className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-          <div className="h-4 w-px bg-gray-200"></div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase text-gray-500">
-              Office:
-            </span>
-            <button className="flex items-center text-sm font-bold text-black hover:text-indigo-600 transition-colors">
-              All Offices
-              <ChevronDown className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button className="p-2 hover:bg-gray-50 rounded-sm text-gray-500 hover:text-black transition-colors">
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button className="p-2 hover:bg-gray-50 rounded-sm text-gray-500 hover:text-black transition-colors">
-            <ZoomIn className="w-4 h-4" />
-          </button>
-        </div>
+      <div id="search" className="mb-6">
+        <OrgChartControls offices={offices} />
       </div>
 
-      {/* Chart Area */}
-      <div className="bg-gray-50 border border-gray-100 rounded-sm p-12 overflow-auto min-h-[600px] flex justify-center items-start">
-        <OrgNodeCard node={orgData} />
-      </div>
-    </>);
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
+      {loading ? (
+        <div
+          className="flex items-center justify-center py-24 text-gray-500 min-h-[400px]"
+          aria-busy="true"
+        >
+          <Loader2 className="w-8 h-8 animate-spin mr-2" />
+          Loading org chart…
+        </div>
+      ) : people.length === 0 ? (
+        <div className="bg-gray-50 border border-gray-100 rounded-sm p-12 text-center text-gray-500 min-h-[400px] flex items-center justify-center">
+          No people match your filters. Try adjusting the office or search.
+        </div>
+      ) : mode === "list" ? (
+        <div className="bg-white border border-gray-100 rounded-sm overflow-hidden">
+          <OrgListView people={people} relationshipType={view} />
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-gray-100 rounded-sm p-6 overflow-auto min-h-[600px]">
+          <OrgTreeView
+            tree={tree}
+            searchQuery={search || undefined}
+            relationshipType={view}
+          />
+        </div>
+      )}
+    </>
+  );
 }
