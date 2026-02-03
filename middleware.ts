@@ -9,9 +9,12 @@ const isPublicRoute = (pathname: string) => {
 };
 
 export default async function middleware(request: NextRequest) {
+  console.log("[v0] Middleware: Processing", request.nextUrl.pathname);
+  
   const response = await updateSession(request);
 
   if (isPublicRoute(request.nextUrl.pathname)) {
+    console.log("[v0] Middleware: Public route, allowing through");
     return response;
   }
 
@@ -40,20 +43,6 @@ export default async function middleware(request: NextRequest) {
   if (!user) {
     const signInUrl = new URL("/login", request.url);
     return NextResponse.redirect(signInUrl);
-  }
-
-  // Send main nav routes to Magic Patterns dashboard (exact path only)
-  const pathname = request.nextUrl.pathname;
-  const dashboardRedirects: Record<string, string> = {
-    "/people": "/dashboard/people",
-    "/recruiting": "/dashboard/recruiting",
-    "/deals": "/dashboard/deals",
-    "/commissions": "/dashboard/commissions",
-    "/org-chart": "/dashboard/org-chart",
-    "/settings": "/dashboard/settings",
-  };
-  if (dashboardRedirects[pathname]) {
-    return NextResponse.redirect(new URL(dashboardRedirects[pathname], request.url));
   }
 
   return response;
