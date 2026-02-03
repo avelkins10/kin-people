@@ -17,6 +17,8 @@ export const recruits = pgTable(
     // Pipeline
     status: varchar('status', { length: 50 }).default('lead'), // 'lead', 'contacted', 'interviewing', 'offer_sent', 'agreement_sent', 'agreement_signed', 'onboarding', 'converted', 'rejected', 'dropped'
     source: varchar('source', { length: 100 }), // where they came from
+    priority: varchar('priority', { length: 20 }), // 'high', 'medium', 'low', nullable
+    lastContactDate: timestamp('last_contact_date', { withTimezone: true }),
     // Assignments
     recruiterId: uuid('recruiter_id').references(() => people.id).notNull(),
     targetOfficeId: uuid('target_office_id').references(() => offices.id),

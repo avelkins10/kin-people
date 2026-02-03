@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { offices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { withAuth } from "@/lib/auth/route-protection";
+import { withAuth, withPermission } from "@/lib/auth/route-protection";
+import { Permission } from "@/lib/permissions/types";
 
 export const GET = withAuth(async (req: NextRequest) => {
   try {
@@ -18,10 +20,48 @@ export const GET = withAuth(async (req: NextRequest) => {
     const officesList = await query;
 
     return NextResponse.json(officesList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching offices:", error);
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: (error as Error).message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+});
+
+const createOfficeSchema = z.object({
+  name: z.string().min(1).max(100),
+  region: z.string().optional(),
+  address: z.string().optional(),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req: NextRequest) => {
+  try {
+    const body = await req.json();
+    const validated = createOfficeSchema.parse(body);
+
+    const [newOffice] = await db
+      .insert(offices)
+      .values({
+        name: validated.name,
+        region: validated.region || null,
+        address: validated.address || null,
+        isActive: validated.isActive ?? true,
+      })
+      .returning();
+
+    return NextResponse.json(newOffice, { status: 201 });
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid request data", details: error.errors },
+        { status: 400 }
+      );
+    }
+    console.error("Error creating office:", error);
+    return NextResponse.json(
+      { error: (error as Error).message || "Internal server error" },
       { status: 500 }
     );
   }

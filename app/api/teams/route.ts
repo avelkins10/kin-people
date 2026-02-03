@@ -1,15 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/lib/db";
-import { teams } from "@/lib/db/schema";
+import { teams, offices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { withAuth } from "@/lib/auth/route-protection";
+import { withAuth, withPermission } from "@/lib/auth/route-protection";
+import { Permission } from "@/lib/permissions/types";
 
 export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const activeOnly = searchParams.get("active") === "true";
 
-    let query = db.select().from(teams);
+    let query = db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        description: teams.description,
+        officeId: teams.officeId,
+        teamLeadId: teams.teamLeadId,
+        isActive: teams.isActive,
+        createdAt: teams.createdAt,
+        updatedAt: teams.updatedAt,
+        officeName: offices.name,
+      })
+      .from(teams)
+      .leftJoin(offices, eq(teams.officeId, offices.id));
 
     if (activeOnly) {
       query = query.where(eq(teams.isActive, true)) as any;
@@ -18,10 +33,48 @@ export const GET = withAuth(async (req: NextRequest) => {
     const teamsList = await query;
 
     return NextResponse.json(teamsList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching teams:", error);
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: (error as Error).message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+});
+
+const createTeamSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  officeId: z.string().uuid().optional(),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const POST = withPermission(Permission.MANAGE_OWN_TEAM, async (req: NextRequest) => {
+  try {
+    const body = await req.json();
+    const validated = createTeamSchema.parse(body);
+
+    const [newTeam] = await db
+      .insert(teams)
+      .values({
+        name: validated.name,
+        description: validated.description || null,
+        officeId: validated.officeId || null,
+        isActive: validated.isActive ?? true,
+      })
+      .returning();
+
+    return NextResponse.json(newTeam, { status: 201 });
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid request data", details: error.errors },
+        { status: 400 }
+      );
+    }
+    console.error("Error creating team:", error);
+    return NextResponse.json(
+      { error: (error as Error).message || "Internal server error" },
       { status: 500 }
     );
   }

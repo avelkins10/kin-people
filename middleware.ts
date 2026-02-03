@@ -42,6 +42,20 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
+  // Send main nav routes to Magic Patterns dashboard (exact path only)
+  const pathname = request.nextUrl.pathname;
+  const dashboardRedirects: Record<string, string> = {
+    "/people": "/dashboard/people",
+    "/recruiting": "/dashboard/recruiting",
+    "/deals": "/dashboard/deals",
+    "/commissions": "/dashboard/commissions",
+    "/org-chart": "/dashboard/org-chart",
+    "/settings": "/dashboard/settings",
+  };
+  if (dashboardRedirects[pathname]) {
+    return NextResponse.redirect(new URL(dashboardRedirects[pathname], request.url));
+  }
+
   return response;
 }
 

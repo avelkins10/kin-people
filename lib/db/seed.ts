@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { db } from './index';
 import {
   roles,
@@ -269,4 +270,164 @@ export async function seedDatabase() {
     payPlans: insertedPayPlans,
     commissionRules: insertedRules,
   };
+}
+
+const PILOT_ROLE_NAMES = ['Admin', 'Office Manager', 'Team Lead', 'Sales Rep'] as const;
+const PILOT_ROLE_SPECS: Record<(typeof PILOT_ROLE_NAMES)[number], NewRole> = {
+  Admin: {
+    name: 'Admin',
+    level: 5,
+    description: 'System administrator',
+    permissions: { manage_all: true },
+    isActive: true,
+    sortOrder: 5,
+  },
+  'Office Manager': {
+    name: 'Office Manager',
+    level: 3,
+    description: 'Office manager with office oversight',
+    permissions: { manage_own_office: true, approve_commissions: true },
+    isActive: true,
+    sortOrder: 3,
+  },
+  'Team Lead': {
+    name: 'Team Lead',
+    level: 2,
+    description: 'Team leader with override responsibilities',
+    permissions: { manage_own_team: true },
+    isActive: true,
+    sortOrder: 2,
+  },
+  'Sales Rep': {
+    name: 'Sales Rep',
+    level: 1,
+    description: 'Entry-level sales representative',
+    permissions: { view_own_data_only: true },
+    isActive: true,
+    sortOrder: 1,
+  },
+};
+
+/**
+ * Seed pilot-specific data for the production pilot program.
+ * Creates the four required roles (if missing), one pilot office, and optionally pay plans.
+ * Run this separately from seedDatabase() for production pilot setup.
+ *
+ * @param officeName - Display name for the pilot office
+ * @param officeRegion - Region label (e.g. "West", "Midwest")
+ * @param officeStates - Array of state codes (e.g. ["Utah"])
+ * @param officeAddress - Full address string for the pilot office
+ * @param includePilotPayPlans - If true, seeds Standard Setter Plan, Standard Closer Plan, Team Lead Plan when missing
+ * @returns Object with pilotOfficeId, roleIds map (role name -> uuid), and optionally payPlanIds
+ *
+ * @example
+ * const { pilotOfficeId, roleIds } = await seedPilotData(
+ *   'Pilot Office',
+ *   'West',
+ *   ['Utah'],
+ *   '123 Main St, City, UT 84101',
+ *   true
+ * );
+ */
+export async function seedPilotData(
+  officeName: string,
+  officeRegion: string,
+  officeStates: string[],
+  officeAddress: string,
+  includePilotPayPlans: boolean = false
+): Promise<{
+  pilotOfficeId: string;
+  roleIds: Record<(typeof PILOT_ROLE_NAMES)[number], string>;
+  payPlanIds?: Record<string, string>;
+}> {
+  console.log('Seeding pilot data...');
+
+  const roleIds: Record<(typeof PILOT_ROLE_NAMES)[number], string> = {} as Record<
+    (typeof PILOT_ROLE_NAMES)[number],
+    string
+  >;
+
+  for (const roleName of PILOT_ROLE_NAMES) {
+    try {
+      const existing = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, roleName)).limit(1);
+      if (existing[0]) {
+        roleIds[roleName] = existing[0].id;
+        console.log(`Role "${roleName}" already exists (${existing[0].id})`);
+      } else {
+        const spec = PILOT_ROLE_SPECS[roleName];
+        const inserted = await db.insert(roles).values(spec).returning();
+        if (inserted[0]) {
+          roleIds[roleName] = inserted[0].id;
+          console.log(`Inserted role "${roleName}" (${inserted[0].id})`);
+        } else {
+          throw new Error(`Failed to insert role "${roleName}"`);
+        }
+      }
+    } catch (err) {
+      console.error(`Error seeding role "${roleName}":`, err);
+      throw err;
+    }
+  }
+
+  let pilotOfficeId: string;
+  try {
+    const existingOffice = await db
+      .select({ id: offices.id })
+      .from(offices)
+      .where(eq(offices.name, officeName))
+      .limit(1);
+
+    if (existingOffice[0]) {
+      pilotOfficeId = existingOffice[0].id;
+      console.log(`Pilot office "${officeName}" already exists (${pilotOfficeId}), skipping insert`);
+    } else {
+      const newOffice: NewOffice = {
+        name: officeName,
+        region: officeRegion,
+        states: officeStates,
+        address: officeAddress,
+        isActive: true,
+      };
+      const insertedOffices = await db.insert(offices).values(newOffice).returning();
+      if (!insertedOffices[0]) throw new Error('Failed to insert pilot office');
+      pilotOfficeId = insertedOffices[0].id;
+      console.log(`Inserted pilot office "${officeName}" (${pilotOfficeId})`);
+    }
+  } catch (err) {
+    console.error('Error seeding pilot office:', err);
+    throw err;
+  }
+
+  let payPlanIds: Record<string, string> | undefined;
+  if (includePilotPayPlans) {
+    const planNames = ['Standard Setter Plan', 'Standard Closer Plan', 'Team Lead Plan'];
+    const planSpecs: NewPayPlan[] = [
+      { name: 'Standard Setter Plan', description: 'Standard commission plan for setters', isActive: true },
+      { name: 'Standard Closer Plan', description: 'Standard commission plan for closers', isActive: true },
+      { name: 'Team Lead Plan', description: 'Commission plan for team leads with overrides', isActive: true },
+    ];
+    payPlanIds = {};
+    for (let i = 0; i < planNames.length; i++) {
+      const name = planNames[i];
+      try {
+        const existing = await db.select({ id: payPlans.id }).from(payPlans).where(eq(payPlans.name, name)).limit(1);
+        if (existing[0]) {
+          payPlanIds[name] = existing[0].id;
+          console.log(`Pay plan "${name}" already exists (${existing[0].id})`);
+        } else {
+          const inserted = await db.insert(payPlans).values(planSpecs[i]).returning();
+          if (inserted[0]) {
+            payPlanIds[name] = inserted[0].id;
+            console.log(`Inserted pay plan "${name}" (${inserted[0].id})`);
+          }
+        }
+      } catch (err) {
+        console.error(`Error seeding pay plan "${name}":`, err);
+        throw err;
+      }
+    }
+  }
+
+  console.log('Pilot data seeding completed successfully');
+  return { pilotOfficeId, roleIds, payPlanIds };
 }

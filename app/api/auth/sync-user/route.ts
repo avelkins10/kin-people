@@ -109,12 +109,21 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("Error syncing Supabase user:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 }
-    );
+
+    const err = error as NodeJS.ErrnoException;
+    const code = err?.code;
+    const isConnectionError =
+      code === "EHOSTUNREACH" ||
+      code === "ENOTFOUND" ||
+      code === "ECONNREFUSED" ||
+      code === "ETIMEDOUT";
+
+    const userMessage = isConnectionError
+      ? "Cannot reach the database. Use the IPv4-compatible Shared Pooler for DATABASE_URL in .env.local (see Supabase Connect → Connection String) and check your network."
+      : err instanceof Error
+        ? err.message
+        : "Internal server error";
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }

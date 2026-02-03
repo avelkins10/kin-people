@@ -79,11 +79,24 @@ export async function GET(
             .limit(1)
         : [null];
 
-      // Fetch commissions for this deal
-      const dealCommissions = await db
-        .select()
+      // Fetch commissions for this deal with person info
+      const dealCommissionsRaw = await db
+        .select({
+          commission: commissions,
+          person: {
+            id: people.id,
+            firstName: people.firstName,
+            lastName: people.lastName,
+          },
+        })
         .from(commissions)
+        .innerJoin(people, eq(commissions.personId, people.id))
         .where(eq(commissions.dealId, deal.id));
+
+      const dealCommissions = dealCommissionsRaw.map(({ commission, person }) => ({
+        ...commission,
+        person,
+      }));
 
       return NextResponse.json({
         deal,

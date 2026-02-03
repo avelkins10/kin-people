@@ -15,6 +15,13 @@
       "when": 1738368000000,
       "tag": "0001_supabase_agreements_bucket_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1770064200000,
+      "tag": "0002_recruits_priority_last_contact",
+      "breakpoints": true
     }
   ]
 }

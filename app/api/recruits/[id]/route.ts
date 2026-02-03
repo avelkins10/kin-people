@@ -14,6 +14,8 @@ const updateRecruitSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().optional(),
   source: z.string().optional(),
+  priority: z.enum(["high", "medium", "low"]).nullable().optional(),
+  lastContactDate: z.union([z.string(), z.date()]).optional(),
   targetOfficeId: z.string().uuid().optional(),
   targetTeamId: z.string().uuid().optional(),
   targetReportsToId: z.string().uuid().optional(),
@@ -91,6 +93,8 @@ export async function PATCH(
       if (validated.email !== undefined) updateData.email = validated.email;
       if (validated.phone !== undefined) updateData.phone = validated.phone;
       if (validated.source !== undefined) updateData.source = validated.source;
+      if (validated.priority !== undefined) updateData.priority = validated.priority;
+      if (validated.lastContactDate !== undefined) updateData.lastContactDate = validated.lastContactDate ? new Date(validated.lastContactDate) : null;
       if (validated.targetOfficeId !== undefined) updateData.targetOfficeId = validated.targetOfficeId;
       if (validated.targetTeamId !== undefined) updateData.targetTeamId = validated.targetTeamId;
       if (validated.targetReportsToId !== undefined) updateData.targetReportsToId = validated.targetReportsToId;

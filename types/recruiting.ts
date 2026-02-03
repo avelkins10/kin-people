@@ -53,6 +53,8 @@ export type RecruitStatus =
   | "rejected"
   | "dropped";
 
+export type RecruitPriority = "high" | "medium" | "low" | null;
+
 export interface RecruitListItem {
   recruit: Recruit;
   recruiter: {

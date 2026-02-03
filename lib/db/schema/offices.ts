@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const offices = pgTable(
   'offices',
@@ -15,6 +15,7 @@ export const offices = pgTable(
   (table) => ({
     idxOfficesActive: index('idx_offices_active').on(table.isActive),
     idxOfficesRegion: index('idx_offices_region').on(table.region),
+    officesNameUnique: uniqueIndex('offices_name_unique').on(table.name),
   })
 );
 

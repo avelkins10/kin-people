@@ -1,6 +1,10 @@
+import dotenv from "dotenv";
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+
+dotenv.config();
+dotenv.config({ path: ".env.local", override: true });
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
