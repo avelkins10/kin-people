@@ -1,15 +1,8 @@
 import { redirect } from "next/navigation";
-
-// Demo mode - redirect directly to dashboard for preview
-const DEMO_MODE = true;
+import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
-  if (DEMO_MODE) {
-    redirect("/dashboard");
-  }
-
   try {
-    const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
     const {
       data: { session },
