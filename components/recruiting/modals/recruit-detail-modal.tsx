@@ -134,24 +134,31 @@ export function RecruitDetailModal({
   }, []);
 
   function startEditing() {
-    if (!recruit) return;
-    const r = recruit.recruit;
-    setEditForm({
-      firstName: r.firstName ?? "",
-      lastName: r.lastName ?? "",
-      email: r.email ?? "",
-      phone: r.phone ?? "",
-      source: r.source ?? "",
-      priority: (r as { priority?: string }).priority as "" | "high" | "medium" | "low" ?? "",
-      targetOfficeId: recruit.targetOffice?.id ?? "",
-      targetTeamId: recruit.targetTeam?.id ?? "",
-      targetReportsToId: r.targetReportsToId ?? "",
-      targetRoleId: recruit.targetRole?.id ?? "",
-      targetPayPlanId: recruit.targetPayPlan?.id ?? "",
-      notes: r.notes ?? "",
-    });
-    fetchEditOptions();
-    setIsEditing(true);
+    try {
+      if (!recruit?.recruit) return;
+      const r = recruit.recruit;
+      const priority = (r as { priority?: string | null }).priority;
+      const priorityVal = priority === "high" || priority === "medium" || priority === "low" ? priority : "";
+      setEditForm({
+        firstName: String(r.firstName ?? ""),
+        lastName: String(r.lastName ?? ""),
+        email: String(r.email ?? ""),
+        phone: String(r.phone ?? ""),
+        source: String(r.source ?? ""),
+        priority: priorityVal,
+        targetOfficeId: recruit.targetOffice?.id ?? "",
+        targetTeamId: recruit.targetTeam?.id ?? "",
+        targetReportsToId: r.targetReportsToId ?? recruit.targetReportsTo?.id ?? "",
+        targetRoleId: recruit.targetRole?.id ?? "",
+        targetPayPlanId: recruit.targetPayPlan?.id ?? "",
+        notes: String(r.notes ?? ""),
+      });
+      fetchEditOptions();
+      setIsEditing(true);
+    } catch (err) {
+      console.error("Error starting edit:", err);
+      alert("Something went wrong. Please try again.");
+    }
   }
 
   async function handleSaveEdit() {
@@ -315,14 +322,14 @@ export function RecruitDetailModal({
                     <div>
                       <Label htmlFor="edit-priority">Priority</Label>
                       <Select
-                        value={editForm.priority}
-                        onValueChange={(v) => setEditForm((f) => ({ ...f, priority: v as "" | "high" | "medium" | "low" }))}
+                        value={editForm.priority === "high" || editForm.priority === "medium" || editForm.priority === "low" ? editForm.priority : "none"}
+                        onValueChange={(v) => setEditForm((f) => ({ ...f, priority: v === "none" ? "" : (v as "high" | "medium" | "low") }))}
                       >
                         <SelectTrigger id="edit-priority" className="mt-1">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           <SelectItem value="high">High</SelectItem>
                           <SelectItem value="medium">Medium</SelectItem>
                           <SelectItem value="low">Low</SelectItem>
@@ -332,7 +339,7 @@ export function RecruitDetailModal({
                     <div>
                       <Label htmlFor="edit-office">Target Office</Label>
                       <Select
-                        value={editForm.targetOfficeId || undefined}
+                        value={offices.some((o) => o.id === editForm.targetOfficeId) ? editForm.targetOfficeId : undefined}
                         onValueChange={(v) => setEditForm((f) => ({ ...f, targetOfficeId: v }))}
                       >
                         <SelectTrigger id="edit-office" className="mt-1">
@@ -348,7 +355,7 @@ export function RecruitDetailModal({
                     <div>
                       <Label htmlFor="edit-team">Target Team</Label>
                       <Select
-                        value={editForm.targetTeamId || undefined}
+                        value={teams.some((t) => t.id === editForm.targetTeamId) ? editForm.targetTeamId : undefined}
                         onValueChange={(v) => setEditForm((f) => ({ ...f, targetTeamId: v }))}
                       >
                         <SelectTrigger id="edit-team" className="mt-1">
@@ -364,7 +371,7 @@ export function RecruitDetailModal({
                     <div>
                       <Label htmlFor="edit-reportsTo">Reports To</Label>
                       <Select
-                        value={editForm.targetReportsToId || undefined}
+                        value={managers.some((m) => m.id === editForm.targetReportsToId) ? editForm.targetReportsToId : undefined}
                         onValueChange={(v) => setEditForm((f) => ({ ...f, targetReportsToId: v }))}
                       >
                         <SelectTrigger id="edit-reportsTo" className="mt-1">
@@ -380,7 +387,7 @@ export function RecruitDetailModal({
                     <div>
                       <Label htmlFor="edit-role">Target Role</Label>
                       <Select
-                        value={editForm.targetRoleId || undefined}
+                        value={roles.some((role) => role.id === editForm.targetRoleId) ? editForm.targetRoleId : undefined}
                         onValueChange={(v) => setEditForm((f) => ({ ...f, targetRoleId: v }))}
                       >
                         <SelectTrigger id="edit-role" className="mt-1">
@@ -396,7 +403,7 @@ export function RecruitDetailModal({
                     <div>
                       <Label htmlFor="edit-payPlan">Target Pay Plan</Label>
                       <Select
-                        value={editForm.targetPayPlanId || undefined}
+                        value={payPlans.some((p) => p.id === editForm.targetPayPlanId) ? editForm.targetPayPlanId : undefined}
                         onValueChange={(v) => setEditForm((f) => ({ ...f, targetPayPlanId: v }))}
                       >
                         <SelectTrigger id="edit-payPlan" className="mt-1">
