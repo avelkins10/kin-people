@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 const isPublicRoute = (pathname: string) => {
   if (pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname === "/confirm") return true;
   if (/^\/api\/webhooks\//.test(pathname)) return true;
+  if (pathname === "/api/auth/debug") return true;
   return false;
 };
 
