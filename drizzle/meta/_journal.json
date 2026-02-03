@@ -22,6 +22,13 @@
       "when": 1770064200000,
       "tag": "0002_recruits_priority_last_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1770150600000,
+      "tag": "0003_app_settings",
+      "breakpoints": true
     }
   ]
 }

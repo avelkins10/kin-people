@@ -35,17 +35,29 @@ export function Dashboard() {
   const [people, setPeople] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
 
   const status = searchParams.get("status") ?? "";
   const recruiterId = searchParams.get("recruiterId") ?? "";
   const officeId = searchParams.get("officeId") ?? "";
+  const viewParam = searchParams.get("view");
+  const viewMode: ViewMode =
+    viewParam === "list" ? "list" : "kanban";
 
   const updateFilter = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
       if (value) params.set(key, value);
       else params.delete(key);
+      router.push(`/recruiting?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const setViewMode = useCallback(
+    (mode: ViewMode) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (mode === "list") params.set("view", "list");
+      else params.delete("view");
       router.push(`/recruiting?${params.toString()}`);
     },
     [router, searchParams]
@@ -65,10 +77,7 @@ export function Dashboard() {
         throw new Error(data.error || "Failed to load recruits");
       }
       const data = await res.json();
-      const pipelineOnly = (data || []).filter((item: RecruitListItem) =>
-        PIPELINE_STATUSES.includes(item.recruit?.status as (typeof PIPELINE_STATUSES)[number])
-      );
-      setRecruits(pipelineOnly);
+      setRecruits(data ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load recruits");
       setRecruits([]);

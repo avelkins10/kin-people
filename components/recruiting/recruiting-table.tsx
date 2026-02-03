@@ -96,7 +96,7 @@ export function RecruitingTable({ initialRecruits }: RecruitingTableProps) {
     } else {
       params.delete("status");
     }
-    router.push(`?${params.toString()}`);
+    router.push(`/recruiting?${params.toString()}`);
   };
 
   return (

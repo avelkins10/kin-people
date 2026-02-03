@@ -7,6 +7,7 @@ import { SettingsOfficesSection } from "@/components/settings/SettingsOfficesSec
 import { SettingsTeamsSection } from "@/components/settings/SettingsTeamsSection";
 import { SettingsPayPlansSection } from "@/components/settings/SettingsPayPlansSection";
 import { SettingsCommissionRulesSection } from "@/components/settings/SettingsCommissionRulesSection";
+import { SettingsOnboardingMetricsSection } from "@/components/settings/SettingsOnboardingMetricsSection";
 import { SettingsHistorySection } from "@/components/settings/SettingsHistorySection";
 import { SettingsUsersSection } from "@/components/settings/SettingsUsersSection";
 
@@ -18,10 +19,13 @@ export function SettingsPage() {
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-black mb-1 uppercase">
-            Settings
+            Organization
           </h1>
           <p className="text-gray-500 font-medium">
-            Configure roles, offices, teams, and compensation plans.
+            Configure roles, offices, teams, users, and compensation plans.
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Changes here are saved to the database and apply across the app (people, org chart, recruiting, deals, etc.).
           </p>
         </div>
       </header>
@@ -70,6 +74,10 @@ export function SettingsPage() {
           loading={loading}
           onRefetch={refetch}
         />
+      </div>
+
+      <div className="mt-8">
+        <SettingsOnboardingMetricsSection onRefetch={refetch} />
       </div>
 
       <div className="mt-8">

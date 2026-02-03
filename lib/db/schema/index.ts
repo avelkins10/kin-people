@@ -39,6 +39,7 @@ export * from './commission-history';
 
 // Audit tables
 export * from './activity-log';
+export * from './app-settings';
 
 // Export schema object for Drizzle migrations
 import { roles } from './roles';
@@ -57,6 +58,7 @@ import { deals } from './deals';
 import { commissions } from './commissions';
 import { commissionHistory } from './commission-history';
 import { activityLog } from './activity-log';
+import { appSettings } from './app-settings';
 
 export const schema = {
   roles,
@@ -75,4 +77,5 @@ export const schema = {
   commissions,
   commissionHistory,
   activityLog,
+  appSettings,
 };

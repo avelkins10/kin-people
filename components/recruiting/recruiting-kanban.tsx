@@ -45,6 +45,11 @@ const STATUS_COLUMNS: { status: RecruitStatus; label: string; icon: React.Elemen
   { status: "agreement_signed", label: "Agreement Signed", icon: CheckCircle },
 ];
 
+const PIPELINE_STATUS_SET = new Set(STATUS_COLUMNS.map((c) => c.status));
+function isPipelineStatus(s: string | null | undefined): s is RecruitStatus {
+  return PIPELINE_STATUS_SET.has((s ?? "") as RecruitStatus);
+}
+
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   high: { bg: "bg-red-100", text: "text-red-700" },
   medium: { bg: "bg-yellow-100", text: "text-yellow-700" },
@@ -305,8 +310,12 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
     }
   };
 
+  const pipelineRecruits = recruits.filter((r) =>
+    isPipelineStatus(r.recruit?.status ?? null)
+  );
+
   const activeRecruit = activeId
-    ? recruits.find((r) => r.recruit.id === activeId)
+    ? pipelineRecruits.find((r) => r.recruit.id === activeId)
     : null;
 
   return (
@@ -324,7 +333,7 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
               status={column.status}
               label={column.label}
               icon={column.icon}
-              recruits={recruits}
+              recruits={pipelineRecruits}
               onRecruitClick={setSelectedRecruit}
             />
           ))}
