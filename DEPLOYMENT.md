@@ -80,6 +80,7 @@ The deployment follows a sequential approach: first establishing the GitHub repo
 - If migration fails, check database connection string format
 - Ensure SSL is enabled in connection string: `?sslmode=require`
 - Verify Supabase project is accessible and not paused
+- **"password authentication failed for user postgres" (code 28P01)**: The `DATABASE_URL` used when running the migrate script has the wrong password or user. **Local:** set `DATABASE_URL` in `.env.local` to your production Supabase URI with the correct password. **Production/CI:** set `DATABASE_URL` in that environment (e.g. Vercel → Settings → Environment Variables, or GitHub Actions secrets) to the same production Supabase URI with the correct password. In Supabase: **Project Settings → Database** → copy the **Connection string (URI)** and replace `[YOUR-PASSWORD]` with your actual database password (or reset it there).
 
 ---
 

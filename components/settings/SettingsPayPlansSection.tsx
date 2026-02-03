@@ -133,7 +133,7 @@ export function SettingsPayPlansSection({
 
   return (
     <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-indigo-600" />
           <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">

@@ -15,9 +15,9 @@ export function SettingsShell({ hasAdminAccess, children }: SettingsShellProps) 
   const pathname = usePathname();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <nav
-        className="flex gap-1 border-b border-gray-200 pb-4"
+        className="flex gap-1 border-b border-gray-200 pb-3"
         aria-label="Settings sections"
       >
         <Link

@@ -124,7 +124,7 @@ export function SettingsOnboardingMetricsSection({
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-500 mb-4">
         Configure labels and display type for the two onboarding metrics shown on the Onboarding page.
       </p>
       <div className="grid gap-6 sm:grid-cols-2">

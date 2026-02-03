@@ -19,8 +19,22 @@ async function runMigrations() {
   try {
     await migrate(db, { migrationsFolder: './drizzle' });
     console.log('Migrations completed successfully');
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Migration failed:', error);
+    const msg = error && typeof (error as { message?: string }).message === 'string'
+      ? (error as { message: string }).message
+      : '';
+    const code = error && typeof (error as { code?: string }).code === 'string'
+      ? (error as { code: string }).code
+      : '';
+    if (code === '28P01' || msg.includes('password authentication failed')) {
+      console.error('\n---');
+      console.error('Database authentication failed. DATABASE_URL (in this environment) has the wrong password or user.');
+      console.error('  • Local: check .env.local');
+      console.error('  • Production/CI: check Vercel env vars, GitHub Actions secrets, or wherever DATABASE_URL is set');
+      console.error('  Supabase: Project Settings → Database → Connection string (URI). Replace [YOUR-PASSWORD] with the real DB password.');
+      console.error('---\n');
+    }
     failed = true;
   } finally {
     await client.end();
