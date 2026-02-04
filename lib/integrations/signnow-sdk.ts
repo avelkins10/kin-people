@@ -25,6 +25,7 @@ import {
 } from "../../vendor/signnow-sdk-v3/dist/api/document/index";
 import { SendInvitePostRequest, type SendInvitePostResponse, type ToRequestAttribute } from "../../vendor/signnow-sdk-v3/dist/api/documentInvite/index";
 import { DocumentPrefillSmartFieldPostRequest } from "../../vendor/signnow-sdk-v3/dist/api/smartFields/index";
+import { DocumentPrefillPutRequest, type FieldRequestAttribute } from "../../vendor/signnow-sdk-v3/dist/api/documentField/index";
 import {
   DocumentInviteLinkPostRequest,
   type DocumentInviteLinkPostResponse,
@@ -148,8 +149,30 @@ export async function sendMultipleInvites(
 }
 
 /**
- * Prefill smart fields on a document using SDK (replaces direct API).
- * Template must have smart fields added in SignNow; field names must match.
+ * Prefill text fields on a document using SDK.
+ * This is the correct API for regular text fields (not smart fields/integration objects).
+ * Uses PUT /v2/documents/{id}/prefill-texts
+ */
+export async function prefillTextFields(
+  documentId: string,
+  fieldValues: Array<{ field_name: string; field_value: string }>
+): Promise<void> {
+  if (!fieldValues?.length) return;
+  const sdk = await getSdk();
+  const fields: FieldRequestAttribute[] = fieldValues.map((f) => ({
+    field_name: f.field_name,
+    prefilled_text: f.field_value,
+  }));
+  const request = new DocumentPrefillPutRequest(documentId, fields);
+  await sdk.getClient().send(request);
+}
+
+/**
+ * Prefill smart fields on a document using SDK.
+ * Only works for "smart fields" (integration objects), not regular text fields.
+ * Uses POST /document/{id}/integration/object/smartfields
+ *
+ * @deprecated Most templates use text fields. Use prefillTextFields instead.
  */
 export async function prefillSmartFields(
   documentId: string,

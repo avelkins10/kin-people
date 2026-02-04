@@ -29,7 +29,8 @@ const createDocumentWithMultipleSigners = useSignNowSdk
   ? signnowSdk.createDocumentWithMultipleSigners
   : createDocumentWithMultipleSignersDirect;
 const sendMultipleInvites = useSignNowSdk ? signnowSdk.sendMultipleInvites : sendMultipleInvitesDirect;
-const prefillSmartFields = useSignNowSdk ? signnowSdk.prefillSmartFields : prefillSmartFieldsDirect;
+// Use text field prefill for regular text fields (most templates use these, not smart fields)
+const prefillTextFields = useSignNowSdk ? signnowSdk.prefillTextFields : prefillSmartFieldsDirect;
 import { documents, recruits, people, roles } from "@/lib/db/schema";
 import { eq, and, lt, or, isNotNull, inArray, asc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -237,9 +238,9 @@ export async function sendDocument(
 
     if (fieldValues.length > 0) {
       try {
-        await prefillSmartFields(signnowDocumentId, fieldValues);
+        await prefillTextFields(signnowDocumentId, fieldValues);
       } catch (prefillErr) {
-        console.warn("[document-service] sendDocument: prefill smart fields failed, continuing without pre-filled fields", {
+        console.warn("[document-service] sendDocument: prefill text fields failed, continuing without pre-filled fields", {
           signnowDocumentId,
           error: prefillErr instanceof Error ? prefillErr.message : String(prefillErr),
         });
@@ -354,9 +355,9 @@ export async function createDocumentPreview(
   );
   if (fieldValues.length > 0) {
     try {
-      await prefillSmartFields(signnowDocumentId, fieldValues);
+      await prefillTextFields(signnowDocumentId, fieldValues);
     } catch (prefillErr) {
-      console.warn("[document-service] createDocumentPreview: prefill smart fields failed", {
+      console.warn("[document-service] createDocumentPreview: prefill text fields failed", {
         signnowDocumentId,
         error: prefillErr instanceof Error ? prefillErr.message : String(prefillErr),
       });
@@ -397,9 +398,9 @@ export async function sendDocumentFromPreview(
 
   if (fieldValues.length > 0) {
     try {
-      await prefillSmartFields(signnowDocumentId, fieldValues);
+      await prefillTextFields(signnowDocumentId, fieldValues);
     } catch (prefillErr) {
-      console.warn("[document-service] sendDocumentFromPreview: prefill smart fields failed, continuing without pre-filled fields", {
+      console.warn("[document-service] sendDocumentFromPreview: prefill text fields failed, continuing without pre-filled fields", {
         signnowDocumentId,
         error: prefillErr instanceof Error ? prefillErr.message : String(prefillErr),
       });
