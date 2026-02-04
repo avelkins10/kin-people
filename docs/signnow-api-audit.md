@@ -19,6 +19,24 @@ This document lists every SignNow API call used by the app and how it aligns wit
 
 ---
 
+## Document statuses (app)
+
+The app uses a single `status` field on `documents` with these values (see `types/documents.ts` enum `DocumentStatus`):
+
+| Status | When set | UI (badge) |
+|--------|----------|------------|
+| `pending` | On create; after send (sentAt) | Yellow "Pending" |
+| `viewed` | Webhook `document.open` | Blue "Viewed" |
+| `partially_signed` | Webhook `document.fieldinvite.signed` when signedCount < totalSigners | Orange "Partially Signed" |
+| `signed` | Webhook `document.fieldinvite.signed` when all signed, or `document.complete` | Green "Signed" |
+| `expired` | Webhook `invite.expired` | Red "Expired" |
+| `voided` | Resend flow (void old doc) or document-helpers `voidDocument()` | Gray "Voided" |
+
+- **Resend** is only allowed when status is effectively expired: either `expired` (webhook) or still `pending`/`viewed`/`partially_signed` but `expiresAt` &lt; now. Signed and voided documents cannot be resent.
+- **Expired documents banner** and **GET /api/documents?status=expired** list documents with `status === "expired"`. The service `getExpiredDocuments()` (when used) includes pending/viewed/partially_signed/expired with `expiresAt` &lt; now so webhook-marked and date-passed are both included.
+
+---
+
 ## Webhook
 
 - **URL:** `POST https://<your-domain>/api/webhooks/signnow`

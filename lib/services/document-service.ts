@@ -293,7 +293,7 @@ export async function resendDocument(documentId: string, userId: string): Promis
     const status = document.status ?? "pending";
     if (status === "signed" || status === "voided") {
       throw new Error(
-        `Document cannot be resent: invalid status '${status}'. Only pending documents can be resent.`
+        "Document cannot be resent: signed or voided documents cannot be resent. Only expired documents can be resent."
       );
     }
 
@@ -372,8 +372,9 @@ export async function getExpiredDocuments(userId: string): Promise<DocumentWithD
           : undefined,
     } as NonNullable<CurrentUser>;
 
+    // Include: status "expired" (webhook-marked) or still pending/viewed/partially_signed but past expiration
     const baseConditions = and(
-      inArray(documents.status, ["pending"]),
+      inArray(documents.status, ["pending", "viewed", "partially_signed", "expired"]),
       lt(documents.expiresAt, new Date()),
       isNotNull(documents.expiresAt)
     );
