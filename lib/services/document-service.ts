@@ -16,6 +16,7 @@ import {
 } from "@/lib/services/template-service";
 import {
   createDocumentWithMultipleSigners,
+  prefillSmartFields,
   sendMultipleInvites,
   voidDocument as voidSignNowDocument,
   type InviteOptions,
@@ -223,6 +224,17 @@ export async function sendDocument(
       fieldValues
     );
 
+    if (fieldValues.length > 0) {
+      try {
+        await prefillSmartFields(signnowDocumentId, fieldValues);
+      } catch (prefillErr) {
+        console.warn("[document-service] sendDocument: prefill smart fields failed, continuing without pre-filled fields", {
+          signnowDocumentId,
+          error: prefillErr instanceof Error ? prefillErr.message : String(prefillErr),
+        });
+      }
+    }
+
     const expirationDays = templateConfig.expirationDays ?? 30;
     const expiresAt = calculateExpirationDate(expirationDays);
 
@@ -329,6 +341,16 @@ export async function createDocumentPreview(
     documentName,
     fieldValues
   );
+  if (fieldValues.length > 0) {
+    try {
+      await prefillSmartFields(signnowDocumentId, fieldValues);
+    } catch (prefillErr) {
+      console.warn("[document-service] createDocumentPreview: prefill smart fields failed", {
+        signnowDocumentId,
+        error: prefillErr instanceof Error ? prefillErr.message : String(prefillErr),
+      });
+    }
+  }
   return signnowDocumentId;
 }
 
@@ -360,6 +382,18 @@ export async function sendDocumentFromPreview(
       ? toRecruitTemplateEntity(entity as RecruitEntity)
       : toPersonTemplateEntity(entity as PersonEntity);
   const signers = await resolveSigners(templateConfig, templateEntity);
+  const fieldValues = buildFieldValues(entity, documentType);
+
+  if (fieldValues.length > 0) {
+    try {
+      await prefillSmartFields(signnowDocumentId, fieldValues);
+    } catch (prefillErr) {
+      console.warn("[document-service] sendDocumentFromPreview: prefill smart fields failed, continuing without pre-filled fields", {
+        signnowDocumentId,
+        error: prefillErr instanceof Error ? prefillErr.message : String(prefillErr),
+      });
+    }
+  }
 
   const expirationDays = templateConfig.expirationDays ?? 30;
   const expiresAt = calculateExpirationDate(expirationDays);

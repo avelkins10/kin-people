@@ -620,12 +620,6 @@ export async function createDocumentWithMultipleSigners(
         return await response.json() as { id: string };
       }, DOCUMENT_CREATION_TIMEOUT_MS, "createDocumentWithMultipleSigners")
     );
-    if (fieldValues?.length) {
-      console.warn(
-        "[signnow] createDocumentWithMultipleSigners: field_values are not supported by template/copy; signers will be invited but fields will not be pre-filled",
-        { templateId }
-      );
-    }
     logApiCall("createDocumentWithMultipleSigners", {
       templateId,
       documentId: result.id,
@@ -713,6 +707,57 @@ export async function sendForSignature(
 }
 
 /**
+ * Prefill smart fields on a document (after creating from template).
+ * Template must have smart fields added in SignNow; field names must match.
+ * POST /document/{document_id}/integration/object/smartfields
+ *
+ * @param documentId - SignNow document ID
+ * @param fieldValues - Array of { field_name, field_value }; names must match template smart fields
+ */
+export async function prefillSmartFields(
+  documentId: string,
+  fieldValues: Array<{ field_name: string; field_value: string }>
+): Promise<void> {
+  if (!fieldValues?.length) return;
+  const startTime = Date.now();
+  try {
+    const accessToken = await getAccessToken();
+    const data = fieldValues.map((f) => ({ [f.field_name]: f.field_value }));
+    const body = {
+      data,
+      client_timestamp: Math.floor(Date.now() / 1000),
+    };
+    const response = await fetch(
+      `https://api.signnow.com/document/${documentId}/integration/object/smartfields`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throwWithStatus(
+        `Failed to prefill smart fields for document ${documentId}: ${errorText}`,
+        response.status
+      );
+    }
+    logApiCall("prefillSmartFields", { documentId, fieldCount: fieldValues.length }, startTime);
+  } catch (error) {
+    const statusCode =
+      error && typeof error === "object" && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+    logApiError("prefillSmartFields", error, { documentId, statusCode });
+    throw error;
+  }
+}
+
+/**
  * Send invites to multiple signers for an already-created document.
  *
  * @param documentId - SignNow document ID
@@ -736,24 +781,49 @@ export async function sendMultipleInvites(
     throw new Error("sendMultipleInvites: expirationDays cannot exceed 180");
   }
   const startTime = Date.now();
+  const from = process.env.SIGNNOW_FROM_EMAIL || "noreply@example.com";
+  const subject = options?.subject ?? "Please sign this document";
+  const message = options?.message ?? "Please review and sign the document.";
+  const expirationDays = options?.expirationDays;
+  const reminderDays = options?.reminderDays;
+
   try {
     const accessToken = await getAccessToken();
-    const body: Record<string, unknown> = {
-      invites: signers.map((s) => ({
+    const roles = await getDocumentRoles(documentId);
+    if (roles.length < signers.length) {
+      throw new Error(
+        `Document has ${roles.length} role(s) but ${signers.length} signer(s). Template must have at least one role per signer.`
+      );
+    }
+
+    const to = signers.map((s, i) => {
+      const role = roles[i];
+      const entry: Record<string, unknown> = {
         email: s.email,
         role: s.role,
-        order: s.order ?? 1,
-      })),
-      from: process.env.SIGNNOW_FROM_EMAIL || "noreply@example.com",
-      subject: options?.subject ?? "Please sign this document",
-      message: options?.message ?? "Please review and sign the document.",
+        role_id: role.unique_id,
+        order: s.order ?? i + 1,
+        reassign: "0",
+        decline_by_signature: "0",
+        reminder: reminderDays ?? 0,
+        expiration_days: expirationDays ?? 30,
+      };
+      return entry;
+    });
+
+    const body: Record<string, unknown> = {
+      to,
+      from,
+      subject,
+      message,
+      email: "disabled",
+      cc: [],
     };
-    if (options?.expirationDays != null) body.expiration_days = options.expirationDays;
-    if (options?.reminderDays != null) body.reminder = options.reminderDays;
+
     await withRetry(() =>
       withTimeout(async (signal) => {
         const response = await fetch(
-          `https://api.signnow.com/v2/documents/${documentId}/invite`,
+          `https://api.signnow.com/document/${documentId}/invite`,
           {
             method: "POST",
             headers: {
@@ -773,6 +843,7 @@ export async function sendMultipleInvites(
         }
       }, DEFAULT_TIMEOUT_MS, "sendMultipleInvites")
     );
+
     logApiCall("sendMultipleInvites", { documentId, signerCount: signers.length }, startTime);
   } catch (error) {
     logApiError("sendMultipleInvites", error, {
@@ -786,6 +857,72 @@ export async function sendMultipleInvites(
     }
     throw new Error(
       "Failed to send invites to signers. Please verify email addresses and try again."
+    );
+  }
+}
+
+/**
+ * Role from a SignNow document (from GET document).
+ * Used to send role-based invites; Quickstart: "Use the role ID or role name from previous step."
+ */
+export interface DocumentRole {
+  unique_id: string;
+  name?: string;
+}
+
+/**
+ * Fetch document roles from SignNow (GET document).
+ * Required for role-based invite: match signers to roles by order or name, then send invite with role_id.
+ */
+export async function getDocumentRoles(
+  documentId: string
+): Promise<DocumentRole[]> {
+  const startTime = Date.now();
+  try {
+    const accessToken = await getAccessToken();
+    const data = await withRetry(() =>
+      withTimeout(async (signal) => {
+        const response = await fetch(
+          `https://api.signnow.com/v2/documents/${documentId}`,
+          {
+            method: "GET",
+            headers: { Authorization: `Bearer ${accessToken}` },
+            signal,
+          }
+        );
+        if (!response.ok) {
+          const errorText = await response.text();
+          if (response.status === 404) {
+            throwWithStatus(`Document ${documentId} not found`, 404);
+          }
+          throwWithStatus(
+            `Failed to get document ${documentId}: ${response.status} ${errorText}`,
+            response.status
+          );
+        }
+        return await response.json();
+      }, DEFAULT_TIMEOUT_MS, "getDocumentRoles")
+    );
+    const roles: unknown[] = Array.isArray(data.roles) ? data.roles : [];
+    const out: DocumentRole[] = roles
+      .filter((r): r is Record<string, unknown> => r != null && typeof r === "object" && typeof (r as { unique_id?: unknown }).unique_id === "string")
+      .map((r) => ({
+        unique_id: (r as { unique_id: string }).unique_id,
+        name: typeof (r as { name?: unknown }).name === "string" ? (r as { name: string }).name : undefined,
+      }));
+    logApiCall("getDocumentRoles", { documentId, roleCount: out.length }, startTime);
+    return out;
+  } catch (error) {
+    const statusCode =
+      error && typeof error === "object" && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+    logApiError("getDocumentRoles", error, { documentId, statusCode });
+    if (error instanceof Error && error.message.includes("not found")) {
+      throw error;
+    }
+    throw new Error(
+      "Failed to get document roles. The document may not exist or may have been deleted."
     );
   }
 }
