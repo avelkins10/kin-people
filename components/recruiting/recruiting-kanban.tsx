@@ -33,7 +33,7 @@ import { RecruitDetailModal } from "@/components/recruiting/modals/recruit-detai
 import type { RecruitListItem } from "@/types/recruiting";
 import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
-import { Clock, MapPin, MoreHorizontal, Plus, UserPlus, Phone, Users, FileText, Send, CheckCircle } from "lucide-react";
+import { Clock, MapPin, MoreHorizontal, Plus, UserPlus, Phone, Users, FileText, Send, CheckCircle, GraduationCap } from "lucide-react";
 
 interface RecruitingKanbanProps {
   initialRecruits: RecruitListItem[];
@@ -45,7 +45,8 @@ type RecruitStatus =
   | "interviewing"
   | "offer_sent"
   | "agreement_sent"
-  | "agreement_signed";
+  | "agreement_signed"
+  | "onboarding";
 
 const STATUS_COLUMNS: { status: RecruitStatus; label: string; icon: React.ElementType }[] = [
   { status: "lead", label: "Lead", icon: UserPlus },
@@ -54,6 +55,7 @@ const STATUS_COLUMNS: { status: RecruitStatus; label: string; icon: React.Elemen
   { status: "offer_sent", label: "Offer Sent", icon: FileText },
   { status: "agreement_sent", label: "Agreement Sent", icon: Send },
   { status: "agreement_signed", label: "Agreement Signed", icon: CheckCircle },
+  { status: "onboarding", label: "Onboarding", icon: GraduationCap },
 ];
 
 const PIPELINE_STATUS_SET = new Set(STATUS_COLUMNS.map((c) => c.status));

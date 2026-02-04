@@ -20,6 +20,7 @@ const PIPELINE_STATUSES = [
   "offer_sent",
   "agreement_sent",
   "agreement_signed",
+  "onboarding",
 ] as const;
 
 type ViewMode = "kanban" | "list";
