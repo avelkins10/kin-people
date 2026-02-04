@@ -3,7 +3,19 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useOnboardingTasks, useToggleOnboardingTask } from "@/hooks/use-onboarding-data";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import {
   CheckCircle,
@@ -11,6 +23,7 @@ import {
   Mail,
   ClipboardList,
   AlertCircle,
+  PartyPopper,
 } from "lucide-react";
 
 interface PersonalInfoField {
@@ -42,9 +55,11 @@ interface PersonOnboardingProps {
 export function PersonOnboarding({ personId, personStatus }: PersonOnboardingProps) {
   const { data: onboardingData, isLoading: tasksLoading, error: tasksError } = useOnboardingTasks(personId);
   const toggleTask = useToggleOnboardingTask();
+  const queryClient = useQueryClient();
   const [personalInfo, setPersonalInfo] = useState<PersonalInfoResponse | null>(null);
   const [personalInfoLoading, setPersonalInfoLoading] = useState(true);
   const [sendingReminder, setSendingReminder] = useState(false);
+  const [completingOnboarding, setCompletingOnboarding] = useState(false);
 
   useEffect(() => {
     async function fetchPersonalInfo() {
@@ -92,6 +107,34 @@ export function PersonOnboarding({ personId, personStatus }: PersonOnboardingPro
       });
     } finally {
       setSendingReminder(false);
+    }
+  }
+
+  async function handleCompleteOnboarding() {
+    setCompletingOnboarding(true);
+    try {
+      const res = await fetch(`/api/people/${personId}/onboarding/complete`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Failed to complete onboarding");
+      }
+      toast({
+        title: "Onboarding completed",
+        description: "Person status has been changed to active",
+      });
+      // Invalidate queries to refresh person data
+      queryClient.invalidateQueries({ queryKey: ["people", personId] });
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to complete onboarding",
+      });
+    } finally {
+      setCompletingOnboarding(false);
     }
   }
 
@@ -202,9 +245,48 @@ export function PersonOnboarding({ personId, personStatus }: PersonOnboardingPro
             </div>
           </div>
           {percentComplete === 100 && (
-            <div className="flex items-center text-green-600 text-sm font-medium">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              All tasks completed!
+            <div className="flex items-center justify-between">
+              <div className="flex items-center text-green-600 text-sm font-medium">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                All tasks completed!
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <PartyPopper className="w-4 h-4 mr-2" />
+                    Complete Onboarding
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Complete Onboarding</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will change the person's status from "onboarding" to "active" and send them a completion email. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCompleteOnboarding}
+                      disabled={completingOnboarding}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {completingOnboarding ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Completing...
+                        </>
+                      ) : (
+                        "Complete Onboarding"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </CardContent>

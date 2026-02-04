@@ -12,8 +12,17 @@ import {
   personPayPlans,
   personTeams,
   personHistory,
+  onboardingTasks,
+  personOnboardingProgress,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { generateKinId } from "@/lib/db/helpers/kin-id-helpers";
+import {
+  normalizePhone,
+  checkForDuplicatePerson,
+  formatDuplicateError,
+} from "@/lib/db/helpers/duplicate-helpers";
+import { sendWelcomeEmail } from "@/lib/services/email-service";
 
 const convertSchema = z.object({
   hireDate: z.string(), // ISO date string
@@ -66,21 +75,43 @@ export async function POST(
         );
       }
 
+      // Check for duplicate person before conversion
+      if (recruit.email) {
+        const duplicatePerson = await checkForDuplicatePerson(
+          recruit.email,
+          recruit.phone
+        );
+        if (duplicatePerson.isDuplicate) {
+          return NextResponse.json(
+            { error: formatDuplicateError(duplicatePerson, "person") },
+            { status: 409 }
+          );
+        }
+      }
+
       // Use transaction to create person and update recruit
       const result = await db.transaction(async (tx) => {
+        // Generate KIN ID for the new person
+        const kinId = await generateKinId(tx);
+
+        // Normalize phone for storage
+        const normalizedPhone = normalizePhone(recruit.phone);
+
         // Create person record
         const [newPerson] = await tx
           .insert(people)
           .values({
+            kinId,
             firstName: recruit.firstName ?? "",
             lastName: recruit.lastName ?? "",
             email: recruit.email ?? "",
             phone: recruit.phone ?? null,
+            normalizedPhone,
             officeId: targetOffice.id,
             roleId: targetRole.id,
             reportsToId: targetReportsTo?.id ?? null,
             recruitedById: recruit.recruiterId ?? null,
-            status: "active",
+            status: "onboarding",
             hireDate: validated.hireDate,
           })
           .returning();
@@ -142,12 +173,52 @@ export async function POST(
           changedById: user.id,
         });
 
+        // Initialize onboarding tasks
+        const activeTasks = await tx
+          .select({ id: onboardingTasks.id })
+          .from(onboardingTasks)
+          .where(eq(onboardingTasks.isActive, true));
+
+        if (activeTasks.length > 0) {
+          const progressRecords = activeTasks.map((task) => ({
+            personId: newPerson.id,
+            taskId: task.id,
+            completed: false,
+          }));
+          await tx
+            .insert(personOnboardingProgress)
+            .values(progressRecords)
+            .onConflictDoNothing();
+        }
+
         return newPerson;
       });
+
+      // Send welcome email to the new hire (async, don't block on failure)
+      if (recruit.email) {
+        sendWelcomeEmail({
+          email: recruit.email,
+          firstName: recruit.firstName ?? '',
+          lastName: recruit.lastName ?? undefined,
+          managerName: targetReportsTo
+            ? `${targetReportsTo.firstName} ${targetReportsTo.lastName}`.trim()
+            : undefined,
+          officeName: targetOffice?.name,
+        }).then((emailResult) => {
+          if (emailResult.success) {
+            console.log(`[convert-to-person] Welcome email sent to ${recruit.email}`);
+          } else {
+            console.warn(`[convert-to-person] Failed to send welcome email: ${emailResult.error}`);
+          }
+        }).catch((err) => {
+          console.warn('[convert-to-person] Welcome email error:', err);
+        });
+      }
 
       return NextResponse.json({
         success: true,
         personId: result.id,
+        kinId: result.kinId,
       });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
