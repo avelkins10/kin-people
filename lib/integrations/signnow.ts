@@ -604,47 +604,93 @@ export async function createDocumentWithMultipleSigners(
     throw new Error("createDocumentWithMultipleSigners: signers array cannot be empty");
   }
   const startTime = Date.now();
+  const baseBody: {
+    document_name: string;
+    field_invites: Array<{ email: string; role: string; order: number }>;
+    field_values?: Array<{ field_name: string; field_value: string }>;
+  } = {
+    document_name: documentName,
+    field_invites: signers.map((s) => ({
+      email: s.email,
+      role: s.role,
+      order: s.order ?? 1,
+    })),
+  };
+
   try {
     const accessToken = await getAccessToken();
-    const body: {
-      document_name: string;
-      field_invites: Array<{ email: string; role: string; order: number }>;
-      field_values?: Array<{ field_name: string; field_value: string }>;
-    } = {
-      document_name: documentName,
-      field_invites: signers.map((s) => ({
-        email: s.email,
-        role: s.role,
-        order: s.order ?? 1,
-      })),
-    };
-    if (fieldValues?.length) {
-      body.field_values = fieldValues;
-    }
-    const result = await withRetry(() =>
-      withTimeout(async (signal) => {
-        const response = await fetch(
-          `https://api.signnow.com/v2/templates/${templateId}/documents`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-            signal,
-          }
-        );
-        if (!response.ok) {
-          const errorText = await response.text();
-          throwWithStatus(
-            `Failed to create document from template ${templateId}: ${errorText}`,
-            response.status
-          );
+
+    async function doCreate(
+      body: typeof baseBody
+    ): Promise<{ id: string }> {
+      const response = await fetch(
+        `https://api.signnow.com/v2/templates/${templateId}/documents`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
         }
-        return await response.json();
-      }, DOCUMENT_CREATION_TIMEOUT_MS, "createDocumentWithMultipleSigners")
-    );
+      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        throwWithStatus(
+          `Failed to create document from template ${templateId}: ${errorText}`,
+          response.status
+        );
+      }
+      return await response.json();
+    }
+    let result: { id: string };
+    try {
+      const bodyWithFields = { ...baseBody };
+      if (fieldValues?.length) {
+        bodyWithFields.field_values = fieldValues;
+      }
+      result = await withRetry(() =>
+        withTimeout(
+          (signal) =>
+            doCreate(bodyWithFields).then((r) => {
+              if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+              return r;
+            }),
+          DOCUMENT_CREATION_TIMEOUT_MS,
+          "createDocumentWithMultipleSigners"
+        )
+      );
+    } catch (firstError) {
+      const msg =
+        firstError instanceof Error ? firstError.message : String(firstError);
+      const isBadRequest =
+        (firstError && typeof firstError === "object" && "status" in firstError && (firstError as { status?: number }).status === 400) ||
+        msg.includes("400") ||
+        msg.toLowerCase().includes("field") ||
+        msg.toLowerCase().includes("invalid");
+      if (
+        fieldValues?.length &&
+        isBadRequest
+      ) {
+        console.warn(
+          "[signnow] createDocumentWithMultipleSigners: first attempt failed, retrying without field_values",
+          { templateId, message: msg.slice(0, 200) }
+        );
+        result = await withRetry(() =>
+          withTimeout(
+            (signal) =>
+              doCreate(baseBody).then((r) => {
+                if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+                return r;
+              }),
+            DOCUMENT_CREATION_TIMEOUT_MS,
+            "createDocumentWithMultipleSigners (no field_values)"
+          )
+        );
+      } else {
+        throw firstError;
+      }
+    }
     logApiCall("createDocumentWithMultipleSigners", {
       templateId,
       documentId: result.id,
@@ -657,8 +703,13 @@ export async function createDocumentWithMultipleSigners(
       signerCount: signers.length,
       signerEmails: signers.map((s) => s.email),
     });
+    const message =
+      error instanceof Error ? error.message : String(error);
+    if (message.includes("Failed to create document from template")) {
+      throw error;
+    }
     throw new Error(
-      "Failed to create multi-signer document. Please verify template and signer information."
+      `Failed to create multi-signer document. ${message}`
     );
   }
 }
