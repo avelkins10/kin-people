@@ -114,10 +114,12 @@ export async function sendMultipleInvites(
   const expirationDays = options?.expirationDays ?? 30;
   const reminderDays = options?.reminderDays ?? 0;
 
-  // Build the "to" array matching the SDK's To interface
+  // Build the "to" array. For email-only, send only the fields the legacy invite endpoint expects.
+  // SMS fields (phone_invite, method) are added only when explicitly using SMS to avoid 500s from SignNow.
+  const useSms = signers.some((s) => s.deliveryMethod === "sms" && s.phone);
   const to: ToRequestAttribute[] = signers.map((s, i) => {
     const role = roles[i];
-    return {
+    const entry: ToRequestAttribute = {
       email: s.email,
       role: s.role,
       role_id: role.unique_id,
@@ -129,6 +131,11 @@ export async function sendMultipleInvites(
       reminder: reminderDays,
       expiration_days: expirationDays,
     };
+    if (useSms && s.deliveryMethod === "sms" && s.phone) {
+      entry.phone_invite = s.phone;
+      entry.method = "sms";
+    }
+    return entry;
   });
 
   const request = new SendInvitePostRequest(

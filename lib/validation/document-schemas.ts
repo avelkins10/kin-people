@@ -4,6 +4,8 @@ export const sendDocumentSchema = z.object({
   documentType: z.string().min(1, "Document type is required"),
   /** When set, use this preview token to send the already-created SignNow document (from Preview) instead of creating a new one. */
   previewToken: z.string().optional(),
+  /** Delivery method: 'email' (default) or 'sms'. SMS sends a text message with signing link instead of email. */
+  deliveryMethod: z.enum(["email", "sms"]).optional().default("email"),
 });
 
 export const templateConfigSchema = z.object({

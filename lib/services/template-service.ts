@@ -7,12 +7,13 @@ import type { DocumentTemplate } from "@/lib/db/schema/document-templates";
 const CONFIG_CACHE_TTL_MS = 3600000; // 1 hour
 const SIGNNOW_CACHE_TTL_MS = 3600000; // 1 hour
 
-/** Individual signer with email, name, role, and order (1 = parallel signing). */
+/** Individual signer with email, name, role, phone, and order (1 = parallel signing). */
 export interface SignerInfo {
   email: string;
   name: string;
   role: string;
   order: number;
+  phone?: string;
 }
 
 /** Recruit-shaped entity for signer resolution (has targetReportsToId for manager). */
@@ -20,6 +21,7 @@ export interface RecruitTemplateEntity {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string | null;
   targetReportsToId?: string | null;
 }
 
@@ -28,6 +30,7 @@ export interface PersonTemplateEntity {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?: string | null;
   reportsToId?: string | null;
 }
 
@@ -118,11 +121,12 @@ export async function resolveSigners(
   if (templateConfig.requireRecruit) {
     const first = "firstName" in entity ? entity.firstName : undefined;
     const last = "lastName" in entity ? entity.lastName : undefined;
+    const phone = "phone" in entity ? entity.phone : undefined;
     const name =
       first != null || last != null
         ? [first, last].filter(Boolean).join(" ").trim()
         : email;
-    addSigner({ email, name: name || email, role: "Signer", order: 1 });
+    addSigner({ email, name: name || email, role: "Signer", order: 1, phone: phone ?? undefined });
   }
 
   if (templateConfig.requireManager) {
@@ -137,13 +141,14 @@ export async function resolveSigners(
       );
     }
 
-    let manager: { email: string; firstName: string | null; lastName: string | null } | undefined;
+    let manager: { email: string; firstName: string | null; lastName: string | null; phone: string | null } | undefined;
     try {
       const managerRows = await db
         .select({
           email: people.email,
           firstName: people.firstName,
           lastName: people.lastName,
+          phone: people.phone,
         })
         .from(people)
         .where(eq(people.id, managerId))
@@ -171,17 +176,19 @@ export async function resolveSigners(
       name: name || manager.email,
       role: "Manager",
       order: 1,
+      phone: manager.phone ?? undefined,
     });
   }
 
   if (templateConfig.requireHR) {
-    let hrPerson: { email: string; firstName: string | null; lastName: string | null } | undefined;
+    let hrPerson: { email: string; firstName: string | null; lastName: string | null; phone: string | null } | undefined;
     try {
       const hrRows = await db
         .select({
           email: people.email,
           firstName: people.firstName,
           lastName: people.lastName,
+          phone: people.phone,
         })
         .from(people)
         .innerJoin(roles, eq(people.roleId, roles.id))
@@ -219,6 +226,7 @@ export async function resolveSigners(
       name: name || hrPerson.email,
       role: "HR",
       order: 1,
+      phone: hrPerson.phone ?? undefined,
     });
   }
 

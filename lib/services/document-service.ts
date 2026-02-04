@@ -24,6 +24,7 @@ import {
 import * as signnowSdk from "@/lib/integrations/signnow-sdk";
 
 // Use SDK by default; set USE_SIGNNOW_SDK=false to use direct API for create/invite/prefill.
+// If invite sends return 500 after SDK/SMS changes, use the direct API as a workaround.
 const useSignNowSdk = process.env.USE_SIGNNOW_SDK !== "false";
 const createDocumentWithMultipleSigners = useSignNowSdk
   ? signnowSdk.createDocumentWithMultipleSigners
@@ -188,8 +189,24 @@ function toPersonTemplateEntity(data: PersonEntity): PersonTemplateEntity {
   };
 }
 
-function signerInfoToConfig(signers: SignerInfo[]): Array<{ email: string; role: string; order?: number }> {
-  return signers.map((s) => ({ email: s.email, role: s.role, order: s.order ?? 1 }));
+type DeliveryMethod = "email" | "sms";
+
+function signerInfoToConfig(
+  signers: SignerInfo[],
+  deliveryMethod?: DeliveryMethod
+): Array<{ email: string; role: string; order?: number; deliveryMethod?: DeliveryMethod; phone?: string }> {
+  return signers.map((s) => ({
+    email: s.email,
+    role: s.role,
+    order: s.order ?? 1,
+    ...(deliveryMethod === "sms" && s.phone ? { deliveryMethod: "sms" as const, phone: s.phone } : {}),
+  }));
+}
+
+/** Options for sending a document. */
+export interface SendDocumentOptions {
+  /** Delivery method: 'email' (default) or 'sms' */
+  deliveryMethod?: DeliveryMethod;
 }
 
 /**
@@ -200,7 +217,8 @@ export async function sendDocument(
   entityType: "recruit" | "person",
   entityId: string,
   documentType: string,
-  userId: string
+  userId: string,
+  options?: SendDocumentOptions
 ): Promise<string> {
   try {
     let entity: RecruitEntity | PersonEntity | null = null;
@@ -237,9 +255,10 @@ export async function sendDocument(
       );
     }
 
+    const deliveryMethod = options?.deliveryMethod;
     const signnowDocumentId = await createDocumentWithMultipleSigners(
       signnowTemplateId,
-      signerInfoToConfig(signers),
+      signerInfoToConfig(signers, deliveryMethod),
       documentName,
       fieldValues
     );
@@ -279,7 +298,7 @@ export async function sendDocument(
 
     try {
       const inviteOptions = buildInviteOptions(templateConfig, documentType);
-      await sendMultipleInvites(signnowDocumentId, signerInfoToConfig(signers), inviteOptions);
+      await sendMultipleInvites(signnowDocumentId, signerInfoToConfig(signers, deliveryMethod), inviteOptions);
     } catch (inviteErr) {
       await deleteDocument(documentId);
       try {

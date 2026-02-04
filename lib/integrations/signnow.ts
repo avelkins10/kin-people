@@ -144,11 +144,15 @@ interface DocumentData {
  * @property email - Signer's email address
  * @property role - Signer's role (e.g. "Signer")
  * @property order - Optional signing order; use 1 for all signers to enable parallel signing (sign in any order)
+ * @property deliveryMethod - Optional delivery method; 'email' (default) or 'sms'
+ * @property phone - Phone number in E.164 format (required if deliveryMethod is 'sms')
  */
 export interface SignerConfig {
   email: string;
   role: string;
   order?: number;
+  deliveryMethod?: "email" | "sms";
+  phone?: string;
 }
 
 /**
@@ -809,6 +813,12 @@ export async function sendMultipleInvites(
         reminder: reminderDays ?? 0,
         expiration_days: expirationDays ?? 30,
       };
+      // Add SMS delivery fields if requested
+      if (s.deliveryMethod === "sms" && s.phone) {
+        entry.phone_invite = s.phone;
+        entry.method = "sms";
+        // Email is still required by SignNow for record-keeping
+      }
       return entry;
     });
 

@@ -17,7 +17,8 @@ import { toast } from "@/components/ui/use-toast";
 import type { RecruitWithDetails } from "@/types/recruiting";
 import type { PersonWithDetails } from "@/types/people";
 import type { DocumentTemplate } from "@/lib/db/schema/document-templates";
-import { Eye, Loader2 } from "lucide-react";
+import { Eye, Loader2, Mail, MessageSquare } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface SignerInfo {
   email: string;
@@ -99,13 +100,14 @@ function buildSigners(
 function getEntityDisplayInfo(
   entityType: "recruit" | "person",
   entityData: RecruitWithDetails | PersonWithDetails
-): { name: string; email: string; office: string; role: string } {
+): { name: string; email: string; phone: string | null; office: string; role: string } {
   if (entityType === "recruit") {
     const data = entityData as RecruitWithDetails;
     const r = data.recruit;
     return {
       name: `${r.firstName} ${r.lastName}`,
       email: r.email ?? "—",
+      phone: r.phone ?? null,
       office: data.targetOffice?.name ?? "N/A",
       role: data.targetRole?.name ?? "N/A",
     };
@@ -115,6 +117,7 @@ function getEntityDisplayInfo(
   return {
     name: `${p.firstName} ${p.lastName}`,
     email: p.email,
+    phone: p.phone ?? null,
     office: data.office?.name ?? "N/A",
     role: data.role?.name ?? "N/A",
   };
@@ -141,6 +144,7 @@ export function SendDocumentModal({
   );
   const [signers, setSigners] = useState<SignerInfo[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState<"email" | "sms">("email");
   const router = useRouter();
 
   useEffect(() => {
@@ -151,6 +155,7 @@ export function SendDocumentModal({
     setEntityData(null);
     setTemplateConfig(null);
     setSigners([]);
+    setDeliveryMethod("email");
     setDataLoading(true);
 
     const entityUrl =
@@ -283,6 +288,7 @@ export function SendDocumentModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             documentType,
+            deliveryMethod,
             ...(previewToken ? { previewToken } : {}),
           }),
         });
@@ -407,6 +413,63 @@ export function SendDocumentModal({
                   </span>
                 </div>
               </div>
+
+              {/* Delivery Method Selection */}
+              {!isResendMode && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Delivery Method</Label>
+                  <RadioGroup
+                    value={deliveryMethod}
+                    onValueChange={(value) => setDeliveryMethod(value as "email" | "sms")}
+                    className="flex flex-col gap-2"
+                  >
+                    <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50">
+                      <RadioGroupItem value="email" id="delivery-email" />
+                      <Label htmlFor="delivery-email" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">Email</div>
+                          <div className="text-xs text-muted-foreground">Send signing link via email</div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div
+                      className={`flex items-center space-x-3 rounded-lg border p-3 ${
+                        entityInfo?.phone
+                          ? "cursor-pointer hover:bg-gray-50"
+                          : "opacity-50 cursor-not-allowed"
+                      }`}
+                    >
+                      <RadioGroupItem
+                        value="sms"
+                        id="delivery-sms"
+                        disabled={!entityInfo?.phone}
+                      />
+                      <Label
+                        htmlFor="delivery-sms"
+                        className={`flex items-center gap-2 flex-1 ${
+                          entityInfo?.phone ? "cursor-pointer" : "cursor-not-allowed"
+                        }`}
+                      >
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">SMS Text Message</div>
+                          <div className="text-xs text-muted-foreground">
+                            {entityInfo?.phone
+                              ? `Send to ${entityInfo.phone}`
+                              : "No phone number on file"}
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {deliveryMethod === "sms" && (
+                    <div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-3 text-sm text-amber-900">
+                      SMS delivery is charged per message by SignNow. Standard messaging rates may also apply to recipients.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {signers.length > 1 && (
                 <div className="space-y-2">
