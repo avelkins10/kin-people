@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 import type { RecruitWithDetails } from "@/types/recruiting";
 
 interface ConvertToPersonModalProps {
@@ -53,7 +54,11 @@ export function ConvertToPersonModal({
 
   async function handleConfirm() {
     if (!hireDate) {
-      alert("Please select a hire date");
+      toast({
+        title: "Error",
+        description: "Please select a hire date",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -70,17 +75,28 @@ export function ConvertToPersonModal({
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to convert recruit");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to convert recruit",
+          variant: "destructive",
+        });
         return;
       }
 
       const result = await response.json();
       window.dispatchEvent(new CustomEvent("recruits-updated"));
-      alert("Recruit converted successfully!");
+      toast({
+        title: "Success",
+        description: "Recruit converted successfully!",
+      });
       router.push(`/people/${result.personId}`);
     } catch (error) {
       console.error("Error converting recruit:", error);
-      alert("Failed to convert recruit");
+      toast({
+        title: "Error",
+        description: "Failed to convert recruit",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

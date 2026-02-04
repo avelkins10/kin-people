@@ -32,7 +32,7 @@ import {
 import { RecruitDetailModal } from "@/components/recruiting/modals/recruit-detail-modal";
 import type { RecruitListItem } from "@/types/recruiting";
 import { useRouter } from "next/navigation";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Clock, MapPin, MoreHorizontal, Plus, UserPlus, Phone, Users, FileText, Send, CheckCircle } from "lucide-react";
 
 interface RecruitingKanbanProps {
@@ -342,7 +342,11 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
       router.refresh();
     } catch (error) {
       console.error("Error updating recruit status:", error);
-      alert("Failed to update recruit status");
+      toast({
+        title: "Error",
+        description: "Failed to update recruit status",
+        variant: "destructive",
+      });
     }
   };
 

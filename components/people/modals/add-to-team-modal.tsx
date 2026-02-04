@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface AddToTeamModalProps {
   personId: string;
@@ -59,12 +60,16 @@ export function AddToTeamModal({ personId, open, onClose }: AddToTeamModalProps)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!formData.reason.trim()) {
-      alert("Reason is required");
+      toast({
+        title: "Error",
+        description: "Reason is required",
+        variant: "destructive",
+      });
       return;
     }
-    
+
     setLoading(true);
 
     try {
@@ -81,7 +86,11 @@ export function AddToTeamModal({ personId, open, onClose }: AddToTeamModalProps)
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to add to team");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to add to team",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -89,7 +98,11 @@ export function AddToTeamModal({ personId, open, onClose }: AddToTeamModalProps)
       onClose();
     } catch (error) {
       console.error("Error adding to team:", error);
-      alert("Failed to add to team");
+      toast({
+        title: "Error",
+        description: "Failed to add to team",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

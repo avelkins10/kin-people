@@ -28,6 +28,8 @@ export * from './person-teams';
 export * from './person-pay-plans';
 export * from './person-history';
 export * from './org-snapshots';
+export * from './onboarding-tasks';
+export * from './person-onboarding-progress';
 
 // Recruiting tables
 export * from './recruits';
@@ -58,6 +60,8 @@ import { personTeams } from './person-teams';
 import { personPayPlans } from './person-pay-plans';
 import { personHistory } from './person-history';
 import { orgSnapshots } from './org-snapshots';
+import { onboardingTasks } from './onboarding-tasks';
+import { personOnboardingProgress } from './person-onboarding-progress';
 import { recruits } from './recruits';
 import { recruitHistory } from './recruit-history';
 import { documents } from './documents';
@@ -80,6 +84,8 @@ export const schema = {
   personPayPlans,
   personHistory,
   orgSnapshots,
+  onboardingTasks,
+  personOnboardingProgress,
   recruits,
   recruitHistory,
   documents,

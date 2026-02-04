@@ -20,6 +20,7 @@ import {
 import { Plus, MoreVertical, Edit, Eye, Trash2, Power } from "lucide-react";
 import { PayPlanModal } from "./modals/pay-plan-modal";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface PayPlan {
   id: string;
@@ -88,11 +89,19 @@ export function PayPlansTab({ initialData }: PayPlansTabProps) {
         router.refresh();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to update pay plan");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.error || "Failed to update pay plan",
+        });
       }
     } catch (error) {
       console.error("Error toggling pay plan status:", error);
-      alert("Failed to update pay plan");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update pay plan",
+      });
     }
   }
 
@@ -115,11 +124,19 @@ export function PayPlansTab({ initialData }: PayPlansTabProps) {
         router.refresh();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to delete pay plan");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.error || "Failed to delete pay plan",
+        });
       }
     } catch (error) {
       console.error("Error deleting pay plan:", error);
-      alert("Failed to delete pay plan");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete pay plan",
+      });
     }
   }
 

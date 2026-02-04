@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Coins } from "lucide-react";
 import { useCommissions } from "@/hooks/use-commissions-data";
 
 interface PersonCommissionsProps {
@@ -133,8 +133,12 @@ export function PersonCommissions({ personId }: PersonCommissionsProps) {
 
   if (commissions.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        <p>No commissions found for this person.</p>
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Coins className="w-12 h-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No commissions found</h3>
+        <p className="text-sm text-gray-500">
+          This person doesn't have any commissions yet.
+        </p>
       </div>
     );
   }

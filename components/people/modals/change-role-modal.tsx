@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface ChangeRoleModalProps {
   personId: string;
@@ -95,7 +96,11 @@ export function ChangeRoleModal({ personId, open, onClose }: ChangeRoleModalProp
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to change role");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to change role",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -103,7 +108,11 @@ export function ChangeRoleModal({ personId, open, onClose }: ChangeRoleModalProp
       onClose();
     } catch (error) {
       console.error("Error changing role:", error);
-      alert("Failed to change role");
+      toast({
+        title: "Error",
+        description: "Failed to change role",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

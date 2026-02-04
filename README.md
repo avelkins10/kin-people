@@ -7,6 +7,7 @@ Sales team management and commission tracking application built with Next.js, Su
 - **Framework**: Next.js 14+ (App Router)
 - **Authentication**: Supabase Auth
 - **Database**: Supabase PostgreSQL with Drizzle ORM
+- **Data Fetching**: TanStack Query (React Query) for server state management
 - **UI**: Tailwind CSS, shadcn/ui components
 - **Language**: TypeScript
 
@@ -142,6 +143,7 @@ See `docs/authentication.md` for complete documentation on:
 
 ## Documentation
 
+- [Data Fetching Patterns](./docs/data-fetching-patterns.md) - **React Query hooks and patterns (START HERE for new components)**
 - [Authentication & Authorization](./docs/authentication.md) - Complete auth system documentation
 - **SignNow:** [Document management](./docs/signnow-document-management.md) (user/admin guide). For API details (endpoints, auth, responses), use **`SignNow API.postman_collection.json`** in the project root (official SignNow API Postman collection). Use this file when implementing or debugging SignNow integration.
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { personFormSchema, type PersonFormData } from "@/lib/validation/person-form";
+import { useUpdatePerson } from "@/hooks/use-people-data";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import type { PersonWithDetails } from "@/types/people";
 
 interface Role {
   id: string;
@@ -33,11 +33,24 @@ interface Manager {
   lastName: string;
 }
 
-export function AddPersonForm() {
-  const router = useRouter();
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [offices, setOffices] = useState<Office[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
+interface PersonEditFormProps {
+  person: PersonWithDetails["person"];
+  roles: Role[];
+  offices: Office[];
+  managers: Manager[];
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+export function PersonEditForm({
+  person,
+  roles,
+  offices,
+  managers,
+  onSave,
+  onCancel,
+}: PersonEditFormProps) {
+  const updateMutation = useUpdatePerson();
 
   const {
     register,
@@ -48,15 +61,15 @@ export function AddPersonForm() {
   } = useForm<PersonFormData>({
     resolver: zodResolver(personFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      roleId: "",
-      officeId: "",
-      reportsToId: "",
-      status: "active",
-      hireDate: "",
+      firstName: person.firstName || "",
+      lastName: person.lastName || "",
+      email: person.email || "",
+      phone: person.phone || "",
+      roleId: person.roleId || "",
+      officeId: person.officeId || "",
+      reportsToId: person.reportsToId || "",
+      status: person.status || "active",
+      hireDate: person.hireDate ? person.hireDate.toString().split("T")[0] : "",
     },
   });
 
@@ -65,100 +78,37 @@ export function AddPersonForm() {
   const reportsToId = watch("reportsToId");
   const status = watch("status");
 
-  useEffect(() => {
-    async function fetchOptions() {
-      try {
-        const [rolesRes, officesRes, managersRes] = await Promise.all([
-          fetch("/api/roles?active=true"),
-          fetch("/api/offices?active=true"),
-          fetch("/api/people?roleLevel=manager"),
-        ]);
-
-        if (rolesRes.ok) {
-          const data = await rolesRes.json();
-          setRoles(data);
-        }
-        if (officesRes.ok) {
-          const data = await officesRes.json();
-          setOffices(data);
-        }
-        if (managersRes.ok) {
-          const data = await managersRes.json();
-          setManagers(data);
-        }
-      } catch (error) {
-        console.error("Error fetching options:", error);
-      }
-    }
-    fetchOptions();
-  }, []);
-
   async function onSubmit(data: PersonFormData) {
-    try {
-      const body: Record<string, string> = {
+    await updateMutation.mutateAsync({
+      id: person.id,
+      data: {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
+        phone: data.phone,
         roleId: data.roleId,
+        officeId: data.officeId,
+        reportsToId: data.reportsToId,
         status: data.status,
-      };
-      if (data.phone) body.phone = data.phone;
-      if (data.officeId) body.officeId = data.officeId;
-      if (data.reportsToId) body.reportsToId = data.reportsToId;
-      if (data.hireDate) body.hireDate = data.hireDate;
-
-      const response = await fetch("/api/people", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const responseData = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        toast({
-          title: "Error",
-          description: responseData.error || "Failed to create person",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Success",
-        description: "Person created successfully",
-      });
-      router.push(responseData.id ? `/people/${responseData.id}` : "/people");
-      router.refresh();
-    } catch (error) {
-      console.error("Error creating person:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create person",
-        variant: "destructive",
-      });
-    }
+        hireDate: data.hireDate,
+      },
+    });
+    onSave();
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 bg-white border border-gray-200 rounded-sm p-6 shadow-sm">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name *</Label>
-          <Input
-            id="firstName"
-            {...register("firstName")}
-          />
+          <Input id="firstName" {...register("firstName")} />
           {errors.firstName && (
             <p className="text-sm text-red-500 mt-1">{errors.firstName.message}</p>
           )}
         </div>
         <div>
           <Label htmlFor="lastName">Last Name *</Label>
-          <Input
-            id="lastName"
-            {...register("lastName")}
-          />
+          <Input id="lastName" {...register("lastName")} />
           {errors.lastName && (
             <p className="text-sm text-red-500 mt-1">{errors.lastName.message}</p>
           )}
@@ -166,31 +116,21 @@ export function AddPersonForm() {
       </div>
       <div>
         <Label htmlFor="email">Email *</Label>
-        <Input
-          id="email"
-          type="email"
-          {...register("email")}
-        />
+        <Input id="email" type="email" {...register("email")} />
         {errors.email && (
           <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
         )}
       </div>
       <div>
         <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          {...register("phone")}
-        />
+        <Input id="phone" {...register("phone")} />
         {errors.phone && (
           <p className="text-sm text-red-500 mt-1">{errors.phone.message}</p>
         )}
       </div>
       <div>
         <Label htmlFor="roleId">Role *</Label>
-        <Select
-          value={roleId}
-          onValueChange={(value) => setValue("roleId", value)}
-        >
+        <Select value={roleId} onValueChange={(value) => setValue("roleId", value)}>
           <SelectTrigger id="roleId">
             <SelectValue placeholder="Select role" />
           </SelectTrigger>
@@ -208,10 +148,7 @@ export function AddPersonForm() {
       </div>
       <div>
         <Label htmlFor="officeId">Office</Label>
-        <Select
-          value={officeId}
-          onValueChange={(value) => setValue("officeId", value)}
-        >
+        <Select value={officeId || ""} onValueChange={(value) => setValue("officeId", value)}>
           <SelectTrigger id="officeId">
             <SelectValue placeholder="Select office" />
           </SelectTrigger>
@@ -230,7 +167,7 @@ export function AddPersonForm() {
       <div>
         <Label htmlFor="reportsToId">Reports To</Label>
         <Select
-          value={reportsToId}
+          value={reportsToId || ""}
           onValueChange={(value) => setValue("reportsToId", value)}
         >
           <SelectTrigger id="reportsToId">
@@ -271,24 +208,16 @@ export function AddPersonForm() {
       </div>
       <div>
         <Label htmlFor="hireDate">Hire Date</Label>
-        <Input
-          id="hireDate"
-          type="date"
-          {...register("hireDate")}
-        />
+        <Input id="hireDate" type="date" {...register("hireDate")} />
         {errors.hireDate && (
           <p className="text-sm text-red-500 mt-1">{errors.hireDate.message}</p>
         )}
       </div>
       <div className="flex gap-2 pt-4">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create Person"}
+          {isSubmitting ? "Saving..." : "Save Changes"}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push("/people")}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
       </div>

@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import type { Team, Office } from "@/hooks/use-settings-data";
 
 interface SettingsTeamsSectionProps {
@@ -92,7 +93,11 @@ export function SettingsTeamsSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to create team");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create team",
+      });
     } finally {
       setSaving(false);
     }
@@ -119,7 +124,11 @@ export function SettingsTeamsSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update team");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update team",
+      });
     } finally {
       setSaving(false);
     }
@@ -139,7 +148,11 @@ export function SettingsTeamsSection({
       setDeleteTeam(null);
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete team");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to delete team",
+      });
     } finally {
       setSaving(false);
     }

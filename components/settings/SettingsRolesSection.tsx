@@ -23,9 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import type { Role } from "@/hooks/use-settings-data";
 import { Permission } from "@/lib/permissions/types";
 import { getRolePermissions } from "@/lib/permissions/roles";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { roleFormSchema, type RoleFormData } from "@/lib/validation/role-form";
 
 interface SettingsRolesSectionProps {
   roles: Role[];
@@ -42,53 +46,68 @@ export function SettingsRolesSection({
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [deleteRole, setDeleteRole] = useState<Role | null>(null);
   const [saving, setSaving] = useState(false);
-  const [formName, setFormName] = useState("");
-  const [formLevel, setFormLevel] = useState(1);
-  const [formDescription, setFormDescription] = useState("");
-  const [formPermissions, setFormPermissions] = useState<string[]>([]);
 
   const allPermissions = Object.values(Permission) as string[];
   const formatPermissionLabel = (p: string) =>
     p.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const resetForm = () => {
-    setFormName("");
-    setFormLevel(1);
-    setFormDescription("");
-    setFormPermissions([]);
-    setEditRole(null);
-  };
+  const addForm = useForm<RoleFormData>({
+    resolver: zodResolver(roleFormSchema),
+    defaultValues: {
+      name: "",
+      level: 1,
+      description: "",
+      permissions: [],
+    },
+  });
+
+  const editForm = useForm<RoleFormData>({
+    resolver: zodResolver(roleFormSchema),
+    defaultValues: {
+      name: "",
+      level: 1,
+      description: "",
+      permissions: [],
+    },
+  });
+
+  const addPermissions = addForm.watch("permissions") || [];
+  const editPermissions = editForm.watch("permissions") || [];
 
   const openAdd = () => {
-    resetForm();
-    setFormPermissions([]);
+    addForm.reset({
+      name: "",
+      level: 1,
+      description: "",
+      permissions: [],
+    });
     setAddOpen(true);
   };
 
   const openEdit = (role: Role) => {
     setEditRole(role);
-    setFormName(role.name);
-    setFormLevel(role.level);
-    setFormDescription(role.description ?? "");
-    setFormPermissions(
-      Array.isArray(role.permissions) && role.permissions.length > 0
-        ? (role.permissions as string[])
-        : getRolePermissions(role.name)
-    );
+    editForm.reset({
+      name: role.name,
+      level: role.level,
+      description: role.description ?? "",
+      permissions:
+        Array.isArray(role.permissions) && role.permissions.length > 0
+          ? (role.permissions as string[])
+          : getRolePermissions(role.name),
+    });
   };
 
-  const handleCreate = async () => {
-    if (!formName.trim()) return;
+  async function handleCreate(data: RoleFormData) {
     setSaving(true);
     try {
       const res = await fetch("/api/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formName.trim(),
-          level: formLevel,
-          description: formDescription.trim() || undefined,
-          permissions: formPermissions.length > 0 ? formPermissions : undefined,
+          name: data.name.trim(),
+          level: data.level,
+          description: data.description?.trim() || undefined,
+          permissions: data.permissions && data.permissions.length > 0 ? data.permissions : undefined,
         }),
       });
       if (!res.ok) {
@@ -96,27 +115,31 @@ export function SettingsRolesSection({
         throw new Error((err as { error?: string }).error || "Failed to create");
       }
       setAddOpen(false);
-      resetForm();
+      addForm.reset();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to create role");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create role",
+      });
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const handleUpdate = async () => {
-    if (!editRole || !formName.trim()) return;
+  async function handleUpdate(data: RoleFormData) {
+    if (!editRole) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/roles/${editRole.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formName.trim(),
-          level: formLevel,
-          description: formDescription.trim() || null,
-          permissions: formPermissions,
+          name: data.name.trim(),
+          level: data.level,
+          description: data.description?.trim() || null,
+          permissions: data.permissions || [],
         }),
       });
       if (!res.ok) {
@@ -124,14 +147,18 @@ export function SettingsRolesSection({
         throw new Error((err as { error?: string }).error || "Failed to update");
       }
       setEditRole(null);
-      resetForm();
+      editForm.reset();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update role");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update role",
+      });
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   const handleDelete = async () => {
     if (!deleteRole) return;
@@ -147,7 +174,11 @@ export function SettingsRolesSection({
       setDeleteRole(null);
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete role");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to delete role",
+      });
     } finally {
       setSaving(false);
     }
@@ -214,65 +245,84 @@ export function SettingsRolesSection({
           <DialogHeader>
             <DialogTitle>Add role</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="add-role-name">Name</Label>
-              <Input
-                id="add-role-name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Sales Rep"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-role-level">Level (1 = lowest)</Label>
-              <Input
-                id="add-role-level"
-                type="number"
-                min={1}
-                value={formLevel}
-                onChange={(e) => setFormLevel(parseInt(e.target.value, 10) || 1)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-role-desc">Description (optional)</Label>
-              <Input
-                id="add-role-desc"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Brief description"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Permissions (optional)</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 rounded-sm">
-                {allPermissions.map((p) => (
-                  <label
-                    key={p}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={formPermissions.includes(p)}
-                      onCheckedChange={(checked) => {
-                        setFormPermissions((prev) =>
-                          checked ? [...prev, p] : prev.filter((x) => x !== p)
-                        );
-                      }}
-                    />
-                    <span className="text-gray-700">{formatPermissionLabel(p)}</span>
-                  </label>
-                ))}
+          <form onSubmit={addForm.handleSubmit(handleCreate)}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="add-role-name">Name</Label>
+                <Input
+                  id="add-role-name"
+                  {...addForm.register("name")}
+                  placeholder="e.g. Sales Rep"
+                />
+                {addForm.formState.errors.name && (
+                  <p className="text-sm text-destructive">
+                    {addForm.formState.errors.name.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="add-role-level">Level (1 = lowest)</Label>
+                <Input
+                  id="add-role-level"
+                  type="number"
+                  min={1}
+                  {...addForm.register("level", { valueAsNumber: true })}
+                />
+                {addForm.formState.errors.level && (
+                  <p className="text-sm text-destructive">
+                    {addForm.formState.errors.level.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="add-role-desc">Description (optional)</Label>
+                <Input
+                  id="add-role-desc"
+                  {...addForm.register("description")}
+                  placeholder="Brief description"
+                />
+                {addForm.formState.errors.description && (
+                  <p className="text-sm text-destructive">
+                    {addForm.formState.errors.description.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label>Permissions (optional)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 rounded-sm">
+                  {allPermissions.map((p) => (
+                    <label
+                      key={p}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={addPermissions.includes(p)}
+                        onCheckedChange={(checked) => {
+                          const current = addForm.getValues("permissions") || [];
+                          addForm.setValue(
+                            "permissions",
+                            checked ? [...current, p] : current.filter((x) => x !== p)
+                          );
+                        }}
+                      />
+                      <span className="text-gray-700">{formatPermissionLabel(p)}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={saving || !formName.trim()}>
-              {saving ? "Saving..." : "Create"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={addForm.formState.isSubmitting || saving}
+              >
+                {saving ? "Saving..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -281,65 +331,84 @@ export function SettingsRolesSection({
           <DialogHeader>
             <DialogTitle>Edit role</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role-name">Name</Label>
-              <Input
-                id="edit-role-name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Sales Rep"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role-level">Level (1 = lowest)</Label>
-              <Input
-                id="edit-role-level"
-                type="number"
-                min={1}
-                value={formLevel}
-                onChange={(e) => setFormLevel(parseInt(e.target.value, 10) || 1)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role-desc">Description (optional)</Label>
-              <Input
-                id="edit-role-desc"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Brief description"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Permissions</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 rounded-sm">
-                {allPermissions.map((p) => (
-                  <label
-                    key={p}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={formPermissions.includes(p)}
-                      onCheckedChange={(checked) => {
-                        setFormPermissions((prev) =>
-                          checked ? [...prev, p] : prev.filter((x) => x !== p)
-                        );
-                      }}
-                    />
-                    <span className="text-gray-700">{formatPermissionLabel(p)}</span>
-                  </label>
-                ))}
+          <form onSubmit={editForm.handleSubmit(handleUpdate)}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-role-name">Name</Label>
+                <Input
+                  id="edit-role-name"
+                  {...editForm.register("name")}
+                  placeholder="e.g. Sales Rep"
+                />
+                {editForm.formState.errors.name && (
+                  <p className="text-sm text-destructive">
+                    {editForm.formState.errors.name.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-role-level">Level (1 = lowest)</Label>
+                <Input
+                  id="edit-role-level"
+                  type="number"
+                  min={1}
+                  {...editForm.register("level", { valueAsNumber: true })}
+                />
+                {editForm.formState.errors.level && (
+                  <p className="text-sm text-destructive">
+                    {editForm.formState.errors.level.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-role-desc">Description (optional)</Label>
+                <Input
+                  id="edit-role-desc"
+                  {...editForm.register("description")}
+                  placeholder="Brief description"
+                />
+                {editForm.formState.errors.description && (
+                  <p className="text-sm text-destructive">
+                    {editForm.formState.errors.description.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label>Permissions</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-100 rounded-sm">
+                  {allPermissions.map((p) => (
+                    <label
+                      key={p}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={editPermissions.includes(p)}
+                        onCheckedChange={(checked) => {
+                          const current = editForm.getValues("permissions") || [];
+                          editForm.setValue(
+                            "permissions",
+                            checked ? [...current, p] : current.filter((x) => x !== p)
+                          );
+                        }}
+                      />
+                      <span className="text-gray-700">{formatPermissionLabel(p)}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditRole(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdate} disabled={saving || !formName.trim()}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditRole(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={editForm.formState.isSubmitting || saving}
+              >
+                {saving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

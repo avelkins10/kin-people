@@ -12,8 +12,10 @@ import { PersonDocuments } from "@/components/people/person-documents";
 import { PersonRecruits } from "@/components/people/person-recruits";
 import { SendDocumentModalWrapper } from "@/components/people/modals/send-document-modal-wrapper";
 import { SendDocumentModal } from "@/components/documents/send-document-modal";
+import { PersonEditForm } from "@/components/people/person-edit-form";
 import type { PersonWithDetails } from "@/types/people";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Edit2 } from "lucide-react";
+import { useRoles, useOffices, usePeople } from "@/hooks/use-people-data";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -23,6 +25,35 @@ export default function PersonDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [sendDocModalOpen, setSendDocModalOpen] = useState(false);
   const [resendDocument, setResendDocument] = useState<{ documentId: string; documentType: string } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Fetch data for edit form
+  const { data: roles = [] } = useRoles();
+  const { data: offices = [] } = useOffices();
+  const { data: people = [] } = usePeople({ roleLevel: "manager" });
+
+  const refetchData = () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/people/${id}`)
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 404) throw new Error("Person not found");
+          throw new Error(res.statusText || "Failed to load person");
+        }
+        return res.json();
+      })
+      .then((json) => {
+        setData(json);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Failed to load person");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -94,34 +125,69 @@ export default function PersonDetailPage() {
               <ArrowLeft className="w-4 h-4" />
             </Link>
           </Button>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-lg font-bold shrink-0">
-              {displayName
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .slice(0, 2)}
+          {!isEditing && (
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-lg font-bold shrink-0">
+                {displayName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-extrabold tracking-tight text-black uppercase">
+                    {displayName}
+                  </h1>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditing(true)}
+                    aria-label="Edit person"
+                    className="h-8 w-8"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500">
+                  {role?.name ?? "—"} {office?.name ? `· ${office.name}` : ""}
+                </p>
+              </div>
             </div>
+          )}
+          {isEditing && (
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight text-black uppercase">
-                {displayName}
+                Edit {displayName}
               </h1>
-              <p className="text-sm text-gray-500">
-                {role?.name ?? "—"} {office?.name ? `· ${office.name}` : ""}
-              </p>
             </div>
-          </div>
+          )}
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setSendDocModalOpen(true)}
-          aria-label="Send document"
-        >
-          Send Document
-        </Button>
+        {!isEditing && (
+          <Button
+            variant="outline"
+            onClick={() => setSendDocModalOpen(true)}
+            aria-label="Send document"
+          >
+            Send Document
+          </Button>
+        )}
       </header>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      {isEditing ? (
+        <PersonEditForm
+          person={person}
+          roles={roles}
+          offices={offices}
+          managers={people}
+          onSave={() => {
+            setIsEditing(false);
+            refetchData();
+          }}
+          onCancel={() => setIsEditing(false)}
+        />
+      ) : (
+        <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="bg-gray-100 border border-gray-200">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="deals">Deals</TabsTrigger>
@@ -162,6 +228,7 @@ export default function PersonDetailPage() {
           <PersonRecruits personId={id} />
         </TabsContent>
       </Tabs>
+      )}
 
       <SendDocumentModalWrapper
         personId={id}

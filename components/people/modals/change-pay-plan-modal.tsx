@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface ChangePayPlanModalProps {
   personId: string;
@@ -85,7 +86,11 @@ export function ChangePayPlanModal({ personId, open, onClose }: ChangePayPlanMod
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to change pay plan");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to change pay plan",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -93,7 +98,11 @@ export function ChangePayPlanModal({ personId, open, onClose }: ChangePayPlanMod
       onClose();
     } catch (error) {
       console.error("Error changing pay plan:", error);
-      alert("Failed to change pay plan");
+      toast({
+        title: "Error",
+        description: "Failed to change pay plan",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

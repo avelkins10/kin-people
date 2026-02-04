@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/MetricCard";
+import { useOnboardingTasks, useToggleOnboardingTask } from "@/hooks/use-onboarding-data";
 import {
   GraduationCap,
   CheckCircle,
@@ -17,12 +18,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-interface OnboardingTask {
-  id: string;
-  label: string;
-  completed: boolean;
-}
-
 interface OnboardingRep {
   id: string;
   name: string;
@@ -31,7 +26,6 @@ interface OnboardingRep {
   office: string;
   team: string;
   setterTier: string;
-  checklist: OnboardingTask[];
   daysInOnboarding: number;
 }
 
@@ -50,12 +44,6 @@ interface OnboardingMetricsConfig {
   trainingComplete: { label: string; type: "count" | "percentage" | "placeholder" };
   readyForField: { label: string; type: "count" | "percentage" | "placeholder" };
 }
-
-const PLACEHOLDER_CHECKLIST: OnboardingTask[] = [
-  { id: "1", label: "Equipment Issued", completed: false },
-  { id: "2", label: "Product Training", completed: false },
-  { id: "3", label: "First Appointment", completed: false },
-];
 
 function formatHireDate(hireDate: string | null): string {
   if (!hireDate) return "—";
@@ -83,7 +71,6 @@ function mapPersonToRep(row: PeopleApiRow): OnboardingRep {
     office: row.officeName ?? "—",
     team: "—",
     setterTier: row.setterTier ?? "Rookie",
-    checklist: PLACEHOLDER_CHECKLIST,
     daysInOnboarding,
   };
 }
@@ -99,9 +86,13 @@ function metricValue(
   return "—";
 }
 
-function OnboardingCard({ rep }: { rep: OnboardingRep }) {
-  const completedCount = rep.checklist.filter((t) => t.completed).length;
-  const totalCount = rep.checklist.length;
+function OnboardingCard({ rep, personId }: { rep: OnboardingRep; personId: string }) {
+  const { data: onboardingData } = useOnboardingTasks(personId);
+  const toggleTask = useToggleOnboardingTask();
+
+  const tasks = onboardingData?.tasks ?? [];
+  const completedCount = onboardingData?.completedCount ?? 0;
+  const totalCount = onboardingData?.totalCount ?? 0;
   const progress = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
   const isStale = rep.daysInOnboarding > 14;
 
@@ -169,12 +160,19 @@ function OnboardingCard({ rep }: { rep: OnboardingRep }) {
       </div>
 
       <div className="space-y-2 mb-4">
-        {rep.checklist.slice(0, 3).map((task) => (
-          <div key={task.id} className="flex items-center text-xs">
+        {tasks.slice(0, 3).map((task) => (
+          <label key={task.id} className="flex items-center text-xs cursor-pointer hover:bg-gray-50 -mx-1 px-1 py-1 rounded transition-colors">
+            <input
+              type="checkbox"
+              checked={task.completed}
+              onChange={() => toggleTask.mutate({ personId, taskId: task.id })}
+              disabled={toggleTask.isPending}
+              className="sr-only"
+            />
             <div
-              className={`w-4 h-4 rounded-sm border mr-2 flex items-center justify-center shrink-0 ${
+              className={`w-4 h-4 rounded-sm border mr-2 flex items-center justify-center shrink-0 transition-colors ${
                 task.completed ? "bg-green-500 border-green-500 text-white" : "border-gray-300"
-              }`}
+              } ${toggleTask.isPending ? "opacity-50" : ""}`}
             >
               {task.completed && <CheckCircle className="w-3 h-3" />}
             </div>
@@ -183,12 +181,12 @@ function OnboardingCard({ rep }: { rep: OnboardingRep }) {
                 task.completed ? "text-gray-400 line-through" : "text-gray-700 font-medium"
               }
             >
-              {task.label}
+              {task.title}
             </span>
-          </div>
+          </label>
         ))}
-        {rep.checklist.length > 3 && (
-          <div className="text-xs text-gray-400 pl-6">+ {rep.checklist.length - 3} more tasks</div>
+        {tasks.length > 3 && (
+          <div className="text-xs text-gray-400 pl-6">+ {tasks.length - 3} more tasks</div>
         )}
       </div>
 
@@ -358,7 +356,7 @@ export function OnboardingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {reps.map((rep) => (
-              <OnboardingCard key={rep.id} rep={rep} />
+              <OnboardingCard key={rep.id} rep={rep} personId={rep.id} />
             ))}
           </div>
           {reps.length === 0 && !loading && (

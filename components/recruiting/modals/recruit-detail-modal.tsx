@@ -26,7 +26,7 @@ import { SendDocumentModal } from "@/components/documents/send-document-modal";
 import { DocumentList } from "@/components/documents/document-list";
 import { ConvertToPersonModal } from "./convert-to-person-modal";
 import { useRouter } from "next/navigation";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -205,7 +205,11 @@ export function RecruitDetailModal({
       setIsEditing(true);
     } catch (err) {
       console.error("Error starting edit:", err);
-      alert("Something went wrong. Please try again.");
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     }
   }
 
@@ -242,7 +246,11 @@ export function RecruitDetailModal({
       setIsEditing(false);
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update recruit");
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update recruit",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -284,11 +292,19 @@ export function RecruitDetailModal({
         router.refresh();
       } else {
         const data = await response.json().catch(() => ({}));
-        alert((data as { error?: string }).error ?? "Failed to update status");
+        toast({
+          title: "Error",
+          description: (data as { error?: string }).error ?? "Failed to update status",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error updating status:", error);
-      alert("Failed to update status");
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -324,11 +340,19 @@ export function RecruitDetailModal({
     const status = overrideStatusPreset ?? overrideFormStatus;
     const sentAt = overrideSentAt || (overrideStatusPreset ? undefined : undefined);
     if (!sentAt) {
-      alert("Agreement sent date is required.");
+      toast({
+        title: "Error",
+        description: "Agreement sent date is required.",
+        variant: "destructive",
+      });
       return;
     }
     if (status === "agreement_signed" && !overrideSignedAt) {
-      alert("Agreement signed date is required for Agreement Signed.");
+      toast({
+        title: "Error",
+        description: "Agreement signed date is required for Agreement Signed.",
+        variant: "destructive",
+      });
       return;
     }
     setOverrideSubmitting(true);
@@ -356,7 +380,11 @@ export function RecruitDetailModal({
       window.dispatchEvent(new CustomEvent("recruits-updated"));
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to override agreement status");
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to override agreement status",
+        variant: "destructive",
+      });
     } finally {
       setOverrideSubmitting(false);
     }

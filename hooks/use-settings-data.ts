@@ -118,6 +118,10 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+function toArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function useSettingsData() {
   const [data, setData] = useState<SettingsData>({
     roles: [],
@@ -135,16 +139,25 @@ export function useSettingsData() {
     setLoading(true);
     setError(null);
     try {
-      const [roles, offices, teams, payPlans, commissionRules, documentTemplates, people] = await Promise.all([
-        fetchJson<Role[]>("/api/roles"),
-        fetchJson<Office[]>("/api/offices"),
-        fetchJson<Team[]>("/api/teams"),
-        fetchJson<PayPlan[]>("/api/pay-plans"),
-        fetchJson<CommissionRule[]>("/api/commission-rules"),
-        fetchJson<DocumentTemplate[]>("/api/document-templates"),
-        fetchJson<PersonListItem[]>("/api/people"),
-      ]);
-      setData({ roles, offices, teams, payPlans, commissionRules, documentTemplates, people });
+      const [rolesRaw, officesRaw, teamsRaw, payPlansRaw, commissionRulesRaw, documentTemplatesRaw, peopleRaw] =
+        await Promise.all([
+          fetchJson("/api/roles"),
+          fetchJson("/api/offices"),
+          fetchJson("/api/teams"),
+          fetchJson("/api/pay-plans"),
+          fetchJson("/api/commission-rules"),
+          fetchJson("/api/document-templates"),
+          fetchJson("/api/people"),
+        ]);
+      setData({
+        roles: toArray<Role>(rolesRaw),
+        offices: toArray<Office>(officesRaw),
+        teams: toArray<Team>(teamsRaw),
+        payPlans: toArray<PayPlan>(payPlansRaw),
+        commissionRules: toArray<CommissionRule>(commissionRulesRaw),
+        documentTemplates: toArray<DocumentTemplate>(documentTemplatesRaw),
+        people: toArray<PersonListItem>(peopleRaw),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load settings");
     } finally {

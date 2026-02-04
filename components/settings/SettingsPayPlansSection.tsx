@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import type { PayPlan } from "@/hooks/use-settings-data";
 
 interface SettingsPayPlansSectionProps {
@@ -79,7 +80,11 @@ export function SettingsPayPlansSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to create pay plan");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create pay plan",
+      });
     } finally {
       setSaving(false);
     }
@@ -105,7 +110,11 @@ export function SettingsPayPlansSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update pay plan");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update pay plan",
+      });
     } finally {
       setSaving(false);
     }
@@ -125,7 +134,11 @@ export function SettingsPayPlansSection({
       setDeletePlan(null);
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete pay plan");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to delete pay plan",
+      });
     } finally {
       setSaving(false);
     }

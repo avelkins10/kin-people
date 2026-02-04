@@ -29,7 +29,6 @@ export function ModalsProvider({ children }: { children: React.ReactNode }) {
     openNewDeal: () => setIsNewDealOpen(true),
     navigateTo: (page: string) => {
       // This will be handled by Next.js router instead
-      console.log('Navigate to:', page);
     }
   };
 

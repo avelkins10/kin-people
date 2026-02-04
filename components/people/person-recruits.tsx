@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { RecruitDetailModal } from "@/components/recruiting/modals/recruit-detail-modal";
 import type { RecruitListItem } from "@/types/recruiting";
+import { useRecruits } from "@/hooks/use-recruiting-data";
 
 interface PersonRecruitsProps {
   personId: string;
@@ -45,29 +46,13 @@ function getStatusBadgeVariant(status: string) {
 }
 
 export function PersonRecruits({ personId }: PersonRecruitsProps) {
-  const [recruits, setRecruits] = useState<RecruitListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedRecruit, setSelectedRecruit] =
     useState<RecruitListItem | null>(null);
 
-  useEffect(() => {
-    fetchRecruits();
-  }, [personId]);
-
-  async function fetchRecruits() {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/recruits?recruiterId=${personId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setRecruits(data);
-      }
-    } catch (error) {
-      console.error("Error fetching recruits:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Use React Query hook - automatically caches and deduplicates
+  const { data: recruits = [], isLoading: loading } = useRecruits({
+    recruiterId: personId,
+  });
 
   if (loading) {
     return (

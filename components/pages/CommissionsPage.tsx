@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/MetricCard";
@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { CommissionsTabs } from "@/components/commissions/commissions-tabs";
 import { Permission } from "@/lib/permissions/types";
+import { useCommissions } from "@/hooks/use-commissions-data";
+import { useCurrentUser } from "@/hooks/use-auth-data";
+import { toast } from "@/hooks/use-toast";
 
 function getMonthRange(): { start: string; end: string } {
   const now = new Date();
@@ -28,12 +31,6 @@ function getMonthRange(): { start: string; end: string } {
 export function CommissionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [commissionsData, setCommissionsData] = useState<any[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [canApprove, setCanApprove] = useState(false);
-  const [canRunPayroll, setCanRunPayroll] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [runningPayroll, setRunningPayroll] = useState(false);
   const [payrollStart, setPayrollStart] = useState("");
@@ -51,47 +48,25 @@ export function CommissionsPage() {
   const dateStart = searchParams.get("dateStart") ?? "";
   const dateEnd = searchParams.get("dateEnd") ?? "";
 
-  const fetchCommissions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      params.set("tab", tab);
-      if (status) params.set("status", status);
-      if (dealType) params.set("dealType", dealType);
-      if (commissionType) params.set("commissionType", commissionType);
-      if (dateStart) params.set("dateStart", dateStart);
-      if (dateEnd) params.set("dateEnd", dateEnd);
-      const res = await fetch(`/api/commissions?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to load commissions (${res.status})`);
-      }
-      const data = await res.json();
-      setCommissionsData(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load commissions");
-      setCommissionsData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [tab, status, dealType, commissionType, dateStart, dateEnd]);
+  // Use React Query hooks - automatically cached and deduplicated
+  const {
+    data: commissionsData = [],
+    isLoading: loading,
+    error: queryError,
+  } = useCommissions({
+    status: status || undefined,
+  });
 
-  const fetchMe = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/me");
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUserId(data.user?.id ?? "");
-        const perms = data.permissions ?? [];
-        setCanApprove(perms.includes(Permission.APPROVE_COMMISSIONS));
-        setCanRunPayroll(perms.includes(Permission.RUN_PAYROLL));
-      }
-    } catch {
-      // Non-blocking
-    }
-  }, []);
+  const { data: authData } = useCurrentUser();
 
+  const currentUserId = authData?.user?.id ?? "";
+  const permissions = authData?.permissions ?? [];
+  const canApprove = permissions.includes(Permission.APPROVE_COMMISSIONS);
+  const canRunPayroll = permissions.includes(Permission.RUN_PAYROLL);
+
+  const error = queryError ? (queryError as Error).message : null;
+
+  // Fetch payroll summary (only when user has permission)
   const fetchSummary = useCallback(async () => {
     if (!canRunPayroll) return;
     const { start, end } = getMonthRange();
@@ -107,14 +82,6 @@ export function CommissionsPage() {
       setSummary(null);
     }
   }, [canRunPayroll]);
-
-  useEffect(() => {
-    fetchCommissions();
-  }, [fetchCommissions]);
-
-  useEffect(() => {
-    fetchMe();
-  }, [fetchMe]);
 
   useEffect(() => {
     fetchSummary();
@@ -148,7 +115,11 @@ export function CommissionsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Export failed");
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Export failed",
+        variant: "destructive",
+      });
     } finally {
       setExporting(false);
     }
@@ -168,7 +139,11 @@ export function CommissionsPage() {
         .filter((r: any) => (r.status || "").toLowerCase() === "approved")
         .map((r: any) => r.id);
       if (approvedIds.length === 0) {
-        alert("No approved commissions in this period to mark as paid.");
+        toast({
+          title: "No Approved Commissions",
+          description: "No approved commissions in this period to mark as paid.",
+          variant: "destructive",
+        });
         setRunningPayroll(false);
         return;
       }
@@ -181,10 +156,13 @@ export function CommissionsPage() {
         const data = await markRes.json().catch(() => ({}));
         throw new Error(data.error || "Mark paid failed");
       }
-      await fetchCommissions();
       await fetchSummary();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Run payroll failed");
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Run payroll failed",
+        variant: "destructive",
+      });
     } finally {
       setRunningPayroll(false);
     }

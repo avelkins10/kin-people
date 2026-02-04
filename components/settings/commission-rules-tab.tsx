@@ -28,6 +28,7 @@ import { Plus, MoreVertical, Edit, Copy, Trash2, Power } from "lucide-react";
 import { CommissionRuleModal } from "./modals/commission-rule-modal";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
 
 interface CommissionRule {
   id: string;
@@ -147,11 +148,19 @@ export function CommissionRulesTab({
         router.refresh();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to update commission rule");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.error || "Failed to update commission rule",
+        });
       }
     } catch (error) {
       console.error("Error toggling commission rule status:", error);
-      alert("Failed to update commission rule");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update commission rule",
+      });
     }
   }
 
@@ -174,11 +183,19 @@ export function CommissionRulesTab({
         router.refresh();
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to delete commission rule");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.error || "Failed to delete commission rule",
+        });
       }
     } catch (error) {
       console.error("Error deleting commission rule:", error);
-      alert("Failed to delete commission rule");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete commission rule",
+      });
     }
   }
 

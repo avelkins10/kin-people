@@ -5,6 +5,7 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
+import { toast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { recruitFormSchema, type RecruitFormData } from "@/lib/validation/recruit-form";
 
 interface AddRecruitModalProps {
   isOpen: boolean;
@@ -19,7 +23,6 @@ interface AddRecruitModalProps {
 }
 
 export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
-  const [loading, setLoading] = useState(false);
   const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [managers, setManagers] = useState<
@@ -28,18 +31,34 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
   const [payPlans, setPayPlans] = useState<Array<{ id: string; name: string }>>([]);
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    source: "",
-    targetOfficeId: "",
-    targetTeamId: "",
-    targetReportsToId: "",
-    targetRoleId: "",
-    targetPayPlanId: "",
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<RecruitFormData>({
+    resolver: zodResolver(recruitFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      source: "",
+      targetOfficeId: "",
+      targetTeamId: "",
+      targetReportsToId: "",
+      targetRoleId: "",
+      targetPayPlanId: "",
+    },
   });
+
+  const targetOfficeId = watch("targetOfficeId");
+  const targetTeamId = watch("targetTeamId");
+  const targetReportsToId = watch("targetReportsToId");
+  const targetRoleId = watch("targetRoleId");
+  const targetPayPlanId = watch("targetPayPlanId");
 
   useEffect(() => {
     if (isOpen) {
@@ -91,58 +110,35 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
     }
   }
 
-  function buildPayload() {
-    return {
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      email: formData.email.trim() || undefined,
-      phone: formData.phone.trim() || undefined,
-      source: formData.source.trim() || undefined,
-      targetOfficeId: formData.targetOfficeId || undefined,
-      targetTeamId: formData.targetTeamId || undefined,
-      targetReportsToId: formData.targetReportsToId || undefined,
-      targetRoleId: formData.targetRoleId || undefined,
-      targetPayPlanId: formData.targetPayPlanId || undefined,
-    };
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-
+  async function onSubmit(data: RecruitFormData) {
     try {
       const response = await fetch("/api/recruits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const responseData = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        alert(data.error || "Failed to create recruit");
+        toast({
+          title: "Error",
+          description: responseData.error || "Failed to create recruit",
+          variant: "destructive",
+        });
         return;
       }
 
       window.dispatchEvent(new CustomEvent("recruits-updated"));
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        source: "",
-        targetOfficeId: "",
-        targetTeamId: "",
-        targetReportsToId: "",
-        targetRoleId: "",
-        targetPayPlanId: "",
-      });
+      reset();
       onClose();
     } catch (error) {
       console.error("Error creating recruit:", error);
-      alert("Failed to create recruit");
-    } finally {
-      setLoading(false);
+      toast({
+        title: "Error",
+        description: "Failed to create recruit",
+        variant: "destructive",
+      });
     }
   }
 
@@ -161,16 +157,16 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
           <Button
             type="submit"
             form="add-recruit-form"
-            disabled={loading}
+            disabled={isSubmitting}
           >
-            {loading ? "Creating…" : "Create Recruit"}
+            {isSubmitting ? "Creating…" : "Create Recruit"}
           </Button>
         </>
       }
     >
       <form
         id="add-recruit-form"
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         className="space-y-4 max-w-2xl"
       >
         <div className="grid grid-cols-2 gap-4">
@@ -178,23 +174,25 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
             <Label htmlFor="firstName">First Name *</Label>
             <Input
               id="firstName"
-              value={formData.firstName}
-              onChange={(e) =>
-                setFormData({ ...formData, firstName: e.target.value })
-              }
-              required
+              {...register("firstName")}
             />
+            {errors.firstName && (
+              <p className="text-sm text-destructive mt-1">
+                {errors.firstName.message}
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="lastName">Last Name *</Label>
             <Input
               id="lastName"
-              value={formData.lastName}
-              onChange={(e) =>
-                setFormData({ ...formData, lastName: e.target.value })
-              }
-              required
+              {...register("lastName")}
             />
+            {errors.lastName && (
+              <p className="text-sm text-destructive mt-1">
+                {errors.lastName.message}
+              </p>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -203,33 +201,39 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
             <Input
               id="email"
               type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              {...register("email")}
             />
+            {errors.email && (
+              <p className="text-sm text-destructive mt-1">
+                {errors.email.message}
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="phone">Phone</Label>
             <Input
               id="phone"
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
+              {...register("phone")}
             />
+            {errors.phone && (
+              <p className="text-sm text-destructive mt-1">
+                {errors.phone.message}
+              </p>
+            )}
           </div>
         </div>
         <div>
           <Label htmlFor="source">Source</Label>
           <Input
             id="source"
-            value={formData.source}
-            onChange={(e) =>
-              setFormData({ ...formData, source: e.target.value })
-            }
+            {...register("source")}
             placeholder="e.g., LinkedIn, Referral"
           />
+          {errors.source && (
+            <p className="text-sm text-destructive mt-1">
+              {errors.source.message}
+            </p>
+          )}
         </div>
         <div className="border-t pt-4">
           <h3 className="font-semibold mb-4 text-sm">Target Assignments</h3>
@@ -237,9 +241,9 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
             <div>
               <Label htmlFor="targetOfficeId">Target Office</Label>
               <Select
-                value={formData.targetOfficeId || undefined}
+                value={targetOfficeId || ""}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, targetOfficeId: value })
+                  setValue("targetOfficeId", value)
                 }
               >
                 <SelectTrigger>
@@ -253,13 +257,18 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.targetOfficeId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.targetOfficeId.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="targetTeamId">Target Team</Label>
               <Select
-                value={formData.targetTeamId || undefined}
+                value={targetTeamId || ""}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, targetTeamId: value })
+                  setValue("targetTeamId", value)
                 }
               >
                 <SelectTrigger>
@@ -273,13 +282,18 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.targetTeamId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.targetTeamId.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="targetReportsToId">Manager / Reports To</Label>
               <Select
-                value={formData.targetReportsToId || undefined}
+                value={targetReportsToId || ""}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, targetReportsToId: value })
+                  setValue("targetReportsToId", value)
                 }
               >
                 <SelectTrigger>
@@ -293,13 +307,18 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.targetReportsToId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.targetReportsToId.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="targetRoleId">Target Role</Label>
               <Select
-                value={formData.targetRoleId || undefined}
+                value={targetRoleId || ""}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, targetRoleId: value })
+                  setValue("targetRoleId", value)
                 }
               >
                 <SelectTrigger>
@@ -313,13 +332,18 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.targetRoleId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.targetRoleId.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="targetPayPlanId">Target Pay Plan</Label>
               <Select
-                value={formData.targetPayPlanId || undefined}
+                value={targetPayPlanId || ""}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, targetPayPlanId: value })
+                  setValue("targetPayPlanId", value)
                 }
               >
                 <SelectTrigger>
@@ -333,6 +357,11 @@ export function AddRecruitModal({ isOpen, onClose }: AddRecruitModalProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.targetPayPlanId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.targetPayPlanId.message}
+                </p>
+              )}
             </div>
           </div>
         </div>

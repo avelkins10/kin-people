@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface ChangeOfficeModalProps {
   personId: string;
@@ -83,7 +84,11 @@ export function ChangeOfficeModal({ personId, open, onClose }: ChangeOfficeModal
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to change office");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to change office",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -91,7 +96,11 @@ export function ChangeOfficeModal({ personId, open, onClose }: ChangeOfficeModal
       onClose();
     } catch (error) {
       console.error("Error changing office:", error);
-      alert("Failed to change office");
+      toast({
+        title: "Error",
+        description: "Failed to change office",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

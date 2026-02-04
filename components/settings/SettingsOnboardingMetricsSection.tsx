@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 
 const METRIC_TYPES = [
   { value: "placeholder", label: "Placeholder (—)" },
@@ -95,7 +96,11 @@ export function SettingsOnboardingMetricsSection({
       });
       onRefetch?.();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to save");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to save",
+      });
     } finally {
       setSaving(false);
     }

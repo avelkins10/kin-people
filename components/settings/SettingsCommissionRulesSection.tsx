@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import type { CommissionRule, PayPlan } from "@/hooks/use-settings-data";
 
 const RULE_TYPES = [
@@ -119,7 +120,11 @@ export function SettingsCommissionRulesSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to create rule");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create rule",
+      });
     } finally {
       setSaving(false);
     }
@@ -147,7 +152,11 @@ export function SettingsCommissionRulesSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update rule");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update rule",
+      });
     } finally {
       setSaving(false);
     }
@@ -167,7 +176,11 @@ export function SettingsCommissionRulesSection({
       setDeleteRule(null);
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete rule");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to delete rule",
+      });
     } finally {
       setSaving(false);
     }

@@ -58,10 +58,17 @@ export function SettingsPage() {
     router.push(`/settings/organization?tab=${value}`);
   }
 
-  const activePayPlans = data.payPlans.filter((p) => p.isActive).length;
-  const totalCommissionRules = data.commissionRules.length;
-  const peopleWithPayPlans = data.payPlans.reduce((sum, p) => sum + (p.peopleCount ?? 0), 0);
-  const peopleWithoutPayPlans = Math.max(0, data.people.length - peopleWithPayPlans);
+  const roles = Array.isArray(data.roles) ? data.roles : [];
+  const offices = Array.isArray(data.offices) ? data.offices : [];
+  const teams = Array.isArray(data.teams) ? data.teams : [];
+  const payPlans = Array.isArray(data.payPlans) ? data.payPlans : [];
+  const commissionRules = Array.isArray(data.commissionRules) ? data.commissionRules : [];
+  const documentTemplates = Array.isArray(data.documentTemplates) ? data.documentTemplates : [];
+  const people = Array.isArray(data.people) ? data.people : [];
+  const activePayPlans = payPlans.filter((p) => p.isActive).length;
+  const totalCommissionRules = commissionRules.length;
+  const peopleWithPayPlans = payPlans.reduce((sum, p) => sum + (p.peopleCount ?? 0), 0);
+  const peopleWithoutPayPlans = Math.max(0, people.length - peopleWithPayPlans);
 
   return (
     <div className="space-y-6">
@@ -177,9 +184,9 @@ export function SettingsPage() {
         <TabsContent value="users" className="mt-6 focus-visible:outline-none">
           <div className="max-w-2xl">
             <SettingsUsersSection
-              people={data.people}
-              roles={data.roles}
-              offices={data.offices}
+              people={people}
+              roles={roles}
+              offices={offices}
               loading={loading}
               onRefetch={refetch}
             />
@@ -189,7 +196,7 @@ export function SettingsPage() {
         <TabsContent value="roles" className="mt-6 focus-visible:outline-none">
           <div className="max-w-2xl">
             <SettingsRolesSection
-              roles={data.roles}
+              roles={roles}
               loading={loading}
               onRefetch={refetch}
             />
@@ -199,8 +206,8 @@ export function SettingsPage() {
         <TabsContent value="offices" className="mt-6 focus-visible:outline-none">
           <div className="max-w-2xl">
             <SettingsOfficesSection
-              offices={data.offices}
-              people={data.people}
+              offices={offices}
+              people={people}
               loading={loading}
               onRefetch={refetch}
             />
@@ -210,8 +217,8 @@ export function SettingsPage() {
         <TabsContent value="teams" className="mt-6 focus-visible:outline-none">
           <div className="max-w-2xl">
             <SettingsTeamsSection
-              teams={data.teams}
-              offices={data.offices}
+              teams={teams}
+              offices={offices}
               loading={loading}
               onRefetch={refetch}
             />
@@ -221,7 +228,7 @@ export function SettingsPage() {
         <TabsContent value="documents" className="mt-6 focus-visible:outline-none">
           <div className="max-w-2xl">
             <SettingsDocumentTemplatesSection
-              documentTemplates={data.documentTemplates}
+              documentTemplates={documentTemplates}
               loading={loading}
               onRefetch={refetch}
             />
@@ -231,7 +238,7 @@ export function SettingsPage() {
         <TabsContent value="pay-plans" className="mt-6 focus-visible:outline-none">
           <div className="max-w-2xl">
             <SettingsPayPlansSection
-              payPlans={data.payPlans}
+              payPlans={payPlans}
               loading={loading}
               onRefetch={refetch}
             />
@@ -241,8 +248,8 @@ export function SettingsPage() {
         <TabsContent value="commission-rules" className="mt-6 focus-visible:outline-none">
           <div className="max-w-3xl">
             <SettingsCommissionRulesSection
-              commissionRules={data.commissionRules}
-              payPlans={data.payPlans}
+              commissionRules={commissionRules}
+              payPlans={payPlans}
               loading={loading}
               onRefetch={refetch}
             />

@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 import type { PersonListItem, Role, Office } from "@/hooks/use-settings-data";
 import { useSettingsData } from "@/hooks/use-settings-data";
 
@@ -113,7 +114,11 @@ export function SettingsUsersSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to create user");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to create user",
+      });
     } finally {
       setSaving(false);
     }
@@ -194,7 +199,11 @@ export function SettingsUsersSection({
       resetForm();
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update user");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update user",
+      });
     } finally {
       setSaving(false);
     }
@@ -202,7 +211,11 @@ export function SettingsUsersSection({
 
   const handleMakeAdmin = async (person: PersonListItem) => {
     if (!adminRoleId) {
-      alert("Admin role not found");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Admin role not found",
+      });
       return;
     }
     setSaving(true);
@@ -222,7 +235,11 @@ export function SettingsUsersSection({
       }
       onRefetch();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to make admin");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to make admin",
+      });
     } finally {
       setSaving(false);
     }

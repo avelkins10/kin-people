@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface ChangeManagerModalProps {
   personId: string;
@@ -87,7 +88,11 @@ export function ChangeManagerModal({ personId, open, onClose }: ChangeManagerMod
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to change manager");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to change manager",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -95,7 +100,11 @@ export function ChangeManagerModal({ personId, open, onClose }: ChangeManagerMod
       onClose();
     } catch (error) {
       console.error("Error changing manager:", error);
-      alert("Failed to change manager");
+      toast({
+        title: "Error",
+        description: "Failed to change manager",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

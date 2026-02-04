@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
 
 interface CommissionStatusDropdownProps {
   commissionId: string;
@@ -63,7 +64,11 @@ export function CommissionStatusDropdown({
 
       if (!response.ok) {
         const error = await response.json();
-        alert(`Error: ${error.error || "Failed to update status"}`);
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update status",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -73,7 +78,11 @@ export function CommissionStatusDropdown({
       onStatusUpdate();
     } catch (error) {
       console.error("Error updating commission status:", error);
-      alert("Failed to update commission status");
+      toast({
+        title: "Error",
+        description: "Failed to update commission status",
+        variant: "destructive",
+      });
     }
   }
 

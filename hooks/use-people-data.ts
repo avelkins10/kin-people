@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 export interface Person {
   id: string;
@@ -90,6 +91,41 @@ export function useRoles() {
         throw new Error("Failed to fetch roles");
       }
       return response.json() as Promise<Role[]>;
+    },
+  });
+}
+
+export function useUpdatePerson() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Person> }) => {
+      const response = await fetch(`/api/people/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to update person");
+      }
+      return response.json() as Promise<Person>;
+    },
+    onSuccess: (updated, { id }) => {
+      toast({
+        title: "Success",
+        description: "Person updated successfully",
+      });
+      // Invalidate person detail query
+      queryClient.invalidateQueries({ queryKey: ["people", id] });
+      // Invalidate people list query
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update person",
+        variant: "destructive",
+      });
     },
   });
 }

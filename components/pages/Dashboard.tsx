@@ -6,7 +6,7 @@ import { ExpiredDocumentsBanner } from "@/components/documents/expired-documents
 import { RecruitingKanban } from "@/components/recruiting/recruiting-kanban";
 import { RecruitingTable } from "@/components/recruiting/recruiting-table";
 import { Button } from "@/components/ui/button";
-import { Plus, Send, UserCheck, LayoutGrid, List, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
+import { Plus, UserCheck, LayoutGrid, List, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
 import { useModals } from "@/components/ModalsContext";
 import type { RecruitListItem } from "@/types/recruiting";
 import { useRecruits } from "@/hooks/use-recruiting-data";
@@ -75,18 +75,6 @@ export function Dashboard() {
 
   const error = queryError ? (queryError as Error).message : null;
 
-  // Debug: Log loading states
-  if (typeof window !== 'undefined') {
-    console.log('Dashboard loading states:', {
-      recruitsLoading: loading,
-      statsLoading,
-      recruitsCount: recruits.length,
-      hasStats: !!stats,
-      error,
-      statsError: statsError ? (statsError as Error).message : null
-    });
-  }
-
   // Handle recruits-updated event for refetching
   useEffect(() => {
     const handler = () => {
@@ -116,10 +104,6 @@ export function Dashboard() {
           <Button variant="outline" onClick={() => router.push("/recruiting")}>
             <UserCheck className="w-4 h-4 mr-2" />
             Convert to Person
-          </Button>
-          <Button variant="outline" onClick={() => router.push("/recruiting")}>
-            <Send className="w-4 h-4 mr-2" />
-            Send Agreement
           </Button>
           <Button onClick={openAddRecruit}>
             <Plus className="w-4 h-4 mr-2" />

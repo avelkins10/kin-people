@@ -116,7 +116,6 @@ export function DealsTable({ initialDeals }: DealsTableProps) {
                 className="cursor-pointer hover:bg-gray-50"
                 onClick={() => {
                   // TODO: Navigate to deal detail page
-                  console.log("Navigate to deal:", deal.id);
                 }}
               >
                 <TableCell className="font-medium">

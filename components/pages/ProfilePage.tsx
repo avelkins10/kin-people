@@ -15,6 +15,11 @@ interface ProfilePageProps {
 }
 
 export function ProfilePage({ user }: ProfilePageProps) {
+  if (!user) {
+    return (
+      <p className="text-sm text-gray-500">Unable to load profile. Please try again.</p>
+    );
+  }
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "—";
 
   return (

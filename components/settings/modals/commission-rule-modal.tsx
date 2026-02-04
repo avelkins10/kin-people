@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface CommissionRule {
   id: string;
@@ -229,7 +230,11 @@ export function CommissionRuleModal({
 
       if (formData.ruleType === "override") {
         if (!formData.overrideLevel || !formData.overrideSource) {
-          alert("Override rules must have both Override Level and Override Source");
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Override rules must have both Override Level and Override Source",
+          });
           setLoading(false);
           return;
         }
@@ -257,14 +262,22 @@ export function CommissionRuleModal({
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to save commission rule");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.error || "Failed to save commission rule",
+        });
         return;
       }
 
       onClose();
     } catch (error) {
       console.error("Error saving commission rule:", error);
-      alert("Failed to save commission rule");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save commission rule",
+      });
     } finally {
       setLoading(false);
     }

@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface TerminateModalProps {
   personId: string;
@@ -36,7 +37,11 @@ export function TerminateModal({ personId, open, onClose }: TerminateModalProps)
     e.preventDefault();
 
     if (!formData.confirmed) {
-      alert("Please confirm the termination");
+      toast({
+        title: "Error",
+        description: "Please confirm the termination",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -54,7 +59,11 @@ export function TerminateModal({ personId, open, onClose }: TerminateModalProps)
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to terminate person");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to terminate person",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -62,7 +71,11 @@ export function TerminateModal({ personId, open, onClose }: TerminateModalProps)
       onClose();
     } catch (error) {
       console.error("Error terminating person:", error);
-      alert("Failed to terminate person");
+      toast({
+        title: "Error",
+        description: "Failed to terminate person",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 interface CreateDealModalProps {
   children: React.ReactNode;
@@ -111,7 +112,11 @@ export function CreateDealModal({ children }: CreateDealModalProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to create deal");
+        toast({
+          title: "Error",
+          description: error.error || "Failed to create deal",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -139,10 +144,17 @@ export function CreateDealModal({ children }: CreateDealModalProps) {
       setCalculatedValue(null);
 
       // Show success message
-      alert(`Deal created successfully. ${commissionCount} commission(s) calculated.`);
+      toast({
+        title: "Success",
+        description: `Deal created successfully. ${commissionCount} commission(s) calculated.`,
+      });
     } catch (error) {
       console.error("Error creating deal:", error);
-      alert("Failed to create deal");
+      toast({
+        title: "Error",
+        description: "Failed to create deal",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

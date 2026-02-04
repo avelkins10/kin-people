@@ -24,6 +24,9 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import type { DocumentTemplate } from "@/lib/db/schema/document-templates";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { templateFormSchema, type TemplateFormData } from "@/lib/validation/template-form";
 
 interface SignNowTemplate {
   id: string;
@@ -39,17 +42,6 @@ interface DocumentTemplateModalProps {
   onSuccess?: () => void;
 }
 
-const defaultFormData = {
-  displayName: "",
-  signnowTemplateId: "",
-  requireRecruit: true,
-  requireManager: false,
-  requireHR: false,
-  expirationDays: "30",
-  reminderFrequencyDays: "3",
-  description: "",
-};
-
 export function DocumentTemplateModal({
   open,
   onClose,
@@ -58,35 +50,67 @@ export function DocumentTemplateModal({
   documentTypeLabel,
   onSuccess,
 }: DocumentTemplateModalProps) {
-  const [loading, setLoading] = useState(false);
   const [signNowTemplates, setSignNowTemplates] = useState<SignNowTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
-  const [formData, setFormData] = useState(defaultFormData);
+
+  const form = useForm<TemplateFormData>({
+    resolver: zodResolver(templateFormSchema),
+    defaultValues: {
+      displayName: "",
+      signnowTemplateId: "",
+      requireRecruit: true,
+      requireManager: false,
+      requireHR: false,
+      expirationDays: 30,
+      reminderFrequencyDays: 3,
+      description: "",
+    },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = form;
+
+  const signnowTemplateId = watch("signnowTemplateId");
+  const requireRecruit = watch("requireRecruit");
+  const requireManager = watch("requireManager");
+  const requireHR = watch("requireHR");
 
   useEffect(() => {
     if (open) {
       setTemplatesError(null);
-      setFormData(
-        template
-          ? {
-              displayName: template.displayName ?? "",
-              signnowTemplateId: template.signnowTemplateId ?? "",
-              requireRecruit: template.requireRecruit ?? true,
-              requireManager: template.requireManager ?? false,
-              requireHR: template.requireHR ?? false,
-              expirationDays: String(template.expirationDays ?? 30),
-              reminderFrequencyDays: String(template.reminderFrequencyDays ?? 3),
-              description: template.description ?? "",
-            }
-          : {
-              ...defaultFormData,
-              displayName: documentTypeLabel,
-            }
-      );
+      if (template) {
+        reset({
+          displayName: template.displayName ?? "",
+          signnowTemplateId: template.signnowTemplateId ?? "",
+          requireRecruit: template.requireRecruit ?? true,
+          requireManager: template.requireManager ?? false,
+          requireHR: template.requireHR ?? false,
+          expirationDays: template.expirationDays ?? 30,
+          reminderFrequencyDays: template.reminderFrequencyDays ?? 3,
+          description: template.description ?? "",
+        });
+      } else {
+        reset({
+          displayName: documentTypeLabel,
+          signnowTemplateId: "",
+          requireRecruit: true,
+          requireManager: false,
+          requireHR: false,
+          expirationDays: 30,
+          reminderFrequencyDays: 3,
+          description: "",
+        });
+      }
       fetchSignNowTemplates();
     }
-  }, [open, template, documentType, documentTypeLabel]);
+  }, [open, template, documentType, documentTypeLabel, reset]);
 
   async function fetchSignNowTemplates() {
     setTemplatesLoading(true);
@@ -111,48 +135,33 @@ export function DocumentTemplateModal({
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!formData.displayName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Display name is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    setLoading(true);
+  async function onSubmit(data: TemplateFormData) {
     try {
-      const exp = parseInt(formData.expirationDays, 10);
-      const rem = parseInt(formData.reminderFrequencyDays, 10);
-      const expirationDays = Number.isNaN(exp) ? 30 : exp;
-      const reminderFrequencyDays = Number.isNaN(rem) ? 3 : rem;
-
       const url = template
         ? `/api/document-templates/${template.id}`
         : "/api/document-templates";
       const method = template ? "PUT" : "POST";
       const body = template
         ? {
-            displayName: formData.displayName.trim(),
-            signnowTemplateId: formData.signnowTemplateId || null,
-            requireRecruit: formData.requireRecruit,
-            requireManager: formData.requireManager,
-            requireHR: formData.requireHR,
-            expirationDays,
-            reminderFrequencyDays,
-            description: formData.description.trim() || null,
+            displayName: data.displayName.trim(),
+            signnowTemplateId: data.signnowTemplateId || null,
+            requireRecruit: data.requireRecruit,
+            requireManager: data.requireManager,
+            requireHR: data.requireHR,
+            expirationDays: data.expirationDays,
+            reminderFrequencyDays: data.reminderFrequencyDays,
+            description: data.description?.trim() || null,
           }
         : {
             documentType,
-            displayName: formData.displayName.trim(),
-            signnowTemplateId: formData.signnowTemplateId || undefined,
-            requireRecruit: formData.requireRecruit,
-            requireManager: formData.requireManager,
-            requireHR: formData.requireHR,
-            expirationDays,
-            reminderFrequencyDays,
-            description: formData.description.trim() || undefined,
+            displayName: data.displayName.trim(),
+            signnowTemplateId: data.signnowTemplateId || undefined,
+            requireRecruit: data.requireRecruit,
+            requireManager: data.requireManager,
+            requireHR: data.requireHR,
+            expirationDays: data.expirationDays,
+            reminderFrequencyDays: data.reminderFrequencyDays,
+            description: data.description?.trim() || undefined,
           };
 
       const res = await fetch(url, {
@@ -161,9 +170,9 @@ export function DocumentTemplateModal({
         body: JSON.stringify(body),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const responseData = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as { error?: string }).error || "Request failed");
+        throw new Error((responseData as { error?: string }).error || "Request failed");
       }
 
       if (template) {
@@ -185,17 +194,8 @@ export function DocumentTemplateModal({
         description: err instanceof Error ? err.message : "Something went wrong",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   }
-
-  const expDays = parseInt(formData.expirationDays, 10);
-  const remDays = parseInt(formData.reminderFrequencyDays, 10);
-  const isValid =
-    formData.displayName.trim().length > 0 &&
-    (formData.expirationDays === "" || (!Number.isNaN(expDays) && expDays >= 0)) &&
-    (formData.reminderFrequencyDays === "" || (!Number.isNaN(remDays) && remDays >= 0));
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
@@ -210,30 +210,28 @@ export function DocumentTemplateModal({
               : `Set up the document template and signer requirements for ${documentTypeLabel}.`}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-4">
             <div>
               <Label htmlFor="displayName">Display Name *</Label>
               <Input
                 id="displayName"
-                value={formData.displayName}
-                onChange={(e) =>
-                  setFormData({ ...formData, displayName: e.target.value })
-                }
+                {...register("displayName")}
                 placeholder="e.g. Rep Agreement"
-                required
               />
+              {errors.displayName && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.displayName.message}
+                </p>
+              )}
             </div>
 
             <div>
               <Label htmlFor="signnowTemplate">Template</Label>
               <Select
-                value={formData.signnowTemplateId || "none"}
+                value={signnowTemplateId || "none"}
                 onValueChange={(v) =>
-                  setFormData({
-                    ...formData,
-                    signnowTemplateId: v === "none" ? "" : v,
-                  })
+                  setValue("signnowTemplateId", v === "none" ? "" : v)
                 }
                 disabled={templatesLoading}
               >
@@ -255,6 +253,11 @@ export function DocumentTemplateModal({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.signnowTemplateId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.signnowTemplateId.message}
+                </p>
+              )}
               {templatesLoading && (
                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -285,12 +288,9 @@ export function DocumentTemplateModal({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="requireRecruit"
-                    checked={formData.requireRecruit}
+                    checked={requireRecruit}
                     onCheckedChange={(checked) =>
-                      setFormData({
-                        ...formData,
-                        requireRecruit: checked === true,
-                      })
+                      setValue("requireRecruit", checked === true)
                     }
                   />
                   <Label
@@ -303,12 +303,9 @@ export function DocumentTemplateModal({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="requireManager"
-                    checked={formData.requireManager}
+                    checked={requireManager}
                     onCheckedChange={(checked) =>
-                      setFormData({
-                        ...formData,
-                        requireManager: checked === true,
-                      })
+                      setValue("requireManager", checked === true)
                     }
                   />
                   <Label
@@ -321,12 +318,9 @@ export function DocumentTemplateModal({
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="requireHR"
-                    checked={formData.requireHR}
+                    checked={requireHR}
                     onCheckedChange={(checked) =>
-                      setFormData({
-                        ...formData,
-                        requireHR: checked === true,
-                      })
+                      setValue("requireHR", checked === true)
                     }
                   />
                   <Label
@@ -346,15 +340,14 @@ export function DocumentTemplateModal({
                   id="expirationDays"
                   type="number"
                   min={0}
-                  value={formData.expirationDays}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      expirationDays: e.target.value,
-                    })
-                  }
+                  {...register("expirationDays", { valueAsNumber: true })}
                   placeholder="30"
                 />
+                {errors.expirationDays && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.expirationDays.message}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   Days until the document link expires (default 30).
                 </p>
@@ -365,15 +358,14 @@ export function DocumentTemplateModal({
                   id="reminderFrequencyDays"
                   type="number"
                   min={0}
-                  value={formData.reminderFrequencyDays}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      reminderFrequencyDays: e.target.value,
-                    })
-                  }
+                  {...register("reminderFrequencyDays", { valueAsNumber: true })}
                   placeholder="3"
                 />
+                {errors.reminderFrequencyDays && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.reminderFrequencyDays.message}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   How often to send reminders (default 3).
                 </p>
@@ -384,14 +376,16 @@ export function DocumentTemplateModal({
               <Label htmlFor="description">Description (optional)</Label>
               <Textarea
                 id="description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                {...register("description")}
                 placeholder="Internal notes about this template"
                 rows={2}
                 className="resize-none"
               />
+              {errors.description && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -400,10 +394,10 @@ export function DocumentTemplateModal({
             </Button>
             <Button
               type="submit"
-              disabled={loading || !isValid}
+              disabled={isSubmitting}
               aria-label={template ? "Update template" : "Create template"}
             >
-              {loading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {template ? "Updating..." : "Creating..."}

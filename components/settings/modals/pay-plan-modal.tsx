@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/hooks/use-toast";
 
 interface PayPlan {
   id: string;
@@ -78,14 +79,22 @@ export function PayPlanModal({
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.error || "Failed to save pay plan");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.error || "Failed to save pay plan",
+        });
         return;
       }
 
       onClose();
     } catch (error) {
       console.error("Error saving pay plan:", error);
-      alert("Failed to save pay plan");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save pay plan",
+      });
     } finally {
       setLoading(false);
     }
