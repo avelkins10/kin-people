@@ -152,6 +152,10 @@ export async function sendMultipleInvites(
  * Prefill text fields on a document using SDK.
  * This is the correct API for regular text fields (not smart fields/integration objects).
  * Uses PUT /v2/documents/{id}/prefill-texts
+ *
+ * Note: SignNow requires ALL field names to exist in the document. This function
+ * first fetches the document to get actual field names, then filters to only
+ * send fields that exist.
  */
 export async function prefillTextFields(
   documentId: string,
@@ -159,12 +163,39 @@ export async function prefillTextFields(
 ): Promise<void> {
   if (!fieldValues?.length) return;
   const sdk = await getSdk();
-  const fields: FieldRequestAttribute[] = fieldValues.map((f) => ({
-    field_name: f.field_name,
-    prefilled_text: f.field_value,
-  }));
-  console.log("[signnow-sdk] prefillTextFields: documentId=", documentId, "fields=", JSON.stringify(fields.slice(0, 5)));
-  const request = new DocumentPrefillPutRequest(documentId, fields);
+
+  // First, get the document to see what fields actually exist
+  const docRequest = new DocumentGetRequest(documentId);
+  const doc = await sdk.getClient().send<DocumentGetResponse>(docRequest);
+
+  // Extract field names from the document (fields[].json_attributes.name)
+  const existingFieldNames = new Set<string>();
+  if (Array.isArray(doc.fields)) {
+    for (const field of doc.fields) {
+      const name = field?.json_attributes?.name;
+      if (name && typeof name === "string") {
+        existingFieldNames.add(name);
+      }
+    }
+  }
+
+  console.log("[signnow-sdk] prefillTextFields: documentId=", documentId, "existingFields=", Array.from(existingFieldNames));
+
+  // Filter to only fields that exist in the document
+  const matchingFields: FieldRequestAttribute[] = fieldValues
+    .filter((f) => existingFieldNames.has(f.field_name))
+    .map((f) => ({
+      field_name: f.field_name,
+      prefilled_text: f.field_value,
+    }));
+
+  if (matchingFields.length === 0) {
+    console.log("[signnow-sdk] prefillTextFields: no matching fields found, skipping prefill");
+    return;
+  }
+
+  console.log("[signnow-sdk] prefillTextFields: sending", matchingFields.length, "fields:", JSON.stringify(matchingFields));
+  const request = new DocumentPrefillPutRequest(documentId, matchingFields);
   try {
     await sdk.getClient().send(request);
     console.log("[signnow-sdk] prefillTextFields: success");
