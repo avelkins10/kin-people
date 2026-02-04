@@ -19,8 +19,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  let body: Record<string, unknown>;
   try {
-    const body = await req.json();
+    body = await req.json();
+  } catch (parseErr) {
+    console.error(`${LOG_PREFIX} Failed to parse JSON body:`, parseErr);
+    return NextResponse.json({ received: true, error: "Invalid JSON" });
+  }
+
+  try {
     const signature = req.headers.get("x-signnow-signature");
 
     if (process.env.SIGNNOW_WEBHOOK_SECRET && signature) {
@@ -276,12 +283,11 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
-    console.error(`${LOG_PREFIX} error processing webhook`, {
-      error: message,
-      stack,
-    });
+    console.error(`${LOG_PREFIX} ERROR processing webhook:`, message);
+    console.error(`${LOG_PREFIX} Stack:`, stack);
+    // Return the actual error message in the response for debugging
     return NextResponse.json(
-      { error: "Webhook processing failed" },
+      { error: "Webhook processing failed", details: message },
       { status: 200 }
     );
   }
