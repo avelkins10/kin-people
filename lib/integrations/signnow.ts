@@ -534,7 +534,7 @@ export async function createDocument(
     const result = await withRetry(() =>
       withTimeout(async (signal) => {
         const response = await fetch(
-          `https://api.signnow.com/v2/templates/${templateId}/documents`,
+          `https://api.signnow.com/template/${templateId}/copy`,
           {
             method: "POST",
             headers: {
@@ -543,17 +543,6 @@ export async function createDocument(
             },
             body: JSON.stringify({
               document_name: `Employment Agreement - ${data.recruitName}`,
-              field_invites: [
-                { email: data.recruitEmail, role: "Signer", order: 1 },
-              ],
-              field_values: [
-                { field_name: "recruit_name", field_value: data.recruitName },
-                { field_name: "recruit_email", field_value: data.recruitEmail },
-                { field_name: "target_office", field_value: data.targetOffice },
-                { field_name: "target_role", field_value: data.targetRole },
-                { field_name: "target_pay_plan", field_value: data.targetPayPlan },
-                { field_name: "recruiter_name", field_value: data.recruiterName },
-              ],
             }),
             signal,
           }
@@ -604,92 +593,38 @@ export async function createDocumentWithMultipleSigners(
     throw new Error("createDocumentWithMultipleSigners: signers array cannot be empty");
   }
   const startTime = Date.now();
-  const baseBody: {
-    document_name: string;
-    field_invites: Array<{ email: string; role: string; order: number }>;
-    field_values?: Array<{ field_name: string; field_value: string }>;
-  } = {
-    document_name: documentName,
-    field_invites: signers.map((s) => ({
-      email: s.email,
-      role: s.role,
-      order: s.order ?? 1,
-    })),
-  };
 
   try {
     const accessToken = await getAccessToken();
-
-    async function doCreate(
-      body: typeof baseBody
-    ): Promise<{ id: string }> {
-      const response = await fetch(
-        `https://api.signnow.com/v2/templates/${templateId}/documents`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
+    const result = await withRetry(() =>
+      withTimeout(async (signal) => {
+        const response = await fetch(
+          `https://api.signnow.com/template/${templateId}/copy`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ document_name: documentName }),
+            signal,
+          }
+        );
+        if (!response.ok) {
+          const errorText = await response.text();
+          throwWithStatus(
+            `Failed to create document from template ${templateId}: ${errorText}`,
+            response.status
+          );
         }
+        return await response.json() as { id: string };
+      }, DOCUMENT_CREATION_TIMEOUT_MS, "createDocumentWithMultipleSigners")
+    );
+    if (fieldValues?.length) {
+      console.warn(
+        "[signnow] createDocumentWithMultipleSigners: field_values are not supported by template/copy; signers will be invited but fields will not be pre-filled",
+        { templateId }
       );
-      if (!response.ok) {
-        const errorText = await response.text();
-        throwWithStatus(
-          `Failed to create document from template ${templateId}: ${errorText}`,
-          response.status
-        );
-      }
-      return await response.json();
-    }
-    let result: { id: string };
-    try {
-      const bodyWithFields = { ...baseBody };
-      if (fieldValues?.length) {
-        bodyWithFields.field_values = fieldValues;
-      }
-      result = await withRetry(() =>
-        withTimeout(
-          (signal) =>
-            doCreate(bodyWithFields).then((r) => {
-              if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-              return r;
-            }),
-          DOCUMENT_CREATION_TIMEOUT_MS,
-          "createDocumentWithMultipleSigners"
-        )
-      );
-    } catch (firstError) {
-      const msg =
-        firstError instanceof Error ? firstError.message : String(firstError);
-      const isBadRequest =
-        (firstError && typeof firstError === "object" && "status" in firstError && (firstError as { status?: number }).status === 400) ||
-        msg.includes("400") ||
-        msg.toLowerCase().includes("field") ||
-        msg.toLowerCase().includes("invalid");
-      if (
-        fieldValues?.length &&
-        isBadRequest
-      ) {
-        console.warn(
-          "[signnow] createDocumentWithMultipleSigners: first attempt failed, retrying without field_values",
-          { templateId, message: msg.slice(0, 200) }
-        );
-        result = await withRetry(() =>
-          withTimeout(
-            (signal) =>
-              doCreate(baseBody).then((r) => {
-                if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-                return r;
-              }),
-            DOCUMENT_CREATION_TIMEOUT_MS,
-            "createDocumentWithMultipleSigners (no field_values)"
-          )
-        );
-      } else {
-        throw firstError;
-      }
     }
     logApiCall("createDocumentWithMultipleSigners", {
       templateId,
