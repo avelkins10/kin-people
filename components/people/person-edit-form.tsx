@@ -53,7 +53,7 @@ export function PersonEditForm({
   const updateMutation = useUpdatePerson();
 
   // Map person status to form status (terminated -> inactive)
-  const getFormStatus = (status: string | undefined): PersonFormData["status"] => {
+  const getFormStatus = (status: string | null | undefined): PersonFormData["status"] => {
     if (status === "terminated") return "inactive";
     if (status === "active" || status === "onboarding") return status;
     return "active";
