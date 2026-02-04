@@ -780,6 +780,10 @@ export async function sendMultipleInvites(
       signerCount: signers.length,
       signerEmails: signers.map((s) => s.email),
     });
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("Failed to send invites for document")) {
+      throw error;
+    }
     throw new Error(
       "Failed to send invites to signers. Please verify email addresses and try again."
     );
@@ -953,34 +957,62 @@ export async function voidDocument(documentId: string): Promise<void> {
 }
 
 /**
- * Download signed document as a PDF buffer.
- * Use this when uploading to Supabase Storage or other file storage.
+ * Download document as a PDF buffer (signed or draft).
+ * Tries v2 first; on 403/404 falls back to legacy /document/{id}/download for draft/preview docs.
  */
 export async function downloadDocument(documentId: string): Promise<Buffer> {
   const startTime = Date.now();
+  const accessToken = await getAccessToken();
+
+  async function doDownload(url: string, signal?: AbortSignal): Promise<Buffer> {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal,
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throwWithStatus(
+        `Failed to download document ${documentId}: ${response.status} ${errorText}`,
+        response.status
+      );
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
   try {
-    const accessToken = await getAccessToken();
-    const buffer = await withRetry(() =>
-      withTimeout(async (signal) => {
-        const response = await fetch(
-          `https://api.signnow.com/v2/documents/${documentId}/download`,
-          {
-            method: "GET",
-            headers: { Authorization: `Bearer ${accessToken}` },
-            signal,
-          }
+    let buffer: Buffer;
+    try {
+      buffer = await withRetry(() =>
+        withTimeout(
+          (signal) =>
+            doDownload(
+              `https://api.signnow.com/v2/documents/${documentId}/download`,
+              signal
+            ),
+          DOWNLOAD_TIMEOUT_MS,
+          "downloadDocument"
+        )
+      );
+    } catch (v2Error) {
+      const status =
+        v2Error && typeof v2Error === "object" && "status" in v2Error
+          ? (v2Error as { status?: number }).status
+          : undefined;
+      if (status === 403 || status === 404) {
+        console.warn(
+          "[signnow] downloadDocument v2 returned",
+          status,
+          ", trying legacy /document/.../download"
         );
-        if (!response.ok) {
-          const errorText = await response.text();
-          throwWithStatus(
-            `Failed to download document ${documentId}: ${response.status} ${errorText}`,
-            response.status
-          );
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        return Buffer.from(arrayBuffer);
-      }, DOWNLOAD_TIMEOUT_MS, "downloadDocument")
-    );
+        buffer = await doDownload(
+          `https://api.signnow.com/document/${documentId}/download`
+        );
+      } else {
+        throw v2Error;
+      }
+    }
     logApiCall("downloadDocument", { documentId, sizeBytes: buffer.length }, startTime);
     return buffer;
   } catch (error) {

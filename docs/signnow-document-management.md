@@ -142,6 +142,24 @@ When we create a document from a template, we send **field values** to SignNow s
 
 In SignNow, when you add text/field elements to the template, set the field **name** (or prefill key, per SignNow’s UI) to one of the names above. If your template uses different names, either rename them in SignNow to match, or ask a developer to add those names in `buildFieldValues` in `lib/services/document-service.ts`. Unknown field names are ignored by SignNow; they do not cause the request to fail.
 
+**Note:** We currently create documents via `POST /template/{id}/copy` with **document_name only**. That endpoint does not accept field values, so pre-filling is not applied at create time. To get pre-filled text (name, email, office, etc.) in the PDF, see **Smart fields and pre-fill** below.
+
+---
+
+### Smart fields and pre-fill (optional)
+
+SignNow has two field concepts that affect templates and invites:
+
+| Concept | What it is | Do we need it? |
+|--------|------------|----------------|
+| **Fillable fields** | Fields on the template assigned to **roles** (e.g. “Signer 1”, “Signer 2”). Used for “Invite to Sign (with fields)”. The invite API may expect **role_id** from the document when the template has these. | Maybe. If your template has role-based fillable fields and the **invite** fails (e.g. “role_id required”), you may need to either (a) use a template **without** predefined roles (free-form signing), or (b) add code to GET the document’s roles after copy and send invite with **role_id** in the body (see Postman “Send a document for signing with predefined fillable fields”). |
+| **Smart fields** | Template placeholders you add via **Add smart fields to template** (POST `/document/{template_id}/integration_objects`). You can then **Prefill smart fields** on a document (POST `/document/{document_id}/integration/object/smartfields` with `data: [{ field_name: value }, ...]`). | Optional. Use smart fields if you want **pre-filled text** (name, email, office, role, etc.) in the PDF. Our app has `buildFieldValues()` with names like `name`, `email`, `recruit_name`, `target_office`. We don’t currently call the prefill API after creating the document; adding that step would require the template to have smart fields whose names match what we send. |
+
+**Summary**
+
+- **Sending works without smart fields.** You do **not** need to create smart fields for the basic flow (create from template → send invite). If the invite fails, the real error (now surfaced in the UI) will tell you if SignNow expects something else (e.g. `role_id`, or a different invite body).
+- **Pre-filling text (name, email, office, etc.)** – If you want those values in the PDF before signers open it, you can: (1) Add **smart fields** to the template in SignNow (or use fillable fields and prefill if the API supports it), and (2) We can add a **prefill** step after `template/copy` (e.g. call `POST /document/{document_id}/integration/object/smartfields` with `buildFieldValues` data). Until then, the document is created and sent with no pre-filled text.
+
 ---
 
 ## Developer guide
