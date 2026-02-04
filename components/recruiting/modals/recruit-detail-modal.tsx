@@ -26,18 +26,32 @@ import { SendDocumentModal } from "@/components/documents/send-document-modal";
 import { DocumentList } from "@/components/documents/document-list";
 import { ConvertToPersonModal } from "./convert-to-person-modal";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { RecruitWithDetails } from "@/types/recruiting";
 
 interface RecruitDetailModalProps {
   recruitId: string;
   open: boolean;
   onClose: () => void;
+  /** When true, open the Send Document modal as soon as this modal opens (e.g. from kanban "Send agreement" confirm). */
+  openSendDocumentOnOpen?: boolean;
 }
 
 export function RecruitDetailModal({
   recruitId,
   open,
   onClose,
+  openSendDocumentOnOpen,
 }: RecruitDetailModalProps) {
   const [recruit, setRecruit] = useState<RecruitWithDetails | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -46,6 +60,15 @@ export function RecruitDetailModal({
   const [showSendDocument, setShowSendDocument] = useState(false);
   const [resendDocument, setResendDocument] = useState<{ documentId: string; documentType: string } | null>(null);
   const [showConvert, setShowConvert] = useState(false);
+  const [showSendAgreementConfirm, setShowSendAgreementConfirm] = useState(false);
+  const [showAgreementOverride, setShowAgreementOverride] = useState(false);
+  const [overrideStatusPreset, setOverrideStatusPreset] = useState<"agreement_sent" | "agreement_signed" | null>(null);
+  const [canOverrideAgreement, setCanOverrideAgreement] = useState(false);
+  const [overrideFormStatus, setOverrideFormStatus] = useState<"agreement_sent" | "agreement_signed">("agreement_sent");
+  const [overrideSentAt, setOverrideSentAt] = useState("");
+  const [overrideSignedAt, setOverrideSignedAt] = useState("");
+  const [overrideFile, setOverrideFile] = useState<File | null>(null);
+  const [overrideSubmitting, setOverrideSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [offices, setOffices] = useState<Array<{ id: string; name: string }>>([]);
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
@@ -74,6 +97,31 @@ export function RecruitDetailModal({
       fetchHistory();
     }
   }, [open, recruitId]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { permissions?: string[] } | null) => {
+        const perms = data?.permissions ?? [];
+        setCanOverrideAgreement(
+          Array.isArray(perms) && perms.includes("MANAGE_SETTINGS")
+        );
+      })
+      .catch(() => setCanOverrideAgreement(false));
+  }, [open]);
+
+  useEffect(() => {
+    if (open && openSendDocumentOnOpen) {
+      setShowSendDocument(true);
+    }
+  }, [open, openSendDocumentOnOpen]);
+
+  useEffect(() => {
+    if (showAgreementOverride && overrideStatusPreset) {
+      setOverrideFormStatus(overrideStatusPreset);
+    }
+  }, [showAgreementOverride, overrideStatusPreset]);
 
   async function fetchRecruit() {
     try {
@@ -201,6 +249,26 @@ export function RecruitDetailModal({
   }
 
   async function handleStatusChange(newStatus: string) {
+    // Agreement Sent: do not call API; show confirm and open Send Document on confirm
+    if (newStatus === "agreement_sent") {
+      setShowSendAgreementConfirm(true);
+      return;
+    }
+    // Agreement Signed: do not call API; show override modal for admin, toast for others
+    if (newStatus === "agreement_signed") {
+      if (canOverrideAgreement) {
+        setOverrideStatusPreset("agreement_signed");
+        setShowAgreementOverride(true);
+      } else {
+        toast({
+          title: "Agreement Signed is automatic",
+          description:
+            "Agreement Signed is set automatically when the rep agreement is fully signed. Admins can use Override agreement status to set it manually.",
+        });
+      }
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`/api/recruits/${recruitId}/update-status`, {
@@ -215,7 +283,8 @@ export function RecruitDetailModal({
         window.dispatchEvent(new CustomEvent("recruits-updated"));
         router.refresh();
       } else {
-        alert("Failed to update status");
+        const data = await response.json().catch(() => ({}));
+        alert((data as { error?: string }).error ?? "Failed to update status");
       }
     } catch (error) {
       console.error("Error updating status:", error);
@@ -230,6 +299,67 @@ export function RecruitDetailModal({
     fetchRecruit();
     router.refresh();
     window.dispatchEvent(new CustomEvent("documents-updated"));
+  }
+
+  function openAgreementOverrideModal() {
+    setOverrideStatusPreset(null);
+    setOverrideFormStatus("agreement_sent");
+    setOverrideSentAt("");
+    setOverrideSignedAt("");
+    setOverrideFile(null);
+    setShowAgreementOverride(true);
+  }
+
+  function closeAgreementOverrideModal() {
+    setShowAgreementOverride(false);
+    setOverrideStatusPreset(null);
+    setOverrideFormStatus("agreement_sent");
+    setOverrideSentAt("");
+    setOverrideSignedAt("");
+    setOverrideFile(null);
+  }
+
+  async function handleAgreementOverrideSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const status = overrideStatusPreset ?? overrideFormStatus;
+    const sentAt = overrideSentAt || (overrideStatusPreset ? undefined : undefined);
+    if (!sentAt) {
+      alert("Agreement sent date is required.");
+      return;
+    }
+    if (status === "agreement_signed" && !overrideSignedAt) {
+      alert("Agreement signed date is required for Agreement Signed.");
+      return;
+    }
+    setOverrideSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.set("status", status);
+      formData.set("agreementSentAt", new Date(overrideSentAt).toISOString());
+      if (status === "agreement_signed" && overrideSignedAt) {
+        formData.set("agreementSignedAt", new Date(overrideSignedAt).toISOString());
+      }
+      if (overrideFile) {
+        formData.set("file", overrideFile);
+      }
+      const res = await fetch(`/api/recruits/${recruitId}/agreement-override`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Failed to override");
+      }
+      await fetchRecruit();
+      await fetchHistory();
+      closeAgreementOverrideModal();
+      window.dispatchEvent(new CustomEvent("recruits-updated"));
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to override agreement status");
+    } finally {
+      setOverrideSubmitting(false);
+    }
   }
 
   if (!recruit) {
@@ -532,6 +662,11 @@ export function RecruitDetailModal({
                     Convert to Person
                   </Button>
                 )}
+                {canOverrideAgreement && (
+                  <Button variant="outline" onClick={openAgreementOverrideModal}>
+                    Override agreement status
+                  </Button>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-sm">Update Status:</span>
                   <Select
@@ -588,6 +723,112 @@ export function RecruitDetailModal({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showSendAgreementConfirm && (
+        <AlertDialog
+          open={showSendAgreementConfirm}
+          onOpenChange={(open) => !open && setShowSendAgreementConfirm(false)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Send rep agreement?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Do you want to send this recruit a rep agreement? The recruit
+                will move to Agreement Sent once the document is sent.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowSendAgreementConfirm(false);
+                  setShowSendDocument(true);
+                }}
+              >
+                Send agreement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {showAgreementOverride && recruit && (
+        <Dialog open={showAgreementOverride} onOpenChange={(open) => !open && closeAgreementOverrideModal()}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Override agreement status</DialogTitle>
+              <DialogDescription>
+                Set agreement status manually and optionally upload a PDF. Only admins can override.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAgreementOverrideSubmit} className="space-y-4">
+              <div>
+                <Label>Status</Label>
+                {overrideStatusPreset ? (
+                  <p className="text-sm font-medium mt-1">
+                    {overrideStatusPreset === "agreement_sent" ? "Agreement Sent" : "Agreement Signed"}
+                  </p>
+                ) : (
+                  <Select
+                    value={overrideFormStatus}
+                    onValueChange={(v) => setOverrideFormStatus(v as "agreement_sent" | "agreement_signed")}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agreement_sent">Agreement Sent</SelectItem>
+                      <SelectItem value="agreement_signed">Agreement Signed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="override-sent-at">Agreement sent date</Label>
+                <Input
+                  id="override-sent-at"
+                  type="date"
+                  value={overrideSentAt}
+                  onChange={(e) => setOverrideSentAt(e.target.value)}
+                  required
+                  className="mt-1"
+                />
+              </div>
+              {(overrideStatusPreset ?? overrideFormStatus) === "agreement_signed" && (
+                <div>
+                  <Label htmlFor="override-signed-at">Agreement signed date</Label>
+                  <Input
+                    id="override-signed-at"
+                    type="date"
+                    value={overrideSignedAt}
+                    onChange={(e) => setOverrideSignedAt(e.target.value)}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              )}
+              <div>
+                <Label htmlFor="override-file">Upload PDF (optional)</Label>
+                <Input
+                  id="override-file"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => setOverrideFile(e.target.files?.[0] ?? null)}
+                  className="mt-1"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={closeAgreementOverrideModal} disabled={overrideSubmitting}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={overrideSubmitting}>
+                  {overrideSubmitting ? "Saving…" : "Save override"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showSendDocument && (
         <SendDocumentModal

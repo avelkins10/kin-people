@@ -19,9 +19,20 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDroppable } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RecruitDetailModal } from "@/components/recruiting/modals/recruit-detail-modal";
 import type { RecruitListItem } from "@/types/recruiting";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
 import { Clock, MapPin, MoreHorizontal, Plus, UserPlus, Phone, Users, FileText, Send, CheckCircle } from "lucide-react";
 
 interface RecruitingKanbanProps {
@@ -234,6 +245,8 @@ function Column({
 export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
   const [recruits, setRecruits] = useState<RecruitListItem[]>(initialRecruits);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [pendingSendAgreement, setPendingSendAgreement] = useState<RecruitListItem | null>(null);
+  const [confirmSendAgreementRecruit, setConfirmSendAgreementRecruit] = useState<RecruitListItem | null>(null);
 
   useEffect(() => {
     setRecruits(initialRecruits);
@@ -261,10 +274,10 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
     if (!over) return;
 
     const recruitId = active.id as string;
-    
+
     let newStatus: RecruitStatus | null = null;
-    const validStatuses = STATUS_COLUMNS.map(col => col.status);
-    
+    const validStatuses = STATUS_COLUMNS.map((col) => col.status);
+
     if (validStatuses.includes(over.id as RecruitStatus)) {
       newStatus = over.id as RecruitStatus;
     } else {
@@ -282,6 +295,22 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
     if (!recruit) return;
 
     if (recruit.recruit.status === newStatus) return;
+
+    // Agreement Sent: do not call API; show confirm and open Send Document flow on confirm
+    if (newStatus === "agreement_sent") {
+      setConfirmSendAgreementRecruit(recruit);
+      return;
+    }
+
+    // Agreement Signed: do not call API; show toast that it's automatic
+    if (newStatus === "agreement_signed") {
+      toast({
+        title: "Agreement Signed is automatic",
+        description:
+          "Agreement Signed is set automatically when the rep agreement is fully signed.",
+      });
+      return;
+    }
 
     setRecruits((prev) =>
       prev.map((r) =>
@@ -316,6 +345,12 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
       alert("Failed to update recruit status");
     }
   };
+
+  function handleConfirmSendAgreement(recruit: RecruitListItem) {
+    setConfirmSendAgreementRecruit(null);
+    setSelectedRecruit(recruit);
+    setPendingSendAgreement(recruit);
+  }
 
   const pipelineRecruits = recruits.filter((r) =>
     isPipelineStatus(r.recruit?.status ?? null)
@@ -362,11 +397,45 @@ export function RecruitingKanban({ initialRecruits }: RecruitingKanbanProps) {
         </DragOverlay>
       </DndContext>
 
+      {confirmSendAgreementRecruit && (
+        <AlertDialog
+          open={!!confirmSendAgreementRecruit}
+          onOpenChange={(open) => !open && setConfirmSendAgreementRecruit(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Send rep agreement?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Do you want to send{" "}
+                {confirmSendAgreementRecruit.recruit.firstName}{" "}
+                {confirmSendAgreementRecruit.recruit.lastName} a rep agreement?
+                The recruit will move to Agreement Sent once the document is
+                sent.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() =>
+                  handleConfirmSendAgreement(confirmSendAgreementRecruit)
+                }
+              >
+                Send agreement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       {selectedRecruit && (
         <RecruitDetailModal
           recruitId={selectedRecruit.recruit.id}
           open={!!selectedRecruit}
-          onClose={() => setSelectedRecruit(null)}
+          onClose={() => {
+            setSelectedRecruit(null);
+            setPendingSendAgreement(null);
+          }}
+          openSendDocumentOnOpen={pendingSendAgreement?.recruit.id === selectedRecruit?.recruit.id}
         />
       )}
     </>

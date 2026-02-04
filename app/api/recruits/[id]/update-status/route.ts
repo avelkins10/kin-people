@@ -30,6 +30,26 @@ export async function POST(
       const body = await req.json();
       const validated = updateStatusSchema.parse(body);
 
+      // Agreement Sent and Agreement Signed are set by automation (send-document flow and webhook). Use agreement-override for admin override.
+      if (validated.newStatus === "agreement_sent") {
+        return NextResponse.json(
+          {
+            error:
+              "Agreement Sent is set automatically when you send the rep agreement. Use the Send Rep Agreement flow, or use Admin Override if you have permission.",
+          },
+          { status: 400 }
+        );
+      }
+      if (validated.newStatus === "agreement_signed") {
+        return NextResponse.json(
+          {
+            error:
+              "Agreement Signed is set automatically when the rep agreement is fully signed. Use Admin Override if you need to set this manually.",
+          },
+          { status: 400 }
+        );
+      }
+
       // Check management permission
       const canManage = await canManageRecruit(user, id);
       if (!canManage) {
