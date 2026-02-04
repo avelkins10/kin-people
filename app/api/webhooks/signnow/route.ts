@@ -19,10 +19,19 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Get the raw body text for signature verification (must match exactly what SignNow signed)
+  let rawBody: string;
+  try {
+    rawBody = await req.text();
+  } catch (readErr) {
+    console.error(`${LOG_PREFIX} Failed to read request body:`, readErr);
+    return NextResponse.json({ received: true, error: "Failed to read body" });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: any;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody);
   } catch (parseErr) {
     console.error(`${LOG_PREFIX} Failed to parse JSON body:`, parseErr);
     return NextResponse.json({ received: true, error: "Invalid JSON" });
@@ -32,7 +41,7 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get("x-signnow-signature");
 
     if (process.env.SIGNNOW_WEBHOOK_SECRET && signature) {
-      const isValid = verifyWebhookSignature(JSON.stringify(body), signature);
+      const isValid = verifyWebhookSignature(rawBody, signature);
       if (!isValid) {
         console.warn(`${LOG_PREFIX} invalid webhook signature, acknowledging to avoid retries`);
         return NextResponse.json({ received: true });
