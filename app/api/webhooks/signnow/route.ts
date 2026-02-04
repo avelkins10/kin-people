@@ -12,6 +12,11 @@ import {
 
 const LOG_PREFIX = "[webhook/signnow]";
 
+/** GET: SignNow may validate the webhook URL with a GET request; return 200 so the URL is accepted. */
+export async function GET() {
+  return NextResponse.json({ ok: true }, { status: 200 });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -25,7 +30,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { event, document_id } = body;
+    // Normalize payload: SignNow may send event/document_id at top level or under meta/content (e.g. User-scoped webhooks)
+    const event = (body.meta?.event ?? body.event) as string | undefined;
+    const document_id = (body.content?.document_id ?? body.document_id) as string | undefined;
 
     console.log(`${LOG_PREFIX} received event=${event} document_id=${document_id}`);
 

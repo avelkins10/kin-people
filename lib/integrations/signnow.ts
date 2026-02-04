@@ -493,7 +493,9 @@ export async function getTemplateCopies(
     return { data, pagination };
   } catch (error) {
     logApiError("getTemplateCopies", error, { templateId });
-    throw new Error("Failed to retrieve documents from template. Please try again later.");
+    const message =
+      error instanceof Error ? error.message : "Failed to retrieve documents from template. Please try again later.";
+    throw new Error(message);
   }
 }
 
@@ -1053,7 +1055,9 @@ export async function getDocumentUrl(documentId: string): Promise<string> {
 }
 
 /**
- * Verify webhook signature
+ * Verify webhook signature (HMAC-SHA256).
+ * SignNow sends the signature in X-SignNow-Signature; we compare with HMAC-SHA256(payload, secret) as hex.
+ * If verification fails in production, check SignNow docs—some setups may send Base64 instead of hex.
  */
 export function verifyWebhookSignature(
   payload: string,
@@ -1061,21 +1065,16 @@ export function verifyWebhookSignature(
 ): boolean {
   const secret = process.env.SIGNNOW_WEBHOOK_SECRET;
   if (!secret) {
-    // If no secret configured, skip verification (not recommended for production)
     console.warn("SignNow webhook secret not configured, skipping verification");
     return true;
   }
 
-  // SignNow typically uses HMAC-SHA256 for webhook signatures
-  // This is a placeholder - implement based on SignNow's actual webhook verification
   const crypto = require("crypto");
-  const expectedSignature = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  const expectedHex = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  if (crypto.timingSafeEqual(Buffer.from(signature, "utf8"), Buffer.from(expectedHex, "utf8"))) {
+    return true;
+  }
+  // Some SignNow setups send Base64-encoded HMAC; try that if hex fails
+  const expectedBase64 = crypto.createHmac("sha256", secret).update(payload).digest("base64");
+  return crypto.timingSafeEqual(Buffer.from(signature, "utf8"), Buffer.from(expectedBase64, "utf8"));
 }

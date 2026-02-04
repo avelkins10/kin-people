@@ -14,6 +14,8 @@ This guide covers the SignNow document signing and tracking system for recruits 
 
 Any future agent or developer working on SignNow should open this file (or import it into Postman) before changing `lib/integrations/signnow.ts` or related APIs.
 
+**Endpoint audit:** See **docs/signnow-api-audit.md** for a table of every SignNow endpoint the app uses and how it maps to the Postman collection (including v2 vs legacy paths and webhook behavior).
+
 ---
 
 ## User guide
