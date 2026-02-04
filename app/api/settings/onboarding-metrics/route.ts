@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { appSettings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  appSettings,
+  people,
+  onboardingTasks,
+  personOnboardingProgress,
+  onboardingInfoFields,
+  personOnboardingInfo,
+} from "@/lib/db/schema";
+import { eq, and, sql, count, countDistinct } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 
@@ -38,9 +45,133 @@ export const GET = withAuth(async () => {
       (byKey[KEYS.readyForFieldType] as "count" | "percentage" | "placeholder") ??
       DEFAULT_CONFIG.readyForField.type;
 
+    // Calculate actual metrics
+    let trainingCompleteCount = 0;
+    let trainingCompletePercentage = 0;
+    let readyForFieldCount = 0;
+    let readyForFieldPercentage = 0;
+
+    // Get all people in onboarding status
+    const onboardingPeople = await db
+      .select({ id: people.id })
+      .from(people)
+      .where(eq(people.status, "onboarding"));
+
+    const totalOnboarding = onboardingPeople.length;
+
+    if (totalOnboarding > 0) {
+      // Get all active training tasks
+      const trainingTasks = await db
+        .select({ id: onboardingTasks.id })
+        .from(onboardingTasks)
+        .where(and(eq(onboardingTasks.isActive, true), eq(onboardingTasks.category, "training")));
+
+      const totalTrainingTasks = trainingTasks.length;
+      const trainingTaskIds = trainingTasks.map((t) => t.id);
+
+      // Calculate Training Complete metric
+      if (totalTrainingTasks > 0) {
+        // For each onboarding person, check if they've completed all training tasks
+        for (const person of onboardingPeople) {
+          const completedTraining = await db
+            .select({ taskId: personOnboardingProgress.taskId })
+            .from(personOnboardingProgress)
+            .where(
+              and(
+                eq(personOnboardingProgress.personId, person.id),
+                eq(personOnboardingProgress.completed, true)
+              )
+            );
+
+          const completedTrainingIds = completedTraining.map((t) => t.taskId);
+          const allTrainingDone = trainingTaskIds.every((id) => completedTrainingIds.includes(id));
+
+          if (allTrainingDone) {
+            trainingCompleteCount++;
+          }
+        }
+        trainingCompletePercentage = Math.round((trainingCompleteCount / totalOnboarding) * 100);
+      }
+
+      // Get all active tasks (for ready for field)
+      const allActiveTasks = await db
+        .select({ id: onboardingTasks.id })
+        .from(onboardingTasks)
+        .where(eq(onboardingTasks.isActive, true));
+
+      const totalActiveTasks = allActiveTasks.length;
+      const allTaskIds = allActiveTasks.map((t) => t.id);
+
+      // Get required info fields
+      const requiredFields = await db
+        .select({ id: onboardingInfoFields.id })
+        .from(onboardingInfoFields)
+        .where(and(eq(onboardingInfoFields.isActive, true), eq(onboardingInfoFields.isRequired, true)));
+
+      const requiredFieldIds = requiredFields.map((f) => f.id);
+
+      // Calculate Ready for Field metric
+      for (const person of onboardingPeople) {
+        // Check all tasks completed
+        let allTasksDone = false;
+        if (totalActiveTasks > 0) {
+          const completedTasks = await db
+            .select({ taskId: personOnboardingProgress.taskId })
+            .from(personOnboardingProgress)
+            .where(
+              and(
+                eq(personOnboardingProgress.personId, person.id),
+                eq(personOnboardingProgress.completed, true)
+              )
+            );
+
+          const completedTaskIds = completedTasks.map((t) => t.taskId);
+          allTasksDone = allTaskIds.every((id) => completedTaskIds.includes(id));
+        } else {
+          // No tasks configured, consider tasks complete
+          allTasksDone = true;
+        }
+
+        // Check all required info fields submitted
+        let allInfoComplete = false;
+        if (requiredFieldIds.length > 0) {
+          const submittedInfo = await db
+            .select({ fieldId: personOnboardingInfo.fieldId })
+            .from(personOnboardingInfo)
+            .where(
+              and(
+                eq(personOnboardingInfo.personId, person.id),
+                sql`${personOnboardingInfo.fieldValue} IS NOT NULL AND ${personOnboardingInfo.fieldValue} != ''`
+              )
+            );
+
+          const submittedFieldIds = submittedInfo.map((f) => f.fieldId);
+          allInfoComplete = requiredFieldIds.every((id) => submittedFieldIds.includes(id));
+        } else {
+          // No required fields, consider info complete
+          allInfoComplete = true;
+        }
+
+        if (allTasksDone && allInfoComplete) {
+          readyForFieldCount++;
+        }
+      }
+      readyForFieldPercentage = Math.round((readyForFieldCount / totalOnboarding) * 100);
+    }
+
     return NextResponse.json({
-      trainingComplete: { label: trainingCompleteLabel, type: trainingCompleteType },
-      readyForField: { label: readyForFieldLabel, type: readyForFieldType },
+      trainingComplete: {
+        label: trainingCompleteLabel,
+        type: trainingCompleteType,
+        count: trainingCompleteCount,
+        percentage: trainingCompletePercentage,
+      },
+      readyForField: {
+        label: readyForFieldLabel,
+        type: readyForFieldType,
+        count: readyForFieldCount,
+        percentage: readyForFieldPercentage,
+      },
     });
   } catch (error: unknown) {
     console.error("Error fetching onboarding metrics config:", error);

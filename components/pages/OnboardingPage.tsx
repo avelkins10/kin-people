@@ -79,8 +79,8 @@ interface PeopleApiRow {
 }
 
 interface OnboardingMetricsConfig {
-  trainingComplete: { label: string; type: "count" | "percentage" | "placeholder" };
-  readyForField: { label: string; type: "count" | "percentage" | "placeholder" };
+  trainingComplete: { label: string; type: "count" | "percentage" | "placeholder"; count?: number; percentage?: number };
+  readyForField: { label: string; type: "count" | "percentage" | "placeholder"; count?: number; percentage?: number };
 }
 
 function formatHireDate(hireDate: string | null): string {
@@ -450,8 +450,12 @@ export function OnboardingPage() {
   const blockedReps = reps.filter((r) => r.daysInOnboarding > 14);
   const trainingLabel = metricsConfig?.trainingComplete?.label ?? "Training Complete";
   const trainingType = metricsConfig?.trainingComplete?.type ?? "placeholder";
+  const trainingCount = metricsConfig?.trainingComplete?.count ?? 0;
+  const trainingPercentage = metricsConfig?.trainingComplete?.percentage ?? 0;
   const readyLabel = metricsConfig?.readyForField?.label ?? "Ready for Field";
   const readyType = metricsConfig?.readyForField?.type ?? "placeholder";
+  const readyCount = metricsConfig?.readyForField?.count ?? 0;
+  const readyPercentage = metricsConfig?.readyForField?.percentage ?? 0;
 
   return (
     <>
@@ -506,14 +510,14 @@ export function OnboardingPage() {
             />
             <MetricCard
               label={trainingLabel}
-              value={metricValue(trainingType, 0, 0)}
+              value={metricValue(trainingType, trainingCount, trainingPercentage)}
               icon={CheckCircle}
               trend="From settings"
               trendUp={true}
             />
             <MetricCard
               label={readyLabel}
-              value={metricValue(readyType, 0, 0)}
+              value={metricValue(readyType, readyCount, readyPercentage)}
               icon={User}
               trend="From settings"
               trendUp={true}

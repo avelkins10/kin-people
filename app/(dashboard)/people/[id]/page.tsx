@@ -10,6 +10,7 @@ import { PersonDeals } from "@/components/people/person-deals";
 import { PersonCommissions } from "@/components/people/person-commissions";
 import { PersonDocuments } from "@/components/people/person-documents";
 import { PersonRecruits } from "@/components/people/person-recruits";
+import { PersonOnboarding } from "@/components/people/person-onboarding";
 import { SendDocumentModalWrapper } from "@/components/people/modals/send-document-modal-wrapper";
 import { SendDocumentModal } from "@/components/documents/send-document-modal";
 import { PersonEditForm } from "@/components/people/person-edit-form";
@@ -190,6 +191,7 @@ export default function PersonDetailPage() {
         <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="bg-gray-100 border border-gray-200">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
           <TabsTrigger value="deals">Deals</TabsTrigger>
           <TabsTrigger value="commissions">Commissions</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -206,6 +208,9 @@ export default function PersonDetailPage() {
             currentPayPlan={currentPayPlan}
             personId={id}
           />
+        </TabsContent>
+        <TabsContent value="onboarding">
+          <PersonOnboarding personId={id} personStatus={person.status ?? undefined} />
         </TabsContent>
         <TabsContent value="deals">
           <PersonDeals personId={id} />
