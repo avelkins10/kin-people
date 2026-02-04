@@ -166,6 +166,14 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "document.fieldinvite.sent": {
+        // Invite email was sent successfully - just log for audit
+        console.log(
+          `${LOG_PREFIX} document.fieldinvite.sent: documentId=${documentId}, invite email sent`
+        );
+        break;
+      }
+
       case "document.complete": {
         let storagePath: string | null = null;
 
@@ -254,7 +262,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`${LOG_PREFIX} error`, { error: message });
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error(`${LOG_PREFIX} error processing webhook`, {
+      error: message,
+      stack,
+    });
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 200 }
