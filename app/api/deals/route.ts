@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { deals, people, offices } from "@/lib/db/schema";
-import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
-import { getDealVisibilityFilter } from "@/lib/auth/visibility-rules";
+import { getDealVisibilityFilterAsync } from "@/lib/auth/visibility-rules";
 import { calculateCommissionsForDeal } from "@/lib/services/commission-calculator";
 
 const createDealSchema = z.object({
@@ -76,10 +76,14 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     // Build all filter conditions together
     const conditions: any[] = [];
 
-    // Apply visibility filters first
-    const visibilityFilter = getDealVisibilityFilter(user);
+    // Apply visibility filters first (using async hierarchy-based filter)
+    const visibilityFilter = await getDealVisibilityFilterAsync(user);
     if (visibilityFilter) {
-      if (visibilityFilter.officeId) {
+      if (visibilityFilter.officeIds && visibilityFilter.officeIds.length > 0) {
+        // Regional Manager: deals from any office in their region
+        conditions.push(inArray(deals.officeId, visibilityFilter.officeIds));
+      } else if (visibilityFilter.officeId) {
+        // Area Director/Team Lead: deals from their office
         conditions.push(eq(deals.officeId, visibilityFilter.officeId));
       } else if (visibilityFilter.setterId) {
         // Sales rep sees their own deals (as setter or closer)

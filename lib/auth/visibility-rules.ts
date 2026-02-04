@@ -1,27 +1,37 @@
 import { db } from "@/lib/db";
-import { people, recruits, deals, commissions, roles } from "@/lib/db/schema";
-import { eq, or, and } from "drizzle-orm";
+import { people, recruits, deals, commissions, roles, offices } from "@/lib/db/schema";
+import { eq, or, and, inArray } from "drizzle-orm";
 import type { CurrentUser } from "./get-current-user";
 import { Permission } from "@/lib/permissions/types";
 import { hasPermission } from "./check-permission";
 import { getDocumentWithDetails } from "@/lib/db/helpers/document-helpers";
+import {
+  getVisibilityScope,
+  getManagedRegionId,
+  getOfficeIdsInRegion,
+  type VisibilityScope,
+} from "@/lib/db/helpers/person-helpers";
 
 /**
  * Get visibility filter criteria based on user role.
- * 
+ *
  * Returns filter conditions that should be applied to queries
  * to restrict data access based on the user's role.
- * 
+ *
  * @param user - The current user object
  * @returns Filter conditions object, or null for no restrictions
  */
 export function getVisibilityFilter(user: NonNullable<CurrentUser>) {
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return null; // No filter
+  }
+
+  // Regional Manager: will need async check for region-based filtering
+  // Note: For sync version, we still allow MANAGE_OWN_REGION to see all
+  // The async version (getVisibilityFilterAsync) should be used for proper hierarchy checks
+  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
+    return null; // No filter - async version handles proper region filtering
   }
 
   // Office Manager: filter by office
@@ -50,8 +60,54 @@ export function getVisibilityFilter(user: NonNullable<CurrentUser>) {
 }
 
 /**
- * Check if a user can view a specific person.
- * 
+ * Get visibility filter using the organizational hierarchy (async version).
+ *
+ * Uses the proper hierarchy:
+ * - Regional Manager → All offices in their region
+ * - Area Director → Their office
+ * - Team Lead → Their team members
+ * - Sales Rep → Own data only
+ *
+ * @param user - The current user object
+ * @returns Promise resolving to filter conditions or null for no restrictions
+ */
+export async function getVisibilityFilterAsync(user: NonNullable<CurrentUser>): Promise<{
+  type: 'all' | 'offices' | 'office' | 'team' | 'self';
+  officeIds?: string[];
+  personIds?: string[];
+} | null> {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
+    return null;
+  }
+
+  // Get hierarchy-based visibility scope
+  const scope = await getVisibilityScope(user.id, user.officeId);
+
+  switch (scope.type) {
+    case 'region':
+      return { type: 'offices', officeIds: scope.officeIds };
+    case 'office':
+      return { type: 'office', officeIds: scope.officeIds };
+    case 'team':
+      return { type: 'team', personIds: scope.personIds };
+    case 'self':
+      return { type: 'self', personIds: [user.id] };
+    default:
+      return { type: 'self', personIds: [user.id] };
+  }
+}
+
+/**
+ * Check if a user can view a specific person using organizational hierarchy.
+ *
+ * Hierarchy-based visibility:
+ * - Admin → All people
+ * - Regional Manager → All people in offices within their region
+ * - Area Director → All people in their office
+ * - Team Lead → All people in their team
+ * - Sales Rep → Only themselves
+ *
  * @param user - The current user object
  * @param targetPersonId - The ID of the person to check access for
  * @returns Promise resolving to true if user can view, false otherwise
@@ -60,11 +116,8 @@ export async function canViewPerson(
   user: NonNullable<CurrentUser>,
   targetPersonId: string
 ): Promise<boolean> {
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return true;
   }
 
@@ -74,6 +127,10 @@ export async function canViewPerson(
   }
 
   try {
+    // Get user's visibility scope based on hierarchy
+    const scope = await getVisibilityScope(user.id, user.officeId);
+
+    // Fetch target person
     const targetPerson = await db
       .select()
       .from(people)
@@ -86,21 +143,26 @@ export async function canViewPerson(
 
     const person = targetPerson[0];
 
-    // Office Manager: check if same office
-    if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
-      return person.officeId === user.officeId;
-    }
+    switch (scope.type) {
+      case 'region':
+        // Regional Manager: check if person's office is in the region
+        return scope.officeIds?.includes(person.officeId ?? '') ?? false;
 
-    // Team Lead: check if same office or reports to them
-    if (hasPermission(user, Permission.MANAGE_OWN_TEAM)) {
-      return (
-        person.officeId === user.officeId ||
-        person.reportsToId === user.id
-      );
-    }
+      case 'office':
+        // Area Director: check if person is in the same office
+        return scope.officeIds?.includes(person.officeId ?? '') ?? false;
 
-    // Sales Rep: only own data
-    return false;
+      case 'team':
+        // Team Lead: check if person is in their team
+        return scope.personIds?.includes(person.id) ?? false;
+
+      case 'self':
+        // Sales Rep: only own data (already checked above)
+        return false;
+
+      default:
+        return false;
+    }
   } catch (error) {
     console.error("Error checking person visibility:", error);
     return false;
@@ -108,13 +170,15 @@ export async function canViewPerson(
 }
 
 /**
- * Check if a user can manage a specific person based on their permission scope.
- * 
- * This verifies that the target person is within the caller's allowed scope:
- * - MANAGE_ALL_OFFICES: can manage anyone
- * - MANAGE_OWN_REGION: can manage anyone in their region
- * - MANAGE_OWN_OFFICE: can only manage people in their office
- * 
+ * Check if a user can manage a specific person based on organizational hierarchy.
+ *
+ * Hierarchy-based management:
+ * - Admin (MANAGE_ALL_OFFICES) → Can manage anyone
+ * - Regional Manager → Can manage anyone in offices within their region
+ * - Area Director → Can manage anyone in their office
+ * - Team Lead → Can manage their direct reports (team members)
+ * - Sales Rep → Can only manage themselves
+ *
  * @param user - The current user object
  * @param targetPersonId - The ID of the person to check access for
  * @returns Promise resolving to true if user can manage, false otherwise
@@ -128,18 +192,15 @@ export async function canManagePerson(
     return true;
   }
 
-  // Regional Manager with MANAGE_OWN_REGION can manage anyone in their region
-  // (For now, we'll allow them to manage anyone since region checking would require region data)
-  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
-    return true;
-  }
-
   // If checking own record, always allowed
   if (user.id === targetPersonId) {
     return true;
   }
 
   try {
+    // Get user's visibility scope based on hierarchy
+    const scope = await getVisibilityScope(user.id, user.officeId);
+
     const targetPerson = await db
       .select()
       .from(people)
@@ -152,21 +213,26 @@ export async function canManagePerson(
 
     const person = targetPerson[0];
 
-    // Office Manager: can only manage people in their office
-    if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
-      if (!user.officeId) {
-        return false; // No office assigned, can't manage others
-      }
-      return person.officeId === user.officeId;
-    }
+    switch (scope.type) {
+      case 'region':
+        // Regional Manager: can manage anyone in their region's offices
+        return scope.officeIds?.includes(person.officeId ?? '') ?? false;
 
-    // Team Lead: can only manage their direct reports
-    if (hasPermission(user, Permission.MANAGE_OWN_TEAM)) {
-      return person.reportsToId === user.id;
-    }
+      case 'office':
+        // Area Director: can manage anyone in their office
+        return scope.officeIds?.includes(person.officeId ?? '') ?? false;
 
-    // Sales Rep: can only manage themselves
-    return false;
+      case 'team':
+        // Team Lead: can manage their team members
+        return scope.personIds?.includes(person.id) ?? false;
+
+      case 'self':
+        // Sales Rep: can only manage themselves (already checked above)
+        return false;
+
+      default:
+        return false;
+    }
   } catch (error) {
     console.error("Error checking person management access:", error);
     return false;
@@ -174,8 +240,8 @@ export async function canManagePerson(
 }
 
 /**
- * Check if a user can view a specific commission.
- * 
+ * Check if a user can view a specific commission using organizational hierarchy.
+ *
  * @param user - The current user object
  * @param commission - The commission object to check
  * @returns Promise resolving to true if user can view, false otherwise
@@ -213,52 +279,52 @@ export async function canViewCommission(
     return true;
   }
 
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.MANAGE_OWN_REGION) ||
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return true;
   }
 
-  // For office managers and team leads, need to check office membership
-  if (
-    hasPermission(user, Permission.MANAGE_OWN_OFFICE) ||
-    hasPermission(user, Permission.MANAGE_OWN_TEAM)
-  ) {
-    try {
-      const commissionPerson = await db
-        .select()
-        .from(people)
-        .where(eq(people.id, commission.personId))
-        .limit(1);
+  try {
+    // Get user's visibility scope based on hierarchy
+    const scope = await getVisibilityScope(user.id, user.officeId);
 
-      if (!commissionPerson[0]) {
-        return false;
-      }
+    // Fetch the commission recipient's data
+    const commissionPerson = await db
+      .select()
+      .from(people)
+      .where(eq(people.id, commission.personId))
+      .limit(1);
 
-      const person = commissionPerson[0];
-
-      // Office Manager: allow only when commission belongs to someone in the same office
-      if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
-        return person.officeId === user.officeId;
-      }
-
-      // Team Lead: allow only when commission belongs to their direct report or same office
-      if (hasPermission(user, Permission.MANAGE_OWN_TEAM)) {
-        return (
-          person.officeId === user.officeId ||
-          person.reportsToId === user.id
-        );
-      }
-    } catch (error) {
-      console.error("Error checking commission visibility:", error);
+    if (!commissionPerson[0]) {
       return false;
     }
-  }
 
-  // Otherwise deny
-  return false;
+    const person = commissionPerson[0];
+
+    switch (scope.type) {
+      case 'region':
+        // Regional Manager: can view commissions for anyone in their region's offices
+        return scope.officeIds?.includes(person.officeId ?? '') ?? false;
+
+      case 'office':
+        // Area Director: can view commissions for anyone in their office
+        return scope.officeIds?.includes(person.officeId ?? '') ?? false;
+
+      case 'team':
+        // Team Lead: can view commissions for their team members
+        return scope.personIds?.includes(person.id) ?? false;
+
+      case 'self':
+        // Sales Rep: only own commissions (already checked above)
+        return false;
+
+      default:
+        return false;
+    }
+  } catch (error) {
+    console.error("Error checking commission visibility:", error);
+    return false;
+  }
 }
 
 /**
@@ -399,7 +465,10 @@ export async function getCommissionsForDeal(
 
 /**
  * Get visibility filter conditions for commission queries based on user role and tab.
- * 
+ *
+ * Note: This is the sync version. For proper hierarchy-based filtering,
+ * use getCommissionVisibilityFilterAsync instead.
+ *
  * @param user - The current user object
  * @param tab - The tab type: "my-deals", "team" (same scope as deals list), or "overrides"
  * @returns Filter conditions object, or null for no restrictions
@@ -412,12 +481,15 @@ export function getCommissionVisibilityFilter(
   officeId?: string;
   commissionTypes?: string[];
 } | null {
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return null; // No filter
+  }
+
+  // Regional Manager: still returns null for sync version
+  // Async version handles proper region filtering
+  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
+    return null;
   }
 
   // "team" tab: same visibility scope as /api/deals (team/office/all)
@@ -478,8 +550,65 @@ export function getCommissionVisibilityFilter(
 }
 
 /**
- * Check if a user can view a specific recruit.
- * 
+ * Get visibility filter for commission queries using organizational hierarchy (async version).
+ *
+ * @param user - The current user object
+ * @param tab - The tab type: "my-deals", "team", or "overrides"
+ * @returns Promise resolving to filter conditions or null for no restrictions
+ */
+export async function getCommissionVisibilityFilterAsync(
+  user: NonNullable<CurrentUser>,
+  tab: string
+): Promise<{
+  personId?: string;
+  officeIds?: string[];
+  personIds?: string[];
+  commissionTypes?: string[];
+} | null> {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
+    return null;
+  }
+
+  const overrideTypes = [
+    "override_reports_to_l1",
+    "override_reports_to_l2",
+    "override_recruited_by_l1",
+    "override_recruited_by_l2",
+  ];
+
+  // Get hierarchy-based visibility scope
+  const scope = await getVisibilityScope(user.id, user.officeId);
+
+  // Build base filter from scope
+  let baseFilter: { officeIds?: string[]; personIds?: string[]; personId?: string } = {};
+
+  switch (scope.type) {
+    case 'region':
+      baseFilter = { officeIds: scope.officeIds };
+      break;
+    case 'office':
+      baseFilter = { officeIds: scope.officeIds };
+      break;
+    case 'team':
+      baseFilter = { personIds: scope.personIds };
+      break;
+    case 'self':
+      baseFilter = { personId: user.id };
+      break;
+  }
+
+  // Apply tab-specific modifications
+  if (tab === "overrides") {
+    return { ...baseFilter, commissionTypes: overrideTypes };
+  }
+
+  return baseFilter;
+}
+
+/**
+ * Check if a user can view a specific recruit using organizational hierarchy.
+ *
  * @param user - The current user object
  * @param recruit - The recruit object to check
  * @returns Promise resolving to true if user can view, false otherwise
@@ -488,42 +617,54 @@ export async function canViewRecruit(
   user: NonNullable<CurrentUser>,
   recruit: { recruiterId: string; targetOfficeId?: string | null }
 ): Promise<boolean> {
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return true;
   }
 
-  // Recruiters see their own recruits
+  // Recruiters always see their own recruits
   if (recruit.recruiterId === user.id) {
     return true;
   }
 
-  // Office Manager: check if recruit targets their office
-  if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
-    if (!user.officeId) {
-      return false;
-    }
-    return recruit.targetOfficeId === user.officeId;
-  }
+  try {
+    // Get user's visibility scope based on hierarchy
+    const scope = await getVisibilityScope(user.id, user.officeId);
 
-  // Team Lead: check if recruit targets their office
-  if (hasPermission(user, Permission.MANAGE_OWN_TEAM)) {
-    if (!user.officeId) {
-      return false;
-    }
-    return recruit.targetOfficeId === user.officeId;
-  }
+    switch (scope.type) {
+      case 'region':
+        // Regional Manager: can view recruits targeting any office in their region
+        return scope.officeIds?.includes(recruit.targetOfficeId ?? '') ?? false;
 
-  // Sales Rep: only their own recruits
-  return false;
+      case 'office':
+        // Area Director: can view recruits targeting their office
+        return scope.officeIds?.includes(recruit.targetOfficeId ?? '') ?? false;
+
+      case 'team':
+        // Team Lead: can view recruits targeting their office (via their team's office)
+        // Get the office from the team
+        if (scope.officeIds && scope.officeIds.length > 0) {
+          return scope.officeIds.includes(recruit.targetOfficeId ?? '');
+        }
+        // Fallback: use user's office
+        return recruit.targetOfficeId === user.officeId;
+
+      case 'self':
+        // Sales Rep: only their own recruits (already checked above)
+        return false;
+
+      default:
+        return false;
+    }
+  } catch (error) {
+    console.error("Error checking recruit visibility:", error);
+    return false;
+  }
 }
 
 /**
- * Check if a user can manage a specific recruit.
- * 
+ * Check if a user can manage a specific recruit using organizational hierarchy.
+ *
  * @param user - The current user object
  * @param recruitId - The ID of the recruit to check access for
  * @returns Promise resolving to true if user can manage, false otherwise
@@ -534,11 +675,6 @@ export async function canManageRecruit(
 ): Promise<boolean> {
   // Admin with MANAGE_ALL_OFFICES can manage anyone
   if (hasPermission(user, Permission.MANAGE_ALL_OFFICES)) {
-    return true;
-  }
-
-  // Regional Manager with MANAGE_OWN_REGION can manage anyone in their region
-  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
     return true;
   }
 
@@ -560,24 +696,32 @@ export async function canManageRecruit(
       return true;
     }
 
-    // Office Manager: can manage recruits targeting their office
-    if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
-      if (!user.officeId) {
-        return false;
-      }
-      return recruit.targetOfficeId === user.officeId;
-    }
+    // Get user's visibility scope based on hierarchy
+    const scope = await getVisibilityScope(user.id, user.officeId);
 
-    // Team Lead: can manage recruits targeting their office
-    if (hasPermission(user, Permission.MANAGE_OWN_TEAM)) {
-      if (!user.officeId) {
-        return false;
-      }
-      return recruit.targetOfficeId === user.officeId;
-    }
+    switch (scope.type) {
+      case 'region':
+        // Regional Manager: can manage recruits targeting any office in their region
+        return scope.officeIds?.includes(recruit.targetOfficeId ?? '') ?? false;
 
-    // Sales Rep: can only manage their own recruits
-    return false;
+      case 'office':
+        // Area Director: can manage recruits targeting their office
+        return scope.officeIds?.includes(recruit.targetOfficeId ?? '') ?? false;
+
+      case 'team':
+        // Team Lead: can manage recruits targeting their office
+        if (scope.officeIds && scope.officeIds.length > 0) {
+          return scope.officeIds.includes(recruit.targetOfficeId ?? '');
+        }
+        return recruit.targetOfficeId === user.officeId;
+
+      case 'self':
+        // Sales Rep: can only manage their own recruits (already checked above)
+        return false;
+
+      default:
+        return false;
+    }
   } catch (error) {
     console.error("Error checking recruit management access:", error);
     return false;
@@ -749,17 +893,23 @@ export function canManageTemplates(user: NonNullable<CurrentUser>): boolean {
 
 /**
  * Get visibility filter conditions for recruit queries based on role.
- * 
+ *
+ * Note: This is the sync version. For proper hierarchy-based filtering,
+ * use getRecruitVisibilityFilterAsync instead.
+ *
  * @param user - The current user object
  * @returns Filter conditions object, or null for no restrictions
  */
 export function getRecruitVisibilityFilter(user: NonNullable<CurrentUser>) {
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return null; // No filter
+  }
+
+  // Regional Manager: still returns null for sync version
+  // Async version handles proper region filtering
+  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
+    return null;
   }
 
   // Office Manager: filter by target office
@@ -783,18 +933,65 @@ export function getRecruitVisibilityFilter(user: NonNullable<CurrentUser>) {
 }
 
 /**
+ * Get visibility filter for recruit queries using organizational hierarchy (async version).
+ *
+ * @param user - The current user object
+ * @returns Promise resolving to filter conditions or null for no restrictions
+ */
+export async function getRecruitVisibilityFilterAsync(user: NonNullable<CurrentUser>): Promise<{
+  recruiterId?: string;
+  targetOfficeId?: string;
+  targetOfficeIds?: string[];
+} | null> {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
+    return null;
+  }
+
+  // Get hierarchy-based visibility scope
+  const scope = await getVisibilityScope(user.id, user.officeId);
+
+  switch (scope.type) {
+    case 'region':
+      // Regional Manager: filter by offices in their region
+      return { targetOfficeIds: scope.officeIds };
+
+    case 'office':
+      // Area Director: filter by their office
+      return { targetOfficeId: scope.officeIds?.[0] };
+
+    case 'team':
+      // Team Lead: filter by their office
+      return { targetOfficeId: user.officeId ?? undefined };
+
+    case 'self':
+      // Sales Rep: only own recruits
+      return { recruiterId: user.id };
+
+    default:
+      return { recruiterId: user.id };
+  }
+}
+
+/**
  * Get visibility filter conditions for deal queries based on role.
- * 
+ *
+ * Note: This is the sync version. For proper hierarchy-based filtering,
+ * use getDealVisibilityFilterAsync instead.
+ *
  * @param user - The current user object
  * @returns Filter conditions object, or null for no restrictions
  */
 export function getDealVisibilityFilter(user: NonNullable<CurrentUser>) {
-  // Admin and Regional Manager can see all
-  if (
-    hasPermission(user, Permission.VIEW_ALL_PEOPLE) ||
-    hasPermission(user, Permission.MANAGE_OWN_REGION)
-  ) {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
     return null; // No filter
+  }
+
+  // Regional Manager: still returns null for sync version
+  // Async version handles proper region filtering
+  if (hasPermission(user, Permission.MANAGE_OWN_REGION)) {
+    return null;
   }
 
   // Office Manager: filter by office
@@ -815,6 +1012,47 @@ export function getDealVisibilityFilter(user: NonNullable<CurrentUser>) {
 
   // Sales Rep: only own deals (as setter or closer)
   return { setterId: user.id };
+}
+
+/**
+ * Get visibility filter for deal queries using organizational hierarchy (async version).
+ *
+ * @param user - The current user object
+ * @returns Promise resolving to filter conditions or null for no restrictions
+ */
+export async function getDealVisibilityFilterAsync(user: NonNullable<CurrentUser>): Promise<{
+  setterId?: string;
+  officeId?: string;
+  officeIds?: string[];
+} | null> {
+  // Admin can see all
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
+    return null;
+  }
+
+  // Get hierarchy-based visibility scope
+  const scope = await getVisibilityScope(user.id, user.officeId);
+
+  switch (scope.type) {
+    case 'region':
+      // Regional Manager: filter by offices in their region
+      return { officeIds: scope.officeIds };
+
+    case 'office':
+      // Area Director: filter by their office
+      return { officeId: scope.officeIds?.[0] };
+
+    case 'team':
+      // Team Lead: filter by their office
+      return { officeId: user.officeId ?? undefined };
+
+    case 'self':
+      // Sales Rep: only own deals (as setter or closer)
+      return { setterId: user.id };
+
+    default:
+      return { setterId: user.id };
+  }
 }
 
 /**

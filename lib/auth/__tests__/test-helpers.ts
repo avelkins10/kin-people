@@ -22,6 +22,7 @@ export function createMockAdmin(): NonNullable<CurrentUser> {
     reportsToId: null,
     recruitedById: null,
     status: "active",
+    rolePermissions: undefined,
   };
 }
 
@@ -41,6 +42,7 @@ export function createMockTeamLead(): NonNullable<CurrentUser> {
     reportsToId: "manager-id",
     recruitedById: null,
     status: "active",
+    rolePermissions: undefined,
   };
 }
 
@@ -60,6 +62,7 @@ export function createMockSalesRep(): NonNullable<CurrentUser> {
     reportsToId: "teamlead-id",
     recruitedById: "teamlead-id",
     status: "active",
+    rolePermissions: undefined,
   };
 }
 
@@ -79,6 +82,7 @@ export function createMockRegionalManager(): NonNullable<CurrentUser> {
     reportsToId: null,
     recruitedById: null,
     status: "active",
+    rolePermissions: undefined,
   };
 }
 
@@ -98,5 +102,6 @@ export function createMockOfficeManager(): NonNullable<CurrentUser> {
     reportsToId: "regional-manager-id",
     recruitedById: null,
     status: "active",
+    rolePermissions: undefined,
   };
 }

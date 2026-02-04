@@ -1,11 +1,13 @@
 import { pgTable, uuid, varchar, text, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { regions } from './regions';
 
 export const offices = pgTable(
   'offices',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     name: varchar('name', { length: 100 }).notNull(),
-    region: varchar('region', { length: 100 }),
+    region: varchar('region', { length: 100 }), // Deprecated: use regionId instead
+    regionId: uuid('region_id').references(() => regions.id),
     division: varchar('division', { length: 100 }),
     states: text('states').array(),
     address: text('address'),
@@ -16,6 +18,7 @@ export const offices = pgTable(
   (table) => ({
     idxOfficesActive: index('idx_offices_active').on(table.isActive),
     idxOfficesRegion: index('idx_offices_region').on(table.region),
+    idxOfficesRegionId: index('idx_offices_region_id').on(table.regionId),
     idxOfficesDivision: index('idx_offices_division').on(table.division),
     officesNameUnique: uniqueIndex('offices_name_unique').on(table.name),
   })

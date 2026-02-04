@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { recruits, people, offices, roles, documents } from "@/lib/db/schema";
-import { eq, and, desc, inArray, isNotNull, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, isNotNull, sql, or } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
-import { getRecruitVisibilityFilter } from "@/lib/auth/visibility-rules";
+import { getRecruitVisibilityFilterAsync } from "@/lib/auth/visibility-rules";
 import { createRecruitHistoryRecord } from "@/lib/db/helpers/recruit-helpers";
 
 const createRecruitSchema = z.object({
@@ -81,14 +81,29 @@ export const GET = withAuth(async (req: NextRequest, user) => {
 
     // Build all filter conditions together
     const conditions: any[] = [];
-    
-    // Apply visibility filters first
-    const visibilityFilter = getRecruitVisibilityFilter(user);
+
+    // Apply visibility filters first (using async hierarchy-based filter)
+    const visibilityFilter = await getRecruitVisibilityFilterAsync(user);
     if (visibilityFilter) {
       if (visibilityFilter.recruiterId) {
+        // Sales Rep: only their own recruits
         conditions.push(eq(recruits.recruiterId, visibilityFilter.recruiterId));
+      } else if (visibilityFilter.targetOfficeIds && visibilityFilter.targetOfficeIds.length > 0) {
+        // Regional Manager: recruits targeting any office in their region OR their own recruits
+        conditions.push(
+          or(
+            inArray(recruits.targetOfficeId, visibilityFilter.targetOfficeIds),
+            eq(recruits.recruiterId, user.id)
+          )
+        );
       } else if (visibilityFilter.targetOfficeId) {
-        conditions.push(eq(recruits.targetOfficeId, visibilityFilter.targetOfficeId));
+        // Area Director/Team Lead: recruits targeting their office OR their own recruits
+        conditions.push(
+          or(
+            eq(recruits.targetOfficeId, visibilityFilter.targetOfficeId),
+            eq(recruits.recruiterId, user.id)
+          )
+        );
       }
     }
 

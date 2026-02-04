@@ -8,14 +8,15 @@ import {
 } from 'drizzle-orm/pg-core';
 import { offices } from './offices';
 import { people } from './people';
+import { regions } from './regions';
 
 /**
  * Office leadership assignments: who gets overrides on deals in an office/region/division.
  *
  * role_type values:
- * - 'ad': Area Director — one per office (mandatory). office_id set, region/division null.
- * - 'regional': Regional — one per region. region set, office_id/division null.
- * - 'divisional': Divisional — one per division. division set, office_id/region null.
+ * - 'ad': Area Director — one per office (mandatory). office_id set, region/region_id/division null.
+ * - 'regional': Regional — one per region. region_id set (or legacy region), office_id/division null.
+ * - 'divisional': Divisional — one per division. division set, office_id/region/region_id null.
  * - 'vp': VP — one per division or company-wide. division set or null.
  *
  * Uniqueness (one AD per office, one Regional per region, etc.) is enforced in the API.
@@ -27,7 +28,8 @@ export const officeLeadership = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     officeId: uuid('office_id').references(() => offices.id),
-    region: varchar('region', { length: 100 }),
+    region: varchar('region', { length: 100 }), // Deprecated: use regionId instead
+    regionId: uuid('region_id').references(() => regions.id),
     division: varchar('division', { length: 100 }),
     roleType: varchar('role_type', { length: 50 }).notNull(), // 'ad' | 'regional' | 'divisional' | 'vp'
     personId: uuid('person_id')
@@ -44,6 +46,9 @@ export const officeLeadership = pgTable(
     ),
     idxOfficeLeadershipRegion: index('idx_office_leadership_region').on(
       table.region
+    ),
+    idxOfficeLeadershipRegionId: index('idx_office_leadership_region_id').on(
+      table.regionId
     ),
     idxOfficeLeadershipDivision: index('idx_office_leadership_division').on(
       table.division

@@ -9,8 +9,9 @@ import {
   personPayPlans,
   personHistory,
   recruits,
+  officeLeadership,
 } from "@/lib/db/schema";
-import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, inArray } from "drizzle-orm";
 import type { PersonWithDetails, PersonHistoryWithChanger } from "@/types/people";
 import type { NewPersonHistory } from "@/lib/db/schema";
 
@@ -262,4 +263,166 @@ export async function getPersonDocuments(personId: string) {
       documentPath: r.documentPath as string,
       signedAt: (r.signedAt as Date).toISOString(),
     }));
+}
+
+// ============================================================================
+// Organizational Hierarchy Helper Functions
+// ============================================================================
+
+/**
+ * Visibility scope type representing the hierarchical level a user can access.
+ */
+export type VisibilityScope = {
+  type: 'all' | 'region' | 'office' | 'team' | 'self';
+  regionId?: string;
+  officeIds?: string[];
+  teamId?: string;
+  personIds?: string[];
+};
+
+/**
+ * Get the region ID a user manages (if they're a Regional Manager).
+ * Checks office_leadership for an active 'regional' role.
+ */
+export async function getManagedRegionId(userId: string): Promise<string | null> {
+  const [leadership] = await db
+    .select({ regionId: officeLeadership.regionId })
+    .from(officeLeadership)
+    .where(
+      and(
+        eq(officeLeadership.personId, userId),
+        eq(officeLeadership.roleType, 'regional'),
+        isNull(officeLeadership.effectiveTo)
+      )
+    )
+    .limit(1);
+  return leadership?.regionId ?? null;
+}
+
+/**
+ * Get the office ID a user manages (if they're an Area Director).
+ * Checks office_leadership for an active 'ad' role.
+ */
+export async function getManagedOfficeId(userId: string): Promise<string | null> {
+  const [leadership] = await db
+    .select({ officeId: officeLeadership.officeId })
+    .from(officeLeadership)
+    .where(
+      and(
+        eq(officeLeadership.personId, userId),
+        eq(officeLeadership.roleType, 'ad'),
+        isNull(officeLeadership.effectiveTo)
+      )
+    )
+    .limit(1);
+  return leadership?.officeId ?? null;
+}
+
+/**
+ * Get the team ID a user leads (if they're a Team Lead).
+ * Checks the teams table for teamLeadId match.
+ */
+export async function getManagedTeamId(userId: string): Promise<string | null> {
+  const [team] = await db
+    .select({ id: teams.id })
+    .from(teams)
+    .where(eq(teams.teamLeadId, userId))
+    .limit(1);
+  return team?.id ?? null;
+}
+
+/**
+ * Get all office IDs in a region.
+ */
+export async function getOfficeIdsInRegion(regionId: string): Promise<string[]> {
+  const results = await db
+    .select({ id: offices.id })
+    .from(offices)
+    .where(eq(offices.regionId, regionId));
+  return results.map((r) => r.id);
+}
+
+/**
+ * Get all person IDs in an office.
+ */
+export async function getPersonIdsInOffice(officeId: string): Promise<string[]> {
+  const results = await db
+    .select({ id: people.id })
+    .from(people)
+    .where(eq(people.officeId, officeId));
+  return results.map((r) => r.id);
+}
+
+/**
+ * Get all person IDs in multiple offices.
+ */
+export async function getPersonIdsInOffices(officeIds: string[]): Promise<string[]> {
+  if (officeIds.length === 0) return [];
+  const results = await db
+    .select({ id: people.id })
+    .from(people)
+    .where(inArray(people.officeId, officeIds));
+  return results.map((r) => r.id);
+}
+
+/**
+ * Get all person IDs in a team.
+ * Only returns active team memberships (endDate IS NULL).
+ */
+export async function getPersonIdsInTeam(teamId: string): Promise<string[]> {
+  const results = await db
+    .select({ personId: personTeams.personId })
+    .from(personTeams)
+    .where(
+      and(
+        eq(personTeams.teamId, teamId),
+        isNull(personTeams.endDate)
+      )
+    );
+  return results.map((r) => r.personId);
+}
+
+/**
+ * Get full visibility scope for a user based on their role in the hierarchy.
+ *
+ * Hierarchy:
+ * - Regional Manager → All offices/teams/people in their region
+ * - Area Director → All teams/people in their office
+ * - Team Lead → All people in their team
+ * - Sales Rep → Own data only
+ *
+ * @param userId - The user ID to check
+ * @param userOfficeId - The user's office ID (for fallback)
+ * @returns VisibilityScope object describing what the user can see
+ */
+export async function getVisibilityScope(
+  userId: string,
+  userOfficeId: string | null
+): Promise<VisibilityScope> {
+  // Check if Regional Manager
+  const regionId = await getManagedRegionId(userId);
+  if (regionId) {
+    const officeIds = await getOfficeIdsInRegion(regionId);
+    return { type: 'region', regionId, officeIds };
+  }
+
+  // Check if Area Director
+  const managedOfficeId = await getManagedOfficeId(userId);
+  if (managedOfficeId) {
+    return { type: 'office', officeIds: [managedOfficeId] };
+  }
+
+  // Check if Team Lead
+  const teamId = await getManagedTeamId(userId);
+  if (teamId) {
+    const personIds = await getPersonIdsInTeam(teamId);
+    // Include the team lead themselves
+    if (!personIds.includes(userId)) {
+      personIds.push(userId);
+    }
+    return { type: 'team', teamId, personIds };
+  }
+
+  // Default: own data only
+  return { type: 'self', personIds: [userId] };
 }

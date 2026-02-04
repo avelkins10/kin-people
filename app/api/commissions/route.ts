@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { commissions, deals, people, offices } from "@/lib/db/schema";
-import { eq, and, or, desc, gte, lte, sql, like } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql, like, inArray } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/route-protection";
-import { getCommissionVisibilityFilter, getCommissionsForDeal } from "@/lib/auth/visibility-rules";
+import { getCommissionVisibilityFilterAsync, getCommissionsForDeal } from "@/lib/auth/visibility-rules";
 import { hasPermission } from "@/lib/auth/check-permission";
 import { Permission } from "@/lib/permissions/types";
 
@@ -66,15 +66,18 @@ export const GET = withAuth(async (req: NextRequest, user) => {
     // Build filter conditions
     const conditions: any[] = [];
 
-    // Apply visibility filters based on tab
-    const visibilityFilter = getCommissionVisibilityFilter(user, tab);
+    // Apply visibility filters based on tab (using async hierarchy-based filter)
+    const visibilityFilter = await getCommissionVisibilityFilterAsync(user, tab);
     if (visibilityFilter) {
       if (visibilityFilter.personId) {
+        // Sales Rep: only their own commissions
         conditions.push(eq(commissions.personId, visibilityFilter.personId));
-      }
-      if (visibilityFilter.officeId) {
-        // Need to join deals to filter by office
-        conditions.push(eq(deals.officeId, visibilityFilter.officeId));
+      } else if (visibilityFilter.personIds && visibilityFilter.personIds.length > 0) {
+        // Team Lead: commissions for team members
+        conditions.push(inArray(commissions.personId, visibilityFilter.personIds));
+      } else if (visibilityFilter.officeIds && visibilityFilter.officeIds.length > 0) {
+        // Regional Manager: commissions from deals in any office in their region
+        conditions.push(inArray(deals.officeId, visibilityFilter.officeIds));
       }
       if (visibilityFilter.commissionTypes) {
         // Filter by commission types user can see
