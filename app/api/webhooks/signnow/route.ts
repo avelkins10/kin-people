@@ -31,10 +31,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Normalize payload: SignNow may send event/document_id at top level or under meta/content (e.g. User-scoped webhooks)
-    const event = (body.meta?.event ?? body.event) as string | undefined;
+    const rawEvent = (body.meta?.event ?? body.event) as string | undefined;
+    // User-scoped webhooks prefix events with "user." (e.g. "user.document.complete" instead of "document.complete")
+    const event = rawEvent?.replace(/^user\./, "") as string | undefined;
     const document_id = (body.content?.document_id ?? body.document_id) as string | undefined;
 
-    console.log(`${LOG_PREFIX} received event=${event} document_id=${document_id}`);
+    console.log(`${LOG_PREFIX} received rawEvent=${rawEvent} event=${event} document_id=${document_id}`);
 
     if (!document_id) {
       console.warn(`${LOG_PREFIX} missing document_id in webhook body, acknowledging to avoid retries`);
