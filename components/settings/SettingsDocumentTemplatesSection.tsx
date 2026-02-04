@@ -214,7 +214,7 @@ export function SettingsDocumentTemplatesSection({
         <DocumentTemplateModal
           open={modalOpen}
           onClose={closeModal}
-          template={editTemplate ?? undefined}
+          template={editTemplate}
           documentType={modalDocumentType.type}
           documentTypeLabel={modalDocumentType.label}
           onSuccess={onRefetch}
