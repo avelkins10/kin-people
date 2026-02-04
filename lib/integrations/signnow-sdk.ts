@@ -157,13 +157,12 @@ export async function prefillSmartFields(
 ): Promise<void> {
   if (!fieldValues?.length) return;
   const sdk = await getSdk();
-  const data = fieldValues.map((f) => ({
-    field_name: f.field_name,
-    prefilled_text: f.field_value,
-  }));
+  // Format: each object has field_name as key, field_value as value
+  // e.g., [{ "recruit_name": "John Doe" }, { "email": "john@example.com" }]
+  const data = fieldValues.map((f) => ({ [f.field_name]: f.field_value }));
   const request = new DocumentPrefillSmartFieldPostRequest(
     documentId,
-    data,
+    data as unknown as Array<{ field_name?: string }>,
     new Date().toISOString()
   );
   await sdk.getClient().send(request);
