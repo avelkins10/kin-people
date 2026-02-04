@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { personFormSchema, type PersonFormData } from "@/lib/validation/person-form";
@@ -86,22 +85,10 @@ export function PersonEditForm({
   const status = watch("status");
 
   async function onSubmit(data: PersonFormData) {
-    // Map form status back to person status (inactive -> terminated)
-    const personStatus = data.status === "inactive" ? "terminated" : data.status;
-
+    // API handles status mapping (inactive -> terminated) and empty string -> null conversion
     await updateMutation.mutateAsync({
       id: person.id,
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        roleId: data.roleId,
-        officeId: data.officeId,
-        reportsToId: data.reportsToId,
-        status: personStatus as "active" | "onboarding" | "terminated",
-        hireDate: data.hireDate,
-      },
+      data,
     });
     onSave();
   }

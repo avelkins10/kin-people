@@ -97,10 +97,15 @@ export function useRoles() {
   });
 }
 
+// Type for update data - accepts form status values (API handles mapping)
+type UpdatePersonData = Omit<Partial<Person>, 'status'> & {
+  status?: "active" | "onboarding" | "inactive" | "terminated";
+};
+
 export function useUpdatePerson() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Person> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: UpdatePersonData }) => {
       const response = await fetch(`/api/people/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

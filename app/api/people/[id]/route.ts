@@ -9,6 +9,11 @@ import { Permission } from "@/lib/permissions/types";
 import { personFormSchema } from "@/lib/validation/person-form";
 import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
+// Update schema that accepts all valid DB statuses including "terminated"
+const updatePersonSchema = personFormSchema.partial().extend({
+  status: z.enum(["onboarding", "active", "inactive", "terminated"]).optional(),
+});
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -45,8 +50,14 @@ export async function PATCH(
     try {
       const body = await req.json();
 
-      // Use personFormSchema.partial() for validation since all fields are optional in updates
-      const validated = personFormSchema.partial().parse(body);
+      // Use updatePersonSchema for validation - accepts all valid DB statuses including "terminated"
+      const validated = updatePersonSchema.parse(body);
+
+      // Map "inactive" to "terminated" for database storage
+      let dbStatus = validated.status;
+      if (dbStatus === "inactive") {
+        dbStatus = "terminated";
+      }
 
       // Build update data object with only provided fields
       const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -54,12 +65,13 @@ export async function PATCH(
       if (validated.firstName !== undefined) updateData.firstName = validated.firstName;
       if (validated.lastName !== undefined) updateData.lastName = validated.lastName;
       if (validated.email !== undefined) updateData.email = validated.email;
-      if (validated.phone !== undefined) updateData.phone = validated.phone;
+      // Convert empty strings to null for optional fields
+      if (validated.phone !== undefined) updateData.phone = validated.phone || null;
       if (validated.roleId !== undefined) updateData.roleId = validated.roleId;
-      if (validated.officeId !== undefined) updateData.officeId = validated.officeId;
-      if (validated.reportsToId !== undefined) updateData.reportsToId = validated.reportsToId;
-      if (validated.status !== undefined) updateData.status = validated.status;
-      if (validated.hireDate !== undefined) updateData.hireDate = validated.hireDate;
+      if (validated.officeId !== undefined) updateData.officeId = validated.officeId || null;
+      if (validated.reportsToId !== undefined) updateData.reportsToId = validated.reportsToId || null;
+      if (dbStatus !== undefined) updateData.status = dbStatus;
+      if (validated.hireDate !== undefined) updateData.hireDate = validated.hireDate || null;
 
       // Update the person in the database
       const [updated] = await db
