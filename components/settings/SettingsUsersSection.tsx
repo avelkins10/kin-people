@@ -308,7 +308,7 @@ export function SettingsUsersSection({
                     onClick={() => openEdit(person)}
                     aria-label={`Edit ${person.name}`}
                   >
-                    <Edit2 className="w-3 h-3 text-indigo-600" />
+                    <Edit2 className="w-3 h-3 text-emerald-600" />
                   </Button>
                   {adminRoleId && person.roleName !== "Admin" && (
                     <Button

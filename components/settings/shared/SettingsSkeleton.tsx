@@ -35,15 +35,15 @@ export function SettingsListItemSkeleton({
   return (
     <div
       className={cn(
-        "flex items-center justify-between p-4 bg-gray-50 rounded-sm animate-pulse",
+        "flex items-center justify-between p-4 bg-gray-50/70 rounded-lg animate-pulse",
         className
       )}
     >
       <div className="flex items-center gap-4">
-        {showAvatar && <div className="w-9 h-9 rounded-sm bg-gray-200" />}
-        <div className="space-y-2">
-          <div className="h-4 w-32 bg-gray-200 rounded" />
-          <div className="h-3 w-24 bg-gray-200 rounded" />
+        {showAvatar && <div className="w-10 h-10 rounded-lg bg-gray-200/70" />}
+        <div className="space-y-2.5">
+          <div className="h-4 w-36 bg-gray-200/70 rounded-md" />
+          <div className="h-3 w-24 bg-gray-200/50 rounded-md" />
         </div>
       </div>
     </div>
@@ -60,15 +60,15 @@ export function SettingsSectionSkeleton({
   return (
     <div
       className={cn(
-        "bg-white border border-gray-100 rounded-sm p-6 animate-pulse",
+        "bg-white border border-gray-100 rounded-xl p-6 animate-pulse shadow-sm",
         className
       )}
     >
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 rounded-sm bg-gray-200" />
-        <div className="space-y-2">
-          <div className="h-5 w-24 bg-gray-200 rounded" />
-          <div className="h-3 w-48 bg-gray-200 rounded" />
+      <div className="flex items-start gap-4 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-gray-200/70" />
+        <div className="space-y-2.5 pt-0.5">
+          <div className="h-5 w-28 bg-gray-200/70 rounded-md" />
+          <div className="h-3 w-52 bg-gray-200/50 rounded-md" />
         </div>
       </div>
       <SettingsListSkeleton count={3} />
@@ -84,12 +84,12 @@ export function MetricCardSkeleton({ className }: MetricCardSkeletonProps) {
   return (
     <div
       className={cn(
-        "bg-gray-900 rounded-sm p-4 animate-pulse",
+        "bg-gray-900 rounded-xl p-5 animate-pulse",
         className
       )}
     >
-      <div className="h-3 w-16 bg-gray-700 rounded mb-2" />
-      <div className="h-8 w-12 bg-gray-700 rounded" />
+      <div className="h-3 w-16 bg-gray-700 rounded mb-3" />
+      <div className="h-8 w-14 bg-gray-700 rounded" />
     </div>
   );
 }

@@ -26,20 +26,23 @@ export function SettingsEmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center py-12 text-center",
+        "flex flex-col items-center justify-center py-14 text-center",
         className
       )}
     >
-      <div className="p-4 bg-gray-100 rounded-full mb-4">
-        <Icon className="w-8 h-8 text-gray-400" />
+      <div className="p-4 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl mb-5 ring-1 ring-gray-100">
+        <Icon className="w-7 h-7 text-gray-400" />
       </div>
-      <h4 className="text-sm font-bold text-gray-700 mb-1">{title}</h4>
-      <p className="text-sm text-gray-500 max-w-xs mb-4">{description}</p>
+      <h4 className="text-sm font-semibold text-gray-800 mb-1">{title}</h4>
+      <p className="text-sm text-gray-500 max-w-xs mb-5 leading-relaxed">{description}</p>
       {action && (
         <Button
           onClick={action.onClick}
-          className="gap-2"
-          variant="outline"
+          className={cn(
+            "gap-2 bg-emerald-600 hover:bg-emerald-700 text-white",
+            "transition-all duration-200 font-medium shadow-sm",
+            "active:scale-[0.97]"
+          )}
         >
           <Plus className="w-4 h-4" />
           {action.label}

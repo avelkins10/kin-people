@@ -91,15 +91,21 @@ function TabButton({ value, activeTab, onClick }: TabButtonProps) {
     <button
       onClick={() => onClick(value)}
       className={cn(
-        "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
-        "border-b-2 whitespace-nowrap",
+        "relative flex items-center gap-2.5 px-4 py-3.5 text-sm font-semibold transition-all duration-200",
+        "whitespace-nowrap rounded-t-md",
         isActive
-          ? "border-black text-black"
-          : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+          ? "text-gray-900 bg-white shadow-sm"
+          : "text-gray-500 hover:text-gray-800 hover:bg-gray-50/80"
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      {config.label}
+      <Icon className={cn(
+        "h-4 w-4 shrink-0 transition-colors duration-200",
+        isActive ? "text-emerald-600" : "text-gray-400 group-hover:text-gray-500"
+      )} />
+      <span className="tracking-tight">{config.label}</span>
+      {isActive && (
+        <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-500 rounded-full" />
+      )}
     </button>
   );
 }
@@ -121,33 +127,54 @@ function TabDropdown({ label, icon: Icon, tabs, activeTab, onClick }: TabDropdow
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
-            "border-b-2 whitespace-nowrap",
+            "relative flex items-center gap-2 px-4 py-3.5 text-sm font-semibold transition-all duration-200",
+            "whitespace-nowrap rounded-t-md group",
             isGroupActive
-              ? "border-black text-black"
-              : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+              ? "text-gray-900 bg-white shadow-sm"
+              : "text-gray-500 hover:text-gray-800 hover:bg-gray-50/80"
           )}
         >
-          <Icon className="h-4 w-4 shrink-0" />
-          {isGroupActive ? activeTabConfig?.label : label}
-          <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+          <Icon className={cn(
+            "h-4 w-4 shrink-0 transition-colors duration-200",
+            isGroupActive ? "text-emerald-600" : "text-gray-400 group-hover:text-gray-500"
+          )} />
+          <span className="tracking-tight">{isGroupActive ? activeTabConfig?.label : label}</span>
+          <ChevronDown className={cn(
+            "h-3 w-3 shrink-0 transition-all duration-200",
+            isGroupActive ? "text-emerald-600" : "text-gray-400 group-hover:text-gray-500"
+          )} />
+          {isGroupActive && (
+            <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-500 rounded-full" />
+          )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[160px]">
+      <DropdownMenuContent
+        align="start"
+        className="min-w-[180px] p-1.5 bg-white/95 backdrop-blur-sm border-gray-200/80 shadow-lg rounded-lg"
+      >
         {tabs.map((tab) => {
           const config = TAB_CONFIG[tab];
           const TabIcon = config.icon;
+          const isSelected = activeTab === tab;
           return (
             <DropdownMenuItem
               key={tab}
               onClick={() => onClick(tab)}
               className={cn(
-                "flex items-center gap-2 cursor-pointer",
-                activeTab === tab && "bg-indigo-50 text-indigo-700"
+                "flex items-center gap-2.5 cursor-pointer px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150",
+                isSelected
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
-              <TabIcon className="h-4 w-4" />
-              {config.label}
+              <TabIcon className={cn(
+                "h-4 w-4",
+                isSelected ? "text-emerald-600" : "text-gray-400"
+              )} />
+              <span>{config.label}</span>
+              {isSelected && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              )}
             </DropdownMenuItem>
           );
         })}
@@ -156,8 +183,8 @@ function TabDropdown({ label, icon: Icon, tabs, activeTab, onClick }: TabDropdow
   );
 }
 
-function Divider() {
-  return <div className="h-6 w-px bg-gray-200 mx-1 self-center shrink-0" />;
+function NavDivider() {
+  return <div className="h-5 w-px bg-gray-200/70 mx-0.5 self-center shrink-0" />;
 }
 
 export function SettingsPage() {
@@ -188,187 +215,204 @@ export function SettingsPage() {
   const peopleWithoutPayPlans = Math.max(0, people.length - peopleWithPayPlans);
 
   return (
-    <div className="space-y-6">
-      <header className="shrink-0">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-black uppercase">
-          Organization
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Configure roles, offices, teams, users, and compensation. Changes are saved to the database and apply across the app.
+    <div className="space-y-0">
+      {/* Header with subtle background treatment */}
+      <header className="pb-6">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            Organization
+          </h1>
+          <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+            Settings
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 mt-2 max-w-2xl leading-relaxed">
+          Configure your team structure, compensation plans, and system preferences.
+          Changes are saved automatically and apply across the application.
         </p>
       </header>
 
       {error && (
-        <div className="p-4 rounded-lg bg-red-50 border border-red-100 text-red-700 text-sm">
+        <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-100 text-red-700 text-sm flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
           {error}
         </div>
       )}
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        {/* Grouped Tab Navigation */}
-        <div
-          className={cn(
-            "w-full border-b border-gray-200 bg-transparent",
-            "overflow-x-auto flex items-center gap-0.5"
-          )}
-        >
-          <TabButton value="overview" activeTab={activeTab} onClick={handleTabChange} />
+        {/* Enhanced Tab Navigation */}
+        <div className="relative">
+          {/* Background bar */}
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-gray-200 via-gray-200 to-transparent" />
 
-          <Divider />
+          <nav
+            className={cn(
+              "relative w-full bg-gray-50/50 rounded-t-xl",
+              "overflow-x-auto flex items-end gap-0.5 px-1 pt-1",
+              "-mx-1"
+            )}
+          >
+            <TabButton value="overview" activeTab={activeTab} onClick={handleTabChange} />
 
-          <TabDropdown
-            label="People"
-            icon={Users}
-            tabs={PEOPLE_TABS}
-            activeTab={activeTab}
-            onClick={handleTabChange}
-          />
+            <NavDivider />
 
-          <Divider />
+            <TabDropdown
+              label="People"
+              icon={Users}
+              tabs={PEOPLE_TABS}
+              activeTab={activeTab}
+              onClick={handleTabChange}
+            />
 
-          <TabDropdown
-            label="Structure"
-            icon={MapPin}
-            tabs={STRUCTURE_TABS}
-            activeTab={activeTab}
-            onClick={handleTabChange}
-          />
+            <NavDivider />
 
-          <Divider />
+            <TabDropdown
+              label="Structure"
+              icon={MapPin}
+              tabs={STRUCTURE_TABS}
+              activeTab={activeTab}
+              onClick={handleTabChange}
+            />
 
-          <TabButton value="documents" activeTab={activeTab} onClick={handleTabChange} />
+            <NavDivider />
 
-          <Divider />
+            <TabButton value="documents" activeTab={activeTab} onClick={handleTabChange} />
 
-          <TabDropdown
-            label="Compensation"
-            icon={DollarSign}
-            tabs={COMPENSATION_TABS}
-            activeTab={activeTab}
-            onClick={handleTabChange}
-          />
+            <NavDivider />
 
-          <Divider />
+            <TabDropdown
+              label="Compensation"
+              icon={DollarSign}
+              tabs={COMPENSATION_TABS}
+              activeTab={activeTab}
+              onClick={handleTabChange}
+            />
 
-          <TabButton value="onboarding" activeTab={activeTab} onClick={handleTabChange} />
+            <NavDivider />
 
-          <Divider />
+            <TabButton value="onboarding" activeTab={activeTab} onClick={handleTabChange} />
 
-          <TabDropdown
-            label="System"
-            icon={History}
-            tabs={SYSTEM_TABS}
-            activeTab={activeTab}
-            onClick={handleTabChange}
-          />
+            <NavDivider />
+
+            <TabDropdown
+              label="System"
+              icon={History}
+              tabs={SYSTEM_TABS}
+              activeTab={activeTab}
+              onClick={handleTabChange}
+            />
+          </nav>
         </div>
 
-        <TabsContent value="overview" className="mt-6 focus-visible:outline-none">
-          <SettingsOverview
-            activePayPlans={activePayPlans}
-            totalCommissionRules={totalCommissionRules}
-            peopleWithoutPayPlans={peopleWithoutPayPlans}
-            totalUsers={people.length}
-            totalOffices={offices.length}
-            onNavigate={handleTabChange}
-          />
-        </TabsContent>
-
-        <TabsContent value="users" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsUsersSection
-              people={people}
-              roles={roles}
-              offices={offices}
-              loading={loading}
-              onRefetch={refetch}
+        {/* Content area with refined spacing */}
+        <div className="pt-8">
+          <TabsContent value="overview" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <SettingsOverview
+              activePayPlans={activePayPlans}
+              totalCommissionRules={totalCommissionRules}
+              peopleWithoutPayPlans={peopleWithoutPayPlans}
+              totalUsers={people.length}
+              totalOffices={offices.length}
+              onNavigate={handleTabChange}
             />
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="roles" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsRolesSection
-              roles={roles}
-              loading={loading}
-              onRefetch={refetch}
-            />
-          </div>
-        </TabsContent>
+          <TabsContent value="users" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsUsersSection
+                people={people}
+                roles={roles}
+                offices={offices}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="offices" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsOfficesSection
-              offices={offices}
-              people={people}
-              loading={loading}
-              onRefetch={refetch}
-            />
-          </div>
-        </TabsContent>
+          <TabsContent value="roles" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsRolesSection
+                roles={roles}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="teams" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsTeamsSection
-              teams={teams}
-              offices={offices}
-              loading={loading}
-              onRefetch={refetch}
-            />
-          </div>
-        </TabsContent>
+          <TabsContent value="offices" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsOfficesSection
+                offices={offices}
+                people={people}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="documents" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsDocumentTemplatesSection
-              documentTemplates={documentTemplates}
-              loading={loading}
-              onRefetch={refetch}
-            />
-          </div>
-        </TabsContent>
+          <TabsContent value="teams" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsTeamsSection
+                teams={teams}
+                offices={offices}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="pay-plans" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsPayPlansSection
-              payPlans={payPlans}
-              loading={loading}
-              onRefetch={refetch}
-            />
-          </div>
-        </TabsContent>
+          <TabsContent value="documents" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsDocumentTemplatesSection
+                documentTemplates={documentTemplates}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="commission-rules" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-3xl">
-            <SettingsCommissionRulesSection
-              commissionRules={commissionRules}
-              payPlans={payPlans}
-              loading={loading}
-              onRefetch={refetch}
-            />
-          </div>
-        </TabsContent>
+          <TabsContent value="pay-plans" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsPayPlansSection
+                payPlans={payPlans}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="onboarding" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl space-y-6">
-            <SettingsOnboardingTasksSection onRefetch={refetch} />
-            <SettingsOnboardingFieldsSection onRefetch={refetch} />
-            <SettingsEmailTemplatesSection onRefetch={refetch} />
-            <SettingsOnboardingMetricsSection onRefetch={refetch} />
-          </div>
-        </TabsContent>
+          <TabsContent value="commission-rules" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-3xl">
+              <SettingsCommissionRulesSection
+                commissionRules={commissionRules}
+                payPlans={payPlans}
+                loading={loading}
+                onRefetch={refetch}
+              />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="history" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-3xl">
-            <SettingsHistorySection />
-          </div>
-        </TabsContent>
+          <TabsContent value="onboarding" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl space-y-6">
+              <SettingsOnboardingTasksSection onRefetch={refetch} />
+              <SettingsOnboardingFieldsSection onRefetch={refetch} />
+              <SettingsEmailTemplatesSection onRefetch={refetch} />
+              <SettingsOnboardingMetricsSection onRefetch={refetch} />
+            </div>
+          </TabsContent>
 
-        <TabsContent value="integrations" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
-            <SettingsIntegrationsSection />
-          </div>
-        </TabsContent>
+          <TabsContent value="history" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-3xl">
+              <SettingsHistorySection />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="integrations" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <div className="max-w-2xl">
+              <SettingsIntegrationsSection />
+            </div>
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

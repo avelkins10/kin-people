@@ -27,11 +27,11 @@ export function SettingsListItem({
   return (
     <div
       className={cn(
-        "flex items-center justify-between p-4 bg-gray-50 rounded-sm",
-        "border border-transparent transition-all duration-150",
+        "flex items-center justify-between p-4 bg-gray-50/70 rounded-lg",
+        "border border-transparent transition-all duration-200",
         "hover:bg-white hover:border-gray-200 hover:shadow-sm",
         "group",
-        onClick && "cursor-pointer",
+        onClick && "cursor-pointer active:scale-[0.995]",
         className
       )}
       onClick={onClick}
@@ -50,30 +50,30 @@ export function SettingsListItem({
     >
       <div className="flex items-center gap-4 min-w-0 flex-1">
         {(initials || avatar) && (
-          <div className="w-9 h-9 rounded-sm bg-indigo-100 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center shrink-0 ring-1 ring-emerald-100">
             {avatar || (
-              <span className="text-sm font-bold text-indigo-700">
+              <span className="text-sm font-semibold text-emerald-700">
                 {initials}
               </span>
             )}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <span className="font-bold text-sm text-gray-700 block truncate">
+          <span className="font-medium text-sm text-gray-800 block truncate">
             {title}
           </span>
           {subtitle && (
-            <div className="text-[10px] font-bold uppercase text-gray-400 truncate">
+            <div className="text-xs font-medium text-gray-400 truncate mt-0.5">
               {subtitle}
             </div>
           )}
           {metadata && (
-            <div className="flex items-center gap-3 mt-1">{metadata}</div>
+            <div className="flex items-center gap-3 mt-1.5">{metadata}</div>
           )}
         </div>
       </div>
       {actions && (
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0 ml-2">
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 shrink-0 ml-3">
           {actions}
         </div>
       )}
@@ -91,11 +91,11 @@ export function MetadataItem({ icon, children, className }: MetadataItemProps) {
   return (
     <span
       className={cn(
-        "flex items-center gap-1 text-[10px] text-gray-500",
+        "inline-flex items-center gap-1.5 text-xs text-gray-500",
         className
       )}
     >
-      {icon}
+      {icon && <span className="text-gray-400">{icon}</span>}
       {children}
     </span>
   );

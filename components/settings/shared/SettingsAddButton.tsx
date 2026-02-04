@@ -26,10 +26,11 @@ export function SettingsAddButton({
         onClick={onClick}
         disabled={disabled}
         className={cn(
-          "gap-1.5 text-gray-600 border-gray-200",
-          "hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50",
-          "transition-all duration-150",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2",
+          "gap-2 text-gray-600 border-gray-200 bg-white",
+          "hover:text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50",
+          "transition-all duration-200 font-medium",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+          "active:scale-[0.97]",
           className
         )}
       >
@@ -46,9 +47,10 @@ export function SettingsAddButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "text-gray-500 hover:text-indigo-600 hover:bg-indigo-50",
-        "transition-all duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2",
+        "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50",
+        "transition-all duration-200",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+        "active:scale-[0.95]",
         className
       )}
       aria-label="Add"
