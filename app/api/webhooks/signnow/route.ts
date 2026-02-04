@@ -19,7 +19,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  let body: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
   try {
     body = await req.json();
   } catch (parseErr) {
