@@ -235,7 +235,7 @@ function throwWithStatus(message: string, status?: number): never {
  * SignNow's API expects password grant: Basic auth (client_id:client_secret) plus body username, password, grant_type=password.
  * If SIGNNOW_USER_EMAIL and SIGNNOW_PASSWORD are set, use password grant; otherwise try client_credentials.
  */
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const startTime = Date.now();
   const { apiKey, apiSecret } = getCredentials();
   const basicAuth = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
@@ -871,45 +871,59 @@ export interface DocumentRole {
 }
 
 /**
+ * Parse roles array from a SignNow document response (v2 or legacy shape).
+ */
+function parseRolesFromDocument(data: Record<string, unknown>): DocumentRole[] {
+  const roles: unknown[] = Array.isArray(data.roles) ? data.roles : [];
+  return roles
+    .filter((r): r is Record<string, unknown> => r != null && typeof r === "object" && typeof (r as { unique_id?: unknown }).unique_id === "string")
+    .map((r) => ({
+      unique_id: (r as { unique_id: string }).unique_id,
+      name: typeof (r as { name?: unknown }).name === "string" ? (r as { name: string }).name : undefined,
+    }));
+}
+
+/**
  * Fetch document roles from SignNow (GET document).
+ * Tries v2 first; on 404 falls back to legacy GET /document/{id} for compatibility.
  * Required for role-based invite: match signers to roles by order or name, then send invite with role_id.
  */
 export async function getDocumentRoles(
   documentId: string
 ): Promise<DocumentRole[]> {
   const startTime = Date.now();
+  const accessToken = await getAccessToken();
+  const headers = { Authorization: `Bearer ${accessToken}` };
+
   try {
-    const accessToken = await getAccessToken();
     const data = await withRetry(() =>
       withTimeout(async (signal) => {
-        const response = await fetch(
+        const v2Res = await fetch(
           `https://api.signnow.com/v2/documents/${documentId}`,
-          {
-            method: "GET",
-            headers: { Authorization: `Bearer ${accessToken}` },
-            signal,
-          }
+          { method: "GET", headers, signal }
         );
-        if (!response.ok) {
-          const errorText = await response.text();
-          if (response.status === 404) {
-            throwWithStatus(`Document ${documentId} not found`, 404);
-          }
-          throwWithStatus(
-            `Failed to get document ${documentId}: ${response.status} ${errorText}`,
-            response.status
-          );
+        if (v2Res.ok) {
+          return (await v2Res.json()) as Record<string, unknown>;
         }
-        return await response.json();
+        if (v2Res.status === 404) {
+          const legacyRes = await fetch(
+            `https://api.signnow.com/document/${documentId}`,
+            { method: "GET", headers, signal }
+          );
+          if (!legacyRes.ok) {
+            const text = await legacyRes.text();
+            throwWithStatus(`Document ${documentId} not found: ${text}`, legacyRes.status);
+          }
+          return (await legacyRes.json()) as Record<string, unknown>;
+        }
+        const errorText = await v2Res.text();
+        throwWithStatus(
+          `Failed to get document ${documentId}: ${v2Res.status} ${errorText}`,
+          v2Res.status
+        );
       }, DEFAULT_TIMEOUT_MS, "getDocumentRoles")
     );
-    const roles: unknown[] = Array.isArray(data.roles) ? data.roles : [];
-    const out: DocumentRole[] = roles
-      .filter((r): r is Record<string, unknown> => r != null && typeof r === "object" && typeof (r as { unique_id?: unknown }).unique_id === "string")
-      .map((r) => ({
-        unique_id: (r as { unique_id: string }).unique_id,
-        name: typeof (r as { name?: unknown }).name === "string" ? (r as { name: string }).name : undefined,
-      }));
+    const out = parseRolesFromDocument(data);
     logApiCall("getDocumentRoles", { documentId, roleCount: out.length }, startTime);
     return out;
   } catch (error) {
