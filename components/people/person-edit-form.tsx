@@ -52,6 +52,13 @@ export function PersonEditForm({
 }: PersonEditFormProps) {
   const updateMutation = useUpdatePerson();
 
+  // Map person status to form status (terminated -> inactive)
+  const getFormStatus = (status: string | undefined): PersonFormData["status"] => {
+    if (status === "terminated") return "inactive";
+    if (status === "active" || status === "onboarding") return status;
+    return "active";
+  };
+
   const {
     register,
     handleSubmit,
@@ -68,7 +75,7 @@ export function PersonEditForm({
       roleId: person.roleId || "",
       officeId: person.officeId || "",
       reportsToId: person.reportsToId || "",
-      status: person.status === "terminated" ? "inactive" : (person.status || "active"),
+      status: getFormStatus(person.status),
       hireDate: person.hireDate ? person.hireDate.toString().split("T")[0] : "",
     },
   });
