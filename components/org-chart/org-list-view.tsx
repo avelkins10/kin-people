@@ -78,6 +78,7 @@ export function OrgListView({ people, relationshipType }: OrgListViewProps) {
             <TableHead>Role</TableHead>
             <TableHead>Office</TableHead>
             <TableHead>{relationshipLabel}</TableHead>
+            <TableHead>Reports</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
@@ -99,9 +100,23 @@ export function OrgListView({ people, relationshipType }: OrgListViewProps) {
                 </Link>
               </TableCell>
               <TableCell>{person.email}</TableCell>
-              <TableCell>{person.roleName || "-"}</TableCell>
+              <TableCell>
+                {person.roleName || "-"}
+                {person.roleLevel && (
+                  <span className="text-gray-400 text-xs ml-1">(L{person.roleLevel})</span>
+                )}
+              </TableCell>
               <TableCell>{person.officeName || "-"}</TableCell>
               <TableCell>{getRelationshipName(person)}</TableCell>
+              <TableCell>
+                {person.directReportCount > 0 ? (
+                  <Badge variant="outline" className="text-xs">
+                    {person.directReportCount}
+                  </Badge>
+                ) : (
+                  "-"
+                )}
+              </TableCell>
               <TableCell>
                 <Badge variant={getStatusBadgeVariant(person.status)}>
                   {person.status || "active"}
