@@ -85,12 +85,18 @@ export function PersonEditForm({
   const status = watch("status");
 
   async function onSubmit(data: PersonFormData) {
-    // API handles status mapping (inactive -> terminated) and empty string -> null conversion
-    await updateMutation.mutateAsync({
-      id: person.id,
-      data,
-    });
-    onSave();
+    try {
+      // API handles status mapping (inactive -> terminated) and empty string -> null conversion
+      await updateMutation.mutateAsync({
+        id: person.id,
+        data,
+      });
+      onSave();
+    } catch (error) {
+      // Error is already handled by mutation's onError, but we catch here
+      // to prevent onSave from being called on failure
+      console.error("Failed to update person:", error);
+    }
   }
 
   return (
