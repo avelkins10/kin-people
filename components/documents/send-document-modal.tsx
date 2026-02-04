@@ -17,7 +17,7 @@ import { toast } from "@/components/ui/use-toast";
 import type { RecruitWithDetails } from "@/types/recruiting";
 import type { PersonWithDetails } from "@/types/people";
 import type { DocumentTemplate } from "@/lib/db/schema/document-templates";
-import { Loader2 } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 
 interface SignerInfo {
   email: string;
@@ -130,6 +130,8 @@ export function SendDocumentModal({
 }: SendDocumentModalProps) {
   const isResendMode = Boolean(resendDocumentId);
   const [loading, setLoading] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [entityData, setEntityData] = useState<
     RecruitWithDetails | PersonWithDetails | null
@@ -145,6 +147,7 @@ export function SendDocumentModal({
     if (!open || !entityId) return;
 
     setError(null);
+    setPreviewToken(null);
     setEntityData(null);
     setTemplateConfig(null);
     setSigners([]);
@@ -204,6 +207,37 @@ export function SendDocumentModal({
       });
   }, [open, entityId, entityType, documentType]);
 
+  async function handlePreview() {
+    if (!entityData || !templateConfig) return;
+    const info = getEntityDisplayInfo(entityType, entityData);
+    if (!info?.email || info.email === "—") return;
+    const previewUrl =
+      entityType === "recruit"
+        ? `/api/recruits/${entityId}/preview-document`
+        : `/api/people/${entityId}/preview-document`;
+    setLoadingPreview(true);
+    setError(null);
+    try {
+      const res = await fetch(previewUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentType }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError((data as { error?: string }).error ?? "Failed to create preview. Please try again.");
+        return;
+      }
+      const { previewUrl: url, previewToken: token } = data as { previewUrl?: string; previewToken?: string };
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+      if (token) setPreviewToken(token);
+    } catch {
+      setError("Failed to create preview. Please try again.");
+    } finally {
+      setLoadingPreview(false);
+    }
+  }
+
   async function handleSend() {
     if (!entityData || !templateConfig) {
       setError(
@@ -247,7 +281,10 @@ export function SendDocumentModal({
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentType }),
+          body: JSON.stringify({
+            documentType,
+            ...(previewToken ? { previewToken } : {}),
+          }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -256,6 +293,7 @@ export function SendDocumentModal({
         }
         const { documentId } = data as { documentId?: string };
         if (documentId) {
+          setPreviewToken(null);
           const description =
             entityType === "recruit" && documentType === "rep_agreement"
               ? `Rep Agreement sent to ${entityInfo.name}`
@@ -293,8 +331,24 @@ export function SendDocumentModal({
     ? `Resend ${templateConfig?.displayName ?? documentType.replace(/_/g, " ")}`
     : getDocumentTitle(documentType, templateConfig?.displayName);
 
+  async function handleClose() {
+    if (previewToken) {
+      try {
+        await fetch("/api/documents/void-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ previewToken }),
+        });
+      } catch {
+        // best-effort void; ignore
+      }
+      setPreviewToken(null);
+    }
+    onClose();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="max-w-lg" aria-describedby="send-document-description">
         <DialogHeader>
           <DialogTitle>{modalTitle}</DialogTitle>
@@ -393,14 +447,35 @@ export function SendDocumentModal({
           )}
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+        <DialogFooter className="flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
+          {!isResendMode && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePreview}
+              disabled={!canSend || loading || loadingPreview}
+              aria-label="Preview document before sending"
+            >
+              {loadingPreview ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating preview...
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </>
+              )}
+            </Button>
+          )}
           <Button
             type="button"
             onClick={handleSend}
-            disabled={!canSend}
+            disabled={!canSend || loading}
           >
             {loading ? (
               <>

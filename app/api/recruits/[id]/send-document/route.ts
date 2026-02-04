@@ -6,8 +6,9 @@ import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/route-protection";
 import { canSendDocumentToRecruit } from "@/lib/auth/visibility-rules";
 import { getRecruitWithDetails } from "@/lib/db/helpers/recruit-helpers";
-import { sendDocument } from "@/lib/services/document-service";
+import { sendDocument, sendDocumentFromPreview } from "@/lib/services/document-service";
 import { sendDocumentSchema } from "@/lib/validation/document-schemas";
+import { verifyPreviewToken } from "@/lib/utils/preview-token";
 
 export async function POST(
   req: NextRequest,
@@ -44,14 +45,34 @@ export async function POST(
         );
       }
 
+      const previewPayload = validated.previewToken
+        ? verifyPreviewToken(validated.previewToken)
+        : null;
+      if (validated.previewToken && !previewPayload) {
+        return NextResponse.json(
+          { error: "Invalid or expired preview token. Create a new preview or send without preview." },
+          { status: 400 }
+        );
+      }
+
       let documentId: string;
       try {
-        documentId = await sendDocument(
-          "recruit",
-          id,
-          validated.documentType,
-          user.id
-        );
+        if (previewPayload) {
+          documentId = await sendDocumentFromPreview(
+            "recruit",
+            id,
+            validated.documentType,
+            previewPayload.signnowDocumentId,
+            user.id
+          );
+        } else {
+          documentId = await sendDocument(
+            "recruit",
+            id,
+            validated.documentType,
+            user.id
+          );
+        }
       } catch (docError) {
         const message =
           docError instanceof Error ? docError.message : String(docError);
@@ -87,8 +108,12 @@ export async function POST(
         );
       }
       console.error("Send document error:", error);
+      const message =
+        error instanceof Error ? error.message : String(error);
+      const safeMessage =
+        message.length > 400 ? `${message.slice(0, 397)}...` : message;
       return NextResponse.json(
-        { error: "Failed to send document. Please try again." },
+        { error: safeMessage || "Failed to send document. Please try again." },
         { status: 500 }
       );
     }

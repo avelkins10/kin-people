@@ -280,6 +280,130 @@ export async function sendDocument(
 }
 
 /**
+ * Create a document in SignNow from the template (with field values) but do not send invites or save to DB.
+ * Used for "preview before send". Caller can show the PDF via preview-pdf API and then call sendDocumentFromPreview.
+ */
+export async function createDocumentPreview(
+  entityType: "recruit" | "person",
+  entityId: string,
+  documentType: string,
+  _userId: string
+): Promise<string> {
+  let entity: RecruitEntity | PersonEntity | null = null;
+  if (entityType === "recruit") {
+    const data = await getRecruitWithDetails(entityId);
+    if (!data) throw new Error(`Recruit not found: ${entityId}`);
+    entity = data;
+  } else {
+    const data = await getPersonWithDetails(entityId);
+    if (!data) throw new Error(`Person not found: ${entityId}`);
+    entity = data;
+  }
+
+  const templateConfig = await getTemplateConfigWithValidation(documentType);
+  const templateEntity =
+    entityType === "recruit"
+      ? toRecruitTemplateEntity(entity as RecruitEntity)
+      : toPersonTemplateEntity(entity as PersonEntity);
+  const signers = await resolveSigners(templateConfig, templateEntity);
+
+  const firstName = entityType === "recruit"
+    ? (entity as RecruitEntity).recruit.firstName
+    : (entity as PersonEntity).person.firstName;
+  const lastName = entityType === "recruit"
+    ? (entity as RecruitEntity).recruit.lastName
+    : (entity as PersonEntity).person.lastName;
+  const documentName = `${documentType} - ${firstName} ${lastName}`;
+  const fieldValues = buildFieldValues(entity, documentType);
+
+  const signnowTemplateId = templateConfig.signnowTemplateId;
+  if (!signnowTemplateId) {
+    throw new Error(
+      `Template ${documentType} is missing a SignNow template ID.`
+    );
+  }
+
+  const signnowDocumentId = await createDocumentWithMultipleSigners(
+    signnowTemplateId,
+    signerInfoToConfig(signers),
+    documentName,
+    fieldValues
+  );
+  return signnowDocumentId;
+}
+
+/**
+ * Send invites for an existing SignNow document (from preview) and save to DB.
+ * Use when the user has previewed and then clicks Send.
+ */
+export async function sendDocumentFromPreview(
+  entityType: "recruit" | "person",
+  entityId: string,
+  documentType: string,
+  signnowDocumentId: string,
+  userId: string
+): Promise<string> {
+  let entity: RecruitEntity | PersonEntity | null = null;
+  if (entityType === "recruit") {
+    const data = await getRecruitWithDetails(entityId);
+    if (!data) throw new Error(`Recruit not found: ${entityId}`);
+    entity = data;
+  } else {
+    const data = await getPersonWithDetails(entityId);
+    if (!data) throw new Error(`Person not found: ${entityId}`);
+    entity = data;
+  }
+
+  const templateConfig = await getTemplateConfigWithValidation(documentType);
+  const templateEntity =
+    entityType === "recruit"
+      ? toRecruitTemplateEntity(entity as RecruitEntity)
+      : toPersonTemplateEntity(entity as PersonEntity);
+  const signers = await resolveSigners(templateConfig, templateEntity);
+
+  const expirationDays = templateConfig.expirationDays ?? 30;
+  const expiresAt = calculateExpirationDate(expirationDays);
+
+  const docData = {
+    ...(entityType === "recruit" ? { recruitId: entityId } : { personId: entityId }),
+    documentType,
+    signnowDocumentId,
+    signnowTemplateId: templateConfig.signnowTemplateId ?? undefined,
+    status: "pending" as const,
+    totalSigners: signers.length,
+    signedCount: 0,
+    createdById: userId,
+    expiresAt,
+    metadata: {
+      signers: signers.map((s) => ({ email: s.email, role: s.role })),
+      templateDocumentType: documentType,
+    },
+  };
+
+  const created = await createDocument(docData);
+  const documentId = created.id;
+
+  try {
+    const inviteOptions = buildInviteOptions(templateConfig, documentType);
+    await sendMultipleInvites(signnowDocumentId, signerInfoToConfig(signers), inviteOptions);
+  } catch (inviteErr) {
+    await deleteDocument(documentId);
+    try {
+      await voidSignNowDocument(signnowDocumentId);
+    } catch (voidErr) {
+      console.error("[document-service] sendDocumentFromPreview: failed to void after invite failure", {
+        signnowDocumentId,
+        voidError: voidErr instanceof Error ? voidErr.message : String(voidErr),
+      });
+    }
+    throw inviteErr;
+  }
+
+  await updateDocumentStatus(documentId, "pending", { sentAt: new Date() });
+  return documentId;
+}
+
+/**
  * Resend an expired document by voiding the old one and sending a new one.
  */
 export async function resendDocument(documentId: string, userId: string): Promise<string> {

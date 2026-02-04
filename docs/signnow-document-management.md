@@ -40,6 +40,10 @@ Any future agent or developer working on SignNow should open this file (or impor
 4. Choose the document type (e.g. Tax Forms, Onboarding Checklist, Offer Letter).
 5. Review the summary and click **Send**.
 
+**Preview before send:**
+
+- In the send-document modal you can click **Preview** to generate the document (with pre-filled fields) and open it in a new tab as a PDF. No invites are sent yet. If it looks good, click **Send** to send it to signers; the same document is used. If you close the modal without sending, the preview document is voided in SignNow so it doesn’t stay as a draft.
+
 **Notes:**
 
 - The entity (recruit or person) must have a valid email.
@@ -114,6 +118,27 @@ Only users with **Manage Settings** (e.g. Admin) can configure document template
 - **Description** (optional) – Internal note.
 
 After saving, the template is used when users send that document type. Config is cached for about an hour; edits take effect after cache expiry or deploy.
+
+**SignNow template fields (pre-fill):**
+
+When we create a document from a template, we send **field values** to SignNow so fillable fields in the template can be pre-filled (e.g. name, email, office, role). The field **names** in your SignNow template must match the names below, or those fields will not be filled.
+
+| Field name we send | Description |
+|--------------------|-------------|
+| `name` | Full name (first + last) of recruit or person |
+| `email` | Email of recruit or person |
+| `office` | Office name (target office for recruit, current office for person) |
+| `role` | Role name (target role for recruit, current role for person) |
+| `pay_plan` | Pay plan name (recruits only; empty for people) |
+| `manager` | Manager full name (person’s reports-to; empty for recruits) |
+| `recruiter_name` | Recruiter full name (recruits only; empty for people) |
+| `recruit_name` | Same as `name` (for recruit flows) |
+| `recruit_email` | Same as `email` (for recruit flows) |
+| `target_office` | Same as `office` (for recruits) |
+| `target_role` | Same as `role` (for recruits) |
+| `target_pay_plan` | Same as `pay_plan` (for recruits) |
+
+In SignNow, when you add text/field elements to the template, set the field **name** (or prefill key, per SignNow’s UI) to one of the names above. If your template uses different names, either rename them in SignNow to match, or ask a developer to add those names in `buildFieldValues` in `lib/services/document-service.ts`. Unknown field names are ignored by SignNow; they do not cause the request to fail.
 
 ---
 

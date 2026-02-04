@@ -271,6 +271,9 @@ export function DocumentTemplateModal({
                   No SignNow templates found. Configure SignNow in Settings → Integrations and ensure your account has templates.
                 </p>
               )}
+              <p className="text-xs text-gray-500 mt-2">
+                To pre-fill fields (name, email, office, role, etc.), use the field names listed in the document management docs (e.g. <code className="rounded bg-gray-100 px-1">name</code>, <code className="rounded bg-gray-100 px-1">email</code>, <code className="rounded bg-gray-100 px-1">recruit_name</code>).
+              </p>
             </div>
 
             <div className="border-t pt-4">

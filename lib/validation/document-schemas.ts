@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const sendDocumentSchema = z.object({
   documentType: z.string().min(1, "Document type is required"),
+  /** When set, use this preview token to send the already-created SignNow document (from Preview) instead of creating a new one. */
+  previewToken: z.string().optional(),
 });
 
 export const templateConfigSchema = z.object({
