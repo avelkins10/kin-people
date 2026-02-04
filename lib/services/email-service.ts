@@ -5,8 +5,8 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-// Default "from" address - should be configured based on your domain
-const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@yourdomain.com';
+// Default "from" address - matches Supabase SMTP config
+const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'The KIN Team <team@kinhome.com>';
 
 export interface WelcomeEmailParams {
   email: string;
