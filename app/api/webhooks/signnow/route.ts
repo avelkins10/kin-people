@@ -9,6 +9,7 @@ import {
   getDocumentBySignnowId,
   updateDocumentStatus,
 } from "@/lib/db/helpers/document-helpers";
+import { createRecruitHistoryRecord } from "@/lib/db/helpers/recruit-helpers";
 
 const LOG_PREFIX = "[webhook/signnow]";
 
@@ -209,6 +210,13 @@ export async function POST(req: NextRequest) {
           .where(eq(documents.id, documentId));
 
         if (document.recruitId && document.documentType === "rep_agreement") {
+          // Get current status for history
+          const [currentRecruit] = await db
+            .select({ status: recruits.status })
+            .from(recruits)
+            .where(eq(recruits.id, document.recruitId));
+          const previousStatus = currentRecruit?.status ?? null;
+
           await db
             .update(recruits)
             .set({
@@ -218,8 +226,18 @@ export async function POST(req: NextRequest) {
               updatedAt: new Date(),
             })
             .where(eq(recruits.id, document.recruitId));
+
+          // Create history record
+          await createRecruitHistoryRecord({
+            recruitId: document.recruitId,
+            previousStatus,
+            newStatus: "agreement_signed",
+            notes: "Rep agreement signed",
+            changedById: null, // System/webhook change
+          });
+
           console.log(
-            `${LOG_PREFIX} document.complete: recruitId=${document.recruitId} → status=agreement_signed`
+            `${LOG_PREFIX} document.complete: recruitId=${document.recruitId} → status=agreement_signed (from ${previousStatus})`
           );
         }
 

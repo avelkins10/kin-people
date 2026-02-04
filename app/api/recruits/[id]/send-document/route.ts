@@ -5,7 +5,7 @@ import { recruits } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/route-protection";
 import { canSendDocumentToRecruit } from "@/lib/auth/visibility-rules";
-import { getRecruitWithDetails } from "@/lib/db/helpers/recruit-helpers";
+import { getRecruitWithDetails, createRecruitHistoryRecord } from "@/lib/db/helpers/recruit-helpers";
 import { sendDocument, sendDocumentFromPreview } from "@/lib/services/document-service";
 import { sendDocumentSchema } from "@/lib/validation/document-schemas";
 import { verifyPreviewToken } from "@/lib/utils/preview-token";
@@ -86,6 +86,7 @@ export async function POST(
       }
 
       if (validated.documentType === "rep_agreement") {
+        const previousStatus = recruitData.recruit.status;
         console.log(`[send-document] Updating recruit ${id} status to agreement_sent`);
         await db
           .update(recruits)
@@ -95,7 +96,16 @@ export async function POST(
             updatedAt: new Date(),
           })
           .where(eq(recruits.id, id));
-        console.log(`[send-document] Recruit ${id} status updated to agreement_sent`);
+
+        // Create history record for status change
+        await createRecruitHistoryRecord({
+          recruitId: id,
+          previousStatus: previousStatus || null,
+          newStatus: "agreement_sent",
+          notes: "Rep agreement sent",
+          changedById: user.id,
+        });
+        console.log(`[send-document] Recruit ${id} status updated to agreement_sent with history`);
       }
 
       return NextResponse.json({
