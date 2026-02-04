@@ -126,6 +126,7 @@ function buildFieldValues(
     { field_name: "recruiter_name", field_value: recruiter },
     // Recruit name variants (SignNow templates may use different naming)
     { field_name: "recruit_name", field_value: name },
+    { field_name: "recruit_name_1", field_value: name },
     { field_name: "recruit_name_2", field_value: name },
     { field_name: "recruit_name_3", field_value: name },
     { field_name: "Full Name", field_value: name },
