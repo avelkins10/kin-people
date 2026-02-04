@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Users, Plus, Edit2, Trash2 } from "lucide-react";
+import { Users, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +31,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import type { Team, Office } from "@/hooks/use-settings-data";
+import {
+  SettingsSection,
+  SettingsListItem,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface SettingsTeamsSectionProps {
   teams: Team[];
@@ -159,56 +166,51 @@ export function SettingsTeamsSection({
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Teams
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add team">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
+    <SettingsSection
+      icon={Users}
+      title="Teams"
+      description="Organize people into teams within offices"
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={3} />
         ) : teams.length === 0 ? (
-          <p className="text-sm text-gray-500">No teams yet. Add one to get started.</p>
+          <SettingsEmptyState
+            icon={Users}
+            title="No teams yet"
+            description="Add your first team to get started"
+            action={{ label: "Add Team", onClick: openAdd }}
+          />
         ) : (
           teams.map((team) => (
-            <div
+            <SettingsListItem
               key={team.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
-            >
-              <div>
-                <span className="font-bold text-sm text-gray-700 block">{team.name}</span>
-                <span className="text-[10px] font-bold uppercase text-gray-400">
-                  {team.officeName ?? "No office"}
-                </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(team)}
-                  aria-label={`Edit ${team.name}`}
-                >
-                  <Edit2 className="w-3 h-3 text-indigo-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setDeleteTeam(team)}
-                  aria-label={`Delete ${team.name}`}
-                >
-                  <Trash2 className="w-3 h-3 text-red-600" />
-                </Button>
-              </div>
-            </div>
+              title={team.name}
+              subtitle={team.officeName ?? "No office"}
+              actions={
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(team)}
+                    aria-label={`Edit ${team.name}`}
+                  >
+                    <Edit2 className="w-3 h-3 text-indigo-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteTeam(team)}
+                    aria-label={`Delete ${team.name}`}
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                  </Button>
+                </>
+              }
+            />
           ))
         )}
       </div>
@@ -334,6 +336,6 @@ export function SettingsTeamsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

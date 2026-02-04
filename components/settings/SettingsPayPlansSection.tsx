@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { DollarSign, Plus, Edit2, Trash2 } from "lucide-react";
+import { DollarSign, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import type { PayPlan } from "@/hooks/use-settings-data";
+import {
+  SettingsSection,
+  SettingsListItem,
+  MetadataItem,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface SettingsPayPlansSectionProps {
   payPlans: PayPlan[];
@@ -145,59 +153,56 @@ export function SettingsPayPlansSection({
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Pay Plans
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add pay plan">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
+    <SettingsSection
+      icon={DollarSign}
+      title="Pay Plans"
+      description="Define compensation structures and rules"
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={3} />
         ) : payPlans.length === 0 ? (
-          <p className="text-sm text-gray-500">No pay plans yet. Add one to get started.</p>
+          <SettingsEmptyState
+            icon={DollarSign}
+            title="No pay plans yet"
+            description="Add your first pay plan to configure compensation"
+            action={{ label: "Add Pay Plan", onClick: openAdd }}
+          />
         ) : (
           payPlans.map((plan) => (
-            <div
+            <SettingsListItem
               key={plan.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
-            >
-              <div>
-                <span className="font-bold text-sm text-gray-700 block">{plan.name}</span>
-                <span
-                  className={`text-[10px] font-bold uppercase ${plan.isActive ? "text-green-600" : "text-gray-400"}`}
-                >
+              title={plan.name}
+              subtitle={
+                <span className={plan.isActive ? "text-green-600" : "text-gray-400"}>
                   {plan.isActive ? "Active" : "Archived"}
                   {plan.rulesCount != null && ` · ${plan.rulesCount} rules`}
                 </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(plan)}
-                  aria-label={`Edit ${plan.name}`}
-                >
-                  <Edit2 className="w-3 h-3 text-indigo-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setDeletePlan(plan)}
-                  aria-label={`Delete ${plan.name}`}
-                >
-                  <Trash2 className="w-3 h-3 text-red-600" />
-                </Button>
-              </div>
-            </div>
+              }
+              actions={
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(plan)}
+                    aria-label={`Edit ${plan.name}`}
+                  >
+                    <Edit2 className="w-3 h-3 text-indigo-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDeletePlan(plan)}
+                    aria-label={`Delete ${plan.name}`}
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                  </Button>
+                </>
+              }
+            />
           ))
         )}
       </div>
@@ -291,6 +296,6 @@ export function SettingsPayPlansSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

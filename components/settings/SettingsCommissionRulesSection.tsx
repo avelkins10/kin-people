@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText, Plus, Edit2, Trash2 } from "lucide-react";
+import { Percent, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +31,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import type { CommissionRule, PayPlan } from "@/hooks/use-settings-data";
+import {
+  SettingsSection,
+  SettingsListItem,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 const RULE_TYPES = [
   "setter_commission",
@@ -190,66 +197,60 @@ export function SettingsCommissionRulesSection({
     s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Commission Rules
-          </h3>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
+    <SettingsSection
+      icon={Percent}
+      title="Commission Rules"
+      description="Configure calculation rules for each pay plan"
+      action={
+        <SettingsAddButton
           onClick={openAdd}
           disabled={payPlans.length === 0}
-          aria-label="Add commission rule"
-        >
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
+        />
+      }
+    >
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={3} />
         ) : commissionRules.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No commission rules yet. Add a pay plan first, then add rules.
-          </p>
+          <SettingsEmptyState
+            icon={Percent}
+            title="No commission rules yet"
+            description="Add a pay plan first, then add commission rules"
+            action={
+              payPlans.length > 0
+                ? { label: "Add Rule", onClick: openAdd }
+                : undefined
+            }
+          />
         ) : (
           commissionRules.map((rule) => (
-            <div
+            <SettingsListItem
               key={rule.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
-            >
-              <div>
-                <span className="font-bold text-sm text-gray-700 block">
-                  {rule.name || formatLabel(rule.ruleType)}
-                </span>
-                <span className="text-[10px] font-bold uppercase text-gray-400">
-                  {rule.payPlanName ?? "—"} · {formatLabel(rule.calcMethod)} · {rule.amount}
-                </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(rule)}
-                  aria-label={`Edit rule ${rule.name || rule.ruleType}`}
-                >
-                  <Edit2 className="w-3 h-3 text-indigo-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setDeleteRule(rule)}
-                  aria-label={`Delete rule`}
-                >
-                  <Trash2 className="w-3 h-3 text-red-600" />
-                </Button>
-              </div>
-            </div>
+              title={rule.name || formatLabel(rule.ruleType)}
+              subtitle={`${rule.payPlanName ?? "—"} · ${formatLabel(rule.calcMethod)} · ${rule.amount}`}
+              actions={
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(rule)}
+                    aria-label={`Edit rule ${rule.name || rule.ruleType}`}
+                  >
+                    <Edit2 className="w-3 h-3 text-indigo-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteRule(rule)}
+                    aria-label="Delete rule"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                  </Button>
+                </>
+              }
+            />
           ))
         )}
       </div>
@@ -420,6 +421,6 @@ export function SettingsCommissionRulesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

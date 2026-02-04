@@ -9,6 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  SettingsSection,
+  SettingsListSkeleton,
+} from "@/components/settings/shared";
 
 export interface ActivityLogEntry {
   id: string;
@@ -92,14 +96,11 @@ export function SettingsHistorySection({ onRefetch }: SettingsHistorySectionProp
   }, [fetchHistory]);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <History className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            History
-          </h3>
-        </div>
+    <SettingsSection
+      icon={History}
+      title="History"
+      description="Track all changes to settings and configurations"
+      action={
         <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by type" />
@@ -113,17 +114,17 @@ export function SettingsHistorySection({ onRefetch }: SettingsHistorySectionProp
             ))}
           </SelectContent>
         </Select>
-      </div>
-
+      }
+    >
       {error && (
         <p className="text-sm text-red-600 mb-4">{error}</p>
       )}
 
       <div className="space-y-2 max-h-[400px] overflow-y-auto">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={5} />
         ) : entries.length === 0 ? (
-          <p className="text-sm text-gray-500">No changes recorded yet.</p>
+          <p className="text-sm text-gray-500 py-8 text-center">No changes recorded yet.</p>
         ) : (
           entries.map((entry) => {
             const summary = formatDetailSummary(entry.details, entry.action);
@@ -137,10 +138,10 @@ export function SettingsHistorySection({ onRefetch }: SettingsHistorySectionProp
             return (
               <div
                 key={entry.id}
-                className="flex flex-col gap-0.5 p-3 bg-gray-50 rounded-sm text-sm"
+                className="flex flex-col gap-0.5 p-4 bg-gray-50 rounded-sm border border-transparent transition-all duration-150 hover:bg-white hover:border-gray-200 hover:shadow-sm"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-bold text-gray-700">
+                  <span className="font-bold text-sm text-gray-700">
                     {formatAction(entry.action)} {typeLabel}
                     {summary && ` ${summary}`}
                   </span>
@@ -156,6 +157,6 @@ export function SettingsHistorySection({ onRefetch }: SettingsHistorySectionProp
           })
         )}
       </div>
-    </div>
+    </SettingsSection>
   );
 }

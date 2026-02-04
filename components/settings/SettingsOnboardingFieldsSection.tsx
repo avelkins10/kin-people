@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import {
   ClipboardList,
-  Plus,
   Edit2,
   Trash2,
   GripVertical,
@@ -60,6 +59,12 @@ import {
   INFO_FIELD_CATEGORIES,
   type SelectOption,
 } from "@/lib/db/schema/onboarding-info-fields";
+import {
+  SettingsSection,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface InfoField {
   id: string;
@@ -123,7 +128,7 @@ function SortableFieldItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
+      className="flex items-center justify-between p-4 bg-gray-50 rounded-sm border border-transparent transition-all duration-150 hover:bg-white hover:border-gray-200 hover:shadow-sm group"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
@@ -158,7 +163,7 @@ function SortableFieldItem({
           </div>
         </div>
       </div>
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <Button
           variant="ghost"
           size="icon"
@@ -561,26 +566,21 @@ export function SettingsOnboardingFieldsSection({
   );
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Personal Info Fields
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add field">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
-      <p className="text-sm text-gray-500 mb-4">
-        Configure what personal information to collect from new hires (e.g., uniform sizes, emergency contacts).
-      </p>
-
+    <SettingsSection
+      icon={ClipboardList}
+      title="Personal Info Fields"
+      description="Configure what personal information to collect from new hires (e.g., uniform sizes, emergency contacts)."
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <SettingsListSkeleton count={4} />
       ) : fields.length === 0 ? (
-        <p className="text-sm text-gray-500">No fields configured. Add one to start collecting info from new hires.</p>
+        <SettingsEmptyState
+          icon={ClipboardList}
+          title="No fields configured"
+          description="Add fields to start collecting info from new hires"
+          action={{ label: "Add Field", onClick: openAdd }}
+        />
       ) : (
         <DndContext
           sensors={sensors}
@@ -640,6 +640,6 @@ export function SettingsOnboardingFieldsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

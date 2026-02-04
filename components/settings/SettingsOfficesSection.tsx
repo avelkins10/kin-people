@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MapPin, Plus, Edit2, Trash2 } from "lucide-react";
+import { MapPin, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,6 +39,13 @@ import {
   type OfficeFormData,
   type OfficeCreateFormData
 } from "@/lib/validation/office-form";
+import {
+  SettingsSection,
+  SettingsListItem,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface LeadershipAssignment {
   id: string;
@@ -243,56 +250,51 @@ export function SettingsOfficesSection({
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Offices
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add office">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
+    <SettingsSection
+      icon={MapPin}
+      title="Offices"
+      description="Manage office locations and leadership"
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={3} />
         ) : offices.length === 0 ? (
-          <p className="text-sm text-gray-500">No offices yet. Add one to get started.</p>
+          <SettingsEmptyState
+            icon={MapPin}
+            title="No offices yet"
+            description="Add your first office to get started"
+            action={{ label: "Add Office", onClick: openAdd }}
+          />
         ) : (
           offices.map((office) => (
-            <div
+            <SettingsListItem
               key={office.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
-            >
-              <div>
-                <span className="font-bold text-sm text-gray-700 block">{office.name}</span>
-                <span className="text-[10px] font-bold uppercase text-gray-400">
-                  {[office.region, office.division].filter(Boolean).join(" · ") || "—"}
-                </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(office)}
-                  aria-label={`Edit ${office.name}`}
-                >
-                  <Edit2 className="w-3 h-3 text-indigo-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setDeleteOffice(office)}
-                  aria-label={`Delete ${office.name}`}
-                >
-                  <Trash2 className="w-3 h-3 text-red-600" />
-                </Button>
-              </div>
-            </div>
+              title={office.name}
+              subtitle={[office.region, office.division].filter(Boolean).join(" · ") || "—"}
+              actions={
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(office)}
+                    aria-label={`Edit ${office.name}`}
+                  >
+                    <Edit2 className="w-3 h-3 text-indigo-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteOffice(office)}
+                    aria-label={`Delete ${office.name}`}
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                  </Button>
+                </>
+              }
+            />
           ))
         )}
       </div>
@@ -536,6 +538,6 @@ export function SettingsOfficesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

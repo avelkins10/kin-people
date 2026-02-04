@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserPlus, Plus, Edit2, Shield } from "lucide-react";
+import { UserPlus, Edit2, Shield, Mail, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +21,14 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import type { PersonListItem, Role, Office } from "@/hooks/use-settings-data";
-import { useSettingsData } from "@/hooks/use-settings-data";
+import {
+  SettingsSection,
+  SettingsListItem,
+  MetadataItem,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface SettingsUsersSectionProps {
   people: PersonListItem[];
@@ -29,6 +36,15 @@ interface SettingsUsersSectionProps {
   offices: Office[];
   loading: boolean;
   onRefetch: () => void;
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 export function SettingsUsersSection({
@@ -245,61 +261,71 @@ export function SettingsUsersSection({
     }
   };
 
+  const officeLookup = new Map(offices.map((o) => [o.id, o.name]));
+
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <UserPlus className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Users
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add user">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
+    <SettingsSection
+      icon={UserPlus}
+      title="Users"
+      description="Manage user accounts and permissions"
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={3} showAvatar />
         ) : people.length === 0 ? (
-          <p className="text-sm text-gray-500">No users yet. Add one to get started.</p>
+          <SettingsEmptyState
+            icon={UserPlus}
+            title="No users yet"
+            description="Add your first user to get started"
+            action={{ label: "Add User", onClick: openAdd }}
+          />
         ) : (
           people.map((person) => (
-            <div
+            <SettingsListItem
               key={person.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
-            >
-              <div>
-                <span className="font-bold text-sm text-gray-700 block">{person.name}</span>
-                <span className="text-[10px] font-bold uppercase text-gray-400">
-                  {person.email} · {person.roleName}
-                </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(person)}
-                  aria-label={`Edit ${person.name}`}
-                >
-                  <Edit2 className="w-3 h-3 text-indigo-600" />
-                </Button>
-                {adminRoleId && person.roleName !== "Admin" && (
+              title={person.name}
+              initials={getInitials(person.name)}
+              subtitle={person.roleName}
+              metadata={
+                <>
+                  <MetadataItem icon={<Mail className="w-3 h-3" />}>
+                    {person.email}
+                  </MetadataItem>
+                  {person.officeId && (
+                    <MetadataItem icon={<MapPin className="w-3 h-3" />}>
+                      {officeLookup.get(person.officeId) ?? "Office"}
+                    </MetadataItem>
+                  )}
+                </>
+              }
+              actions={
+                <>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleMakeAdmin(person)}
-                    disabled={saving}
-                    aria-label={`Make ${person.name} admin`}
-                    title="Make admin"
+                    onClick={() => openEdit(person)}
+                    aria-label={`Edit ${person.name}`}
                   >
-                    <Shield className="w-3 h-3 text-amber-600" />
+                    <Edit2 className="w-3 h-3 text-indigo-600" />
                   </Button>
-                )}
-              </div>
-            </div>
+                  {adminRoleId && person.roleName !== "Admin" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleMakeAdmin(person)}
+                      disabled={saving}
+                      aria-label={`Make ${person.name} admin`}
+                      title="Make admin"
+                    >
+                      <Shield className="w-3 h-3 text-amber-600" />
+                    </Button>
+                  )}
+                </>
+              }
+            />
           ))
         )}
       </div>
@@ -519,6 +545,6 @@ export function SettingsUsersSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </SettingsSection>
   );
 }

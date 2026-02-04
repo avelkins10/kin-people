@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import {
   GraduationCap,
-  Plus,
   Edit2,
   Trash2,
   GripVertical,
@@ -29,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,10 +60,13 @@ import {
   TASK_TYPES,
   TASK_CATEGORIES,
   ASSIGNEE_TYPES,
-  type TaskType,
-  type TaskCategory,
-  type AssigneeType,
 } from "@/lib/db/schema/onboarding-tasks";
+import {
+  SettingsSection,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface OnboardingTask {
   id: string;
@@ -149,7 +150,7 @@ function SortableTaskItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
+      className="flex items-center justify-between p-4 bg-gray-50 rounded-sm border border-transparent transition-all duration-150 hover:bg-white hover:border-gray-200 hover:shadow-sm group"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
@@ -186,7 +187,7 @@ function SortableTaskItem({
           </div>
         </div>
       </div>
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <Button
           variant="ghost"
           size="icon"
@@ -516,26 +517,21 @@ export function SettingsOnboardingTasksSection({
   );
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Onboarding Tasks
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add task">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
-      <p className="text-sm text-gray-500 mb-4">
-        Drag to reorder tasks. These are assigned to new hires when they enter onboarding.
-      </p>
-
+    <SettingsSection
+      icon={GraduationCap}
+      title="Onboarding Tasks"
+      description="Drag to reorder tasks. These are assigned to new hires when they enter onboarding."
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <SettingsListSkeleton count={4} />
       ) : tasks.length === 0 ? (
-        <p className="text-sm text-gray-500">No tasks yet. Add one to get started.</p>
+        <SettingsEmptyState
+          icon={GraduationCap}
+          title="No tasks yet"
+          description="Add onboarding tasks to assign to new hires"
+          action={{ label: "Add Task", onClick: openAdd }}
+        />
       ) : (
         <DndContext
           sensors={sensors}
@@ -595,6 +591,6 @@ export function SettingsOnboardingTasksSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Shield, Plus, Edit2, Trash2 } from "lucide-react";
+import { Shield, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +30,13 @@ import { getRolePermissions } from "@/lib/permissions/roles";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { roleFormSchema, type RoleFormData } from "@/lib/validation/role-form";
+import {
+  SettingsSection,
+  SettingsListItem,
+  SettingsEmptyState,
+  SettingsListSkeleton,
+  SettingsAddButton,
+} from "@/components/settings/shared";
 
 interface SettingsRolesSectionProps {
   roles: Role[];
@@ -185,57 +192,51 @@ export function SettingsRolesSection({
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-            Roles
-          </h3>
-        </div>
-        <Button variant="ghost" size="icon" onClick={openAdd} aria-label="Add role">
-          <Plus className="w-4 h-4 text-gray-500" />
-        </Button>
-      </div>
+    <SettingsSection
+      icon={Shield}
+      title="Roles"
+      description="Define roles and their permission levels"
+      action={<SettingsAddButton onClick={openAdd} />}
+    >
       <div className="space-y-3">
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <SettingsListSkeleton count={3} />
         ) : roles.length === 0 ? (
-          <p className="text-sm text-gray-500">No roles yet. Add one to get started.</p>
+          <SettingsEmptyState
+            icon={Shield}
+            title="No roles yet"
+            description="Add your first role to get started"
+            action={{ label: "Add Role", onClick: openAdd }}
+          />
         ) : (
           roles.map((role) => (
-            <div
+            <SettingsListItem
               key={role.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group"
-            >
-              <div>
-                <span className="font-bold text-sm text-gray-700 block">{role.name}</span>
-                <span className="text-[10px] font-bold uppercase text-gray-400">
-                  Level {role.level}
-                  {role.description ? ` · ${role.description}` : ""}
-                </span>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(role)}
-                  aria-label={`Edit ${role.name}`}
-                >
-                  <Edit2 className="w-3 h-3 text-indigo-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setDeleteRole(role)}
-                  aria-label={`Delete ${role.name}`}
-                >
-                  <Trash2 className="w-3 h-3 text-red-600" />
-                </Button>
-              </div>
-            </div>
+              title={role.name}
+              subtitle={`Level ${role.level}${role.description ? ` · ${role.description}` : ""}`}
+              actions={
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(role)}
+                    aria-label={`Edit ${role.name}`}
+                  >
+                    <Edit2 className="w-3 h-3 text-indigo-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteRole(role)}
+                    aria-label={`Delete ${role.name}`}
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                  </Button>
+                </>
+              }
+            />
           ))
         )}
       </div>
@@ -430,6 +431,6 @@ export function SettingsRolesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

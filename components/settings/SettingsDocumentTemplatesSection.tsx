@@ -18,6 +18,11 @@ import { DocumentTemplateModal } from "@/components/settings/modals/document-tem
 import { toast } from "@/components/ui/use-toast";
 import type { DocumentTemplate } from "@/hooks/use-settings-data";
 import { cn } from "@/lib/utils";
+import {
+  SettingsSection,
+  SettingsListItem,
+  SettingsListSkeleton,
+} from "@/components/settings/shared";
 
 const DOCUMENT_TYPES = [
   { type: "rep_agreement", label: "Rep Agreement" },
@@ -100,27 +105,13 @@ export function SettingsDocumentTemplatesSection({
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-sm p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <FileText className="w-5 h-5 text-indigo-600" />
-        <h3 className="text-lg font-extrabold uppercase tracking-tight text-black">
-          Document Templates
-        </h3>
-      </div>
-      <p className="text-sm text-gray-500 mb-4">
-        Document template IDs and signer rules. API keys and webhooks are set in your deployment (see Integrations).
-      </p>
-
+    <SettingsSection
+      icon={FileText}
+      title="Document Templates"
+      description="Document template IDs and signer rules. API keys and webhooks are set in your deployment."
+    >
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-20 rounded-sm bg-gray-100 animate-pulse"
-              aria-hidden
-            />
-          ))}
-        </div>
+        <SettingsListSkeleton count={4} />
       ) : (
         <div className="space-y-3">
           {DOCUMENT_TYPES.map((docType) => {
@@ -130,15 +121,11 @@ export function SettingsDocumentTemplatesSection({
             const configured = !!template;
 
             return (
-              <div
+              <SettingsListItem
                 key={docType.type}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-sm group hover:bg-gray-100/80 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <span className="font-bold text-sm text-gray-700 block">
-                    {docType.label}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                title={docType.label}
+                subtitle={
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span
                       className={cn(
                         "text-[10px] font-bold uppercase",
@@ -174,38 +161,40 @@ export function SettingsDocumentTemplatesSection({
                       </>
                     )}
                   </div>
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
-                    onClick={() => openConfigure(docType)}
-                    aria-label={configured ? `Edit ${docType.label}` : `Configure ${docType.label}`}
-                  >
-                    <Edit2 className="w-3 h-3 text-indigo-600" />
-                  </Button>
-                  {configured && template && (
+                }
+                actions={
+                  <>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 min-w-[44px] min-h-[44px] sm:min-w-[32px] sm:min-h-[32px]"
-                      onClick={() => setDeleteTemplate(template)}
-                      aria-label={`Delete ${docType.label} template`}
+                      className="h-8 w-8"
+                      onClick={() => openConfigure(docType)}
+                      aria-label={configured ? `Edit ${docType.label}` : `Configure ${docType.label}`}
                     >
-                      <Trash2 className="w-3 h-3 text-red-600" />
+                      <Edit2 className="w-3 h-3 text-indigo-600" />
                     </Button>
-                  )}
-                </div>
-              </div>
+                    {configured && template && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setDeleteTemplate(template)}
+                        aria-label={`Delete ${docType.label} template`}
+                      >
+                        <Trash2 className="w-3 h-3 text-red-600" />
+                      </Button>
+                    )}
+                  </>
+                }
+              />
             );
           })}
         </div>
       )}
 
       {!loading && documentTemplates.filter((t) => t.isActive).length === 0 && (
-        <p className="text-sm text-gray-500 mt-2">
-          No document templates configured yet. Click Configure on a document
+        <p className="text-sm text-gray-500 mt-4">
+          No document templates configured yet. Click the edit icon on a document
           type above to get started.
         </p>
       )}
@@ -245,6 +234,6 @@ export function SettingsDocumentTemplatesSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsSection>
   );
 }

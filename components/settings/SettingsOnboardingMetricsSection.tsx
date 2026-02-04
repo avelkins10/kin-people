@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { GraduationCap } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import {
+  SettingsSection,
+  SettingsListSkeleton,
+} from "@/components/settings/shared";
 
 const METRIC_TYPES = [
   { value: "placeholder", label: "Placeholder (—)" },
@@ -106,90 +110,79 @@ export function SettingsOnboardingMetricsSection({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="rounded-sm border border-gray-200 bg-white p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <GraduationCap className="w-5 h-5 text-gray-400" />
-          <h2 className="text-lg font-semibold text-gray-900">Onboarding Metrics</h2>
-        </div>
-        <p className="text-sm text-gray-500">Loading…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-sm border border-gray-200 bg-white p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="w-5 h-5 text-gray-400" />
-          <h2 className="text-lg font-semibold text-gray-900">Onboarding Metrics</h2>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
+    <SettingsSection
+      icon={BarChart3}
+      title="Onboarding Metrics"
+      description="Configure labels and display type for the two onboarding metrics shown on the Onboarding page."
+      action={
+        <Button onClick={handleSave} disabled={saving || loading} size="sm">
           {saving ? "Saving…" : "Save"}
         </Button>
-      </div>
-      <p className="text-sm text-gray-500 mb-4">
-        Configure labels and display type for the two onboarding metrics shown on the Onboarding page.
-      </p>
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-700">Metric 1</h3>
-          <div>
-            <Label htmlFor="training-label">Label</Label>
-            <Input
-              id="training-label"
-              value={trainingLabel}
-              onChange={(e) => setTrainingLabel(e.target.value)}
-              placeholder="Training Complete"
-              className="mt-1"
-            />
+      }
+    >
+      {loading ? (
+        <SettingsListSkeleton count={2} />
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-gray-700">Metric 1</h3>
+            <div>
+              <Label htmlFor="training-label">Label</Label>
+              <Input
+                id="training-label"
+                value={trainingLabel}
+                onChange={(e) => setTrainingLabel(e.target.value)}
+                placeholder="Training Complete"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="training-type">Type</Label>
+              <Select value={trainingType} onValueChange={setTrainingType}>
+                <SelectTrigger id="training-type" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {METRIC_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="training-type">Type</Label>
-            <Select value={trainingType} onValueChange={setTrainingType}>
-              <SelectTrigger id="training-type" className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {METRIC_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-gray-700">Metric 2</h3>
+            <div>
+              <Label htmlFor="ready-label">Label</Label>
+              <Input
+                id="ready-label"
+                value={readyLabel}
+                onChange={(e) => setReadyLabel(e.target.value)}
+                placeholder="Ready for Field"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="ready-type">Type</Label>
+              <Select value={readyType} onValueChange={setReadyType}>
+                <SelectTrigger id="ready-type" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {METRIC_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-700">Metric 2</h3>
-          <div>
-            <Label htmlFor="ready-label">Label</Label>
-            <Input
-              id="ready-label"
-              value={readyLabel}
-              onChange={(e) => setReadyLabel(e.target.value)}
-              placeholder="Ready for Field"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ready-type">Type</Label>
-            <Select value={readyType} onValueChange={setReadyType}>
-              <SelectTrigger id="ready-type" className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {METRIC_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    </div>
+      )}
+    </SettingsSection>
   );
 }
