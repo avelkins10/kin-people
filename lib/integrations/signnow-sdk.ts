@@ -1,32 +1,38 @@
 /**
- * SignNow integration via official @signnow/api-client SDK (v1.8.2).
+ * SignNow integration via @signnow/api-client-v3 SDK (v3.0.0).
  * Used when USE_SIGNNOW_SDK=true; otherwise lib/integrations/signnow.ts (direct API) is used.
  *
- * The SDK uses the same legacy endpoints we rely on:
- * - Template.duplicate → POST /template/{id}/copy
- * - Document.view → GET /document/{id} (for roles)
- * - Document.invite → POST /document/{id}/invite
+ * The SDK uses the legacy endpoints:
+ * - CloneTemplatePost → POST /template/{id}/copy
+ * - DocumentGet → GET /document/{id} (for roles)
+ * - SendInvitePost → POST /document/{id}/invite
  */
 
 import { getAccessToken } from "@/lib/integrations/signnow";
 import type { InviteOptions, SignerConfig } from "@/lib/integrations/signnow";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const init = require("@signnow/api-client");
+// Import v3 SDK core and request/response types
+import { Sdk } from "@signnow/api-client-v3/core";
+import { CloneTemplatePostRequest, type CloneTemplatePostResponse } from "@signnow/api-client-v3/api/template";
+import { DocumentGetRequest, type DocumentGetResponse, type RoleResponseAttribute } from "@signnow/api-client-v3/api/document";
+import { SendInvitePostRequest, type SendInvitePostResponse, type ToRequestAttribute } from "@signnow/api-client-v3/api/documentInvite";
 
-function getClient() {
-  return init({ production: true });
-}
+let sdkInstance: Sdk | null = null;
 
-function p<T>(fn: (params: Record<string, unknown>, cb: (err: unknown, res: T) => void) => void) {
-  return (params: Record<string, unknown>) =>
-    new Promise<T>((resolve, reject) => {
-      fn(params, (err, res) => (err ? reject(err) : resolve(res as T)));
-    });
+/**
+ * Get or create a singleton SDK instance with current access token.
+ */
+async function getSdk(): Promise<Sdk> {
+  if (!sdkInstance) {
+    sdkInstance = new Sdk();
+  }
+  const token = await getAccessToken();
+  sdkInstance.setBearerToken(token);
+  return sdkInstance;
 }
 
 /**
- * Create a document from a template using the SDK (Template.duplicate).
+ * Create a document from a template using the SDK (CloneTemplatePost).
  */
 export async function createDocumentWithMultipleSigners(
   templateId: string,
@@ -37,36 +43,34 @@ export async function createDocumentWithMultipleSigners(
   if (!signers?.length) {
     throw new Error("createDocumentWithMultipleSigners: signers array cannot be empty");
   }
-  const token = await getAccessToken();
-  const api = getClient();
-  const duplicate = p<{ id: string }>(api.template.duplicate.bind(api.template));
-  const result = await duplicate({
-    id: templateId,
-    name: documentName,
-    token,
-  });
-  return result.id;
+
+  const sdk = await getSdk();
+  const request = new CloneTemplatePostRequest(templateId, documentName, null, null);
+  const response = await sdk.getClient().send<CloneTemplatePostResponse>(request);
+
+  return response.id;
 }
 
 /**
- * Get document roles using SDK Document.view (legacy GET /document/{id}).
+ * Get document roles using SDK DocumentGet (legacy GET /document/{id}).
  */
 export async function getDocumentRoles(documentId: string): Promise<Array<{ unique_id: string; name?: string }>> {
-  const token = await getAccessToken();
-  const api = getClient();
-  const view = p<{ roles?: Array<{ unique_id?: string; name?: string }> }>(api.document.view.bind(api.document));
-  const doc = await view({ id: documentId, token });
-  const roles = Array.isArray(doc.roles) ? doc.roles : [];
+  const sdk = await getSdk();
+  const request = new DocumentGetRequest(documentId);
+  const doc = await sdk.getClient().send<DocumentGetResponse>(request);
+
+  const roles: RoleResponseAttribute[] = Array.isArray(doc.roles) ? doc.roles : [];
+
   return roles
-    .filter((r) => r != null && typeof r === "object" && typeof (r as { unique_id?: string }).unique_id === "string")
+    .filter((r): r is RoleResponseAttribute => r != null && typeof r === "object" && typeof r.unique_id === "string")
     .map((r) => ({
-      unique_id: (r as { unique_id: string }).unique_id,
-      name: typeof (r as { name?: string }).name === "string" ? (r as { name: string }).name : undefined,
+      unique_id: r.unique_id,
+      name: typeof r.name === "string" ? r.name : undefined,
     }));
 }
 
 /**
- * Send multiple invites using SDK Document.invite (legacy POST /document/{id}/invite).
+ * Send multiple invites using SDK SendInvitePost (legacy POST /document/{id}/invite).
  */
 export async function sendMultipleInvites(
   documentId: string,
@@ -79,44 +83,52 @@ export async function sendMultipleInvites(
   if (options?.expirationDays != null && options.expirationDays > 180) {
     throw new Error("sendMultipleInvites: expirationDays cannot exceed 180");
   }
-  const token = await getAccessToken();
-  const api = getClient();
+
+  const sdk = await getSdk();
   const roles = await getDocumentRoles(documentId);
+
   if (roles.length < signers.length) {
     throw new Error(
       `Document has ${roles.length} role(s) but ${signers.length} signer(s). Template must have at least one role per signer.`
     );
   }
+
   const from = process.env.SIGNNOW_FROM_EMAIL || "noreply@example.com";
   const subject = options?.subject ?? "Please sign this document";
   const message = options?.message ?? "Please review and sign the document.";
   const expirationDays = options?.expirationDays ?? 30;
   const reminderDays = options?.reminderDays ?? 0;
-  const to = signers.map((s, i) => {
+
+  // Build the "to" array matching the SDK's To interface
+  const to: ToRequestAttribute[] = signers.map((s, i) => {
     const role = roles[i];
     return {
       email: s.email,
       role: s.role,
       role_id: role.unique_id,
       order: s.order ?? i + 1,
+      subject,
+      message,
       reassign: "0",
       decline_by_signature: "0",
       reminder: reminderDays,
       expiration_days: expirationDays,
     };
   });
-  const invite = p<{ status?: string }>(api.document.invite.bind(api.document));
-  await invite({
-    id: documentId,
-    token,
-    data: {
-      from,
-      to,
-      subject,
-      message,
-      email: "disabled",
-      cc: [],
-    },
-    options: {},
-  });
+
+  const request = new SendInvitePostRequest(
+    documentId,
+    to,
+    from,
+    subject,
+    message,
+    [], // emailGroups
+    [], // cc
+    [], // ccStep
+    [], // viewers
+    "", // ccSubject
+    ""  // ccMessage
+  );
+
+  await sdk.getClient().send<SendInvitePostResponse>(request);
 }

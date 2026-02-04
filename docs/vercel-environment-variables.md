@@ -34,9 +34,12 @@ Required only if you use the SignNow document management feature (send/track doc
 | `SIGNNOW_API_SECRET` | SignNow Secret Key (OAuth) | SignNow app → OAuth 2.0 / API credentials |
 | `SIGNNOW_USER_EMAIL` | SignNow account email (for password grant) | The SignNow user that owns the API app |
 | `SIGNNOW_PASSWORD` | SignNow account password (for password grant) | Same account as above |
+| `SIGNNOW_API_HOST` | **Required for v3 SDK.** SignNow API base URL | `https://api.signnow.com` (production) |
 | `SIGNNOW_WEBHOOK_SECRET` | Secret used to verify webhook payloads (HMAC-SHA256) | SignNow webhook configuration; leave unset to skip verification |
 | `SIGNNOW_FROM_EMAIL` | From address for invite emails (e.g. `noreply@yourdomain.com`) | Your sending domain |
 | `USE_SIGNNOW_SDK` | SignNow: use SDK for create-from-template and send-invite. **Default is SDK** (unset or `true`). Set to `false` to use direct API only. | `true` or leave unset (recommended); `false` to disable SDK |
+
+**⚠️ SIGNNOW_API_HOST is required.** The v3 SDK does not default to any base URL. If omitted, API requests will fail with "Only absolute URLs are supported". Always set it to `https://api.signnow.com`.
 
 **Note:** SignNow’s token endpoint uses **password grant**. Set `SIGNNOW_USER_EMAIL` and `SIGNNOW_PASSWORD` (the account that owns the API app) so the app can fetch templates and create documents. Without them, you may see “Failed to retrieve SignNow templates.”
 

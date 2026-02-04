@@ -76,6 +76,12 @@ If you see 404s on preview or send, ensure `USE_SIGNNOW_SDK` is not set to `fals
 
 ---
 
+## Migrating to SignNow SDK v3
+
+To switch from the npm v1.8.2 SDK to the local v3 SDK (TypeScript, request/response classes), use **docs/signnow-v3-migration-spec.md**. That spec is the full handoff for an agent (e.g. Claude Code): steps, file paths, env mapping, v3 API usage, and which MCPs/docs to use.
+
+---
+
 ## SignNow Node.js SDK (local v3 source)
 
 A copy of the official SignNow Node.js SDK source (v3.0.0) is available locally for reference:
