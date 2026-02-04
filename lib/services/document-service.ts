@@ -121,6 +121,8 @@ function buildFieldValues(
     { field_name: "manager", field_value: manager },
     { field_name: "recruiter_name", field_value: recruiter },
     { field_name: "recruit_name", field_value: name },
+    { field_name: "recruit_name_2", field_value: name },
+    { field_name: "recruit_name_3", field_value: name },
     { field_name: "recruit_email", field_value: email },
     { field_name: "target_office", field_value: office },
     { field_name: "target_role", field_value: role },
