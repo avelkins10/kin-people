@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { sendOnboardingReminderEmail } from "@/lib/services/email-service";
+import { sanitizeErrorMessage } from "@/lib/utils";
 
 /**
  * POST /api/people/[id]/onboarding/send-reminder
@@ -93,7 +94,7 @@ export async function POST(
 
       if (!result.success) {
         return NextResponse.json(
-          { error: result.error || "Failed to send email" },
+          { error: sanitizeErrorMessage(result.error ?? "Failed to send email", "Failed to send reminder email. Please try again.") },
           { status: 500 }
         );
       }
@@ -107,7 +108,7 @@ export async function POST(
       const message = error instanceof Error ? error.message : "Internal server error";
       console.error("Error sending reminder email:", error);
       return NextResponse.json(
-        { error: message },
+        { error: sanitizeErrorMessage(message, "Failed to send reminder email. Please try again.") },
         { status: 500 }
       );
     }

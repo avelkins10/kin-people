@@ -222,14 +222,17 @@ export function SettingsOnboardingFieldsSection({
     setLoading(true);
     try {
       const res = await fetch("/api/onboarding-info-fields");
-      if (!res.ok) throw new Error("Failed to fetch fields");
-      const data = await res.json();
-      setFields(data);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = (data as { error?: string }).error ?? "Failed to fetch fields";
+        throw new Error(message);
+      }
+      setFields(Array.isArray(data) ? data : []);
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to load info fields",
+        description: error instanceof Error ? error.message : "Failed to load info fields",
       });
     } finally {
       setLoading(false);
@@ -429,140 +432,123 @@ export function SettingsOnboardingFieldsSection({
     }
   }
 
-  const FieldForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
-    <form onSubmit={onSubmit}>
-      <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+  const formContent = (
+    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+      <div className="grid gap-2">
+        <Label htmlFor="field-label">Label</Label>
+        <Input
+          id="field-label"
+          value={formFieldLabel}
+          onChange={(e) => handleLabelChange(e.target.value)}
+          placeholder="e.g. Shirt Size"
+          required
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="field-name">Field Name (system identifier)</Label>
+        <Input
+          id="field-name"
+          value={formFieldName}
+          onChange={(e) => setFormFieldName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+          placeholder="e.g. shirt_size"
+          required
+          pattern="^[a-z][a-z0-9_]*$"
+        />
+        <p className="text-xs text-gray-500">Lowercase letters, numbers, and underscores only</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="field-label">Label</Label>
-          <Input
-            id="field-label"
-            value={formFieldLabel}
-            onChange={(e) => handleLabelChange(e.target.value)}
-            placeholder="e.g. Shirt Size"
-            required
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="field-name">Field Name (system identifier)</Label>
-          <Input
-            id="field-name"
-            value={formFieldName}
-            onChange={(e) => setFormFieldName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-            placeholder="e.g. shirt_size"
-            required
-            pattern="^[a-z][a-z0-9_]*$"
-          />
-          <p className="text-xs text-gray-500">Lowercase letters, numbers, and underscores only</p>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="field-type">Field Type</Label>
-            <Select value={formFieldType} onValueChange={setFormFieldType}>
-              <SelectTrigger id="field-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {INFO_FIELD_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {FIELD_TYPE_LABELS[type] || type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="field-category">Category</Label>
-            <Select value={formCategory} onValueChange={setFormCategory}>
-              <SelectTrigger id="field-category">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {INFO_FIELD_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat] || cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {formFieldType === "select" && (
-          <div className="grid gap-2">
-            <Label>Dropdown Options</Label>
-            <div className="space-y-2">
-              {formOptions.map((option, index) => (
-                <div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
-                  <span className="flex-1 text-sm">
-                    <span className="font-medium">{option.label}</span>
-                    <span className="text-gray-400 ml-2">({option.value})</span>
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => removeOption(index)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
+          <Label htmlFor="field-type">Field Type</Label>
+          <Select value={formFieldType} onValueChange={setFormFieldType}>
+            <SelectTrigger id="field-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {INFO_FIELD_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {FIELD_TYPE_LABELS[type] || type}
+                </SelectItem>
               ))}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Value"
-                  value={newOptionValue}
-                  onChange={(e) => setNewOptionValue(e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="Label"
-                  value={newOptionLabel}
-                  onChange={(e) => setNewOptionLabel(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addOption}
-                  disabled={!newOptionValue.trim() || !newOptionLabel.trim()}
-                >
-                  Add
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="field-required"
-            checked={formIsRequired}
-            onCheckedChange={(checked) => setFormIsRequired(checked === true)}
-          />
-          <Label htmlFor="field-required" className="cursor-pointer">
-            Required field
-          </Label>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="field-category">Category</Label>
+          <Select value={formCategory} onValueChange={setFormCategory}>
+            <SelectTrigger id="field-category">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">None</SelectItem>
+              {INFO_FIELD_CATEGORIES.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {CATEGORY_LABELS[cat] || cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setAddOpen(false);
-            setEditField(null);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={saving || !formFieldName.trim() || !formFieldLabel.trim()}>
-          {saving ? "Saving..." : submitLabel}
-        </Button>
-      </DialogFooter>
-    </form>
+
+      {formFieldType === "select" && (
+        <div className="grid gap-2">
+          <Label>Dropdown Options</Label>
+          <div className="space-y-2">
+            {formOptions.map((option, index) => (
+              <div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
+                <span className="flex-1 text-sm">
+                  <span className="font-medium">{option.label}</span>
+                  <span className="text-gray-400 ml-2">({option.value})</span>
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => removeOption(index)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Value"
+                value={newOptionValue}
+                onChange={(e) => setNewOptionValue(e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                placeholder="Label"
+                value={newOptionLabel}
+                onChange={(e) => setNewOptionLabel(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addOption}
+                disabled={!newOptionValue.trim() || !newOptionLabel.trim()}
+              >
+                Add
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="field-required"
+          checked={formIsRequired}
+          onCheckedChange={(checked) => setFormIsRequired(checked === true)}
+        />
+        <Label htmlFor="field-required" className="cursor-pointer">
+          Required field
+        </Label>
+      </div>
+    </div>
   );
 
   return (
@@ -608,7 +594,21 @@ export function SettingsOnboardingFieldsSection({
           <DialogHeader>
             <DialogTitle>Add Personal Info Field</DialogTitle>
           </DialogHeader>
-          <FieldForm onSubmit={handleCreate} submitLabel="Create" />
+          <form onSubmit={handleCreate}>
+            {formContent}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving || !formFieldName.trim() || !formFieldLabel.trim()}>
+                {saving ? "Saving..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -618,7 +618,21 @@ export function SettingsOnboardingFieldsSection({
           <DialogHeader>
             <DialogTitle>Edit Personal Info Field</DialogTitle>
           </DialogHeader>
-          <FieldForm onSubmit={handleUpdate} submitLabel="Save" />
+          <form onSubmit={handleUpdate}>
+            {formContent}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditField(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving || !formFieldName.trim() || !formFieldLabel.trim()}>
+                {saving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

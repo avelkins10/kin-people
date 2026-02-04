@@ -6,6 +6,12 @@ import { people, roles, offices } from "@/lib/db/schema";
 import { eq, gte, sql, and } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
+import { generateKinId } from "@/lib/db/helpers/kin-id-helpers";
+import {
+  normalizePhone,
+  checkForDuplicatePerson,
+  formatDuplicateError,
+} from "@/lib/db/helpers/duplicate-helpers";
 
 const managerAlias = alias(people, "manager");
 
@@ -83,23 +89,43 @@ export const POST = withPermission(Permission.VIEW_ALL_PEOPLE, async (req: NextR
     const body = await req.json();
     const validated = createPersonSchema.parse(body);
 
+    // Check for duplicate person
+    const duplicatePerson = await checkForDuplicatePerson(
+      validated.email,
+      validated.phone
+    );
+    if (duplicatePerson.isDuplicate) {
+      return NextResponse.json(
+        { error: formatDuplicateError(duplicatePerson, "person") },
+        { status: 409 }
+      );
+    }
+
+    // Generate KIN ID for new person
+    const kinId = await generateKinId();
+
+    // Normalize phone for storage
+    const normalizedPhone = normalizePhone(validated.phone);
+
     const [newPerson] = await db
       .insert(people)
       .values({
+        kinId,
         firstName: validated.firstName,
         lastName: validated.lastName,
         email: validated.email,
         phone: validated.phone || null,
+        normalizedPhone,
         roleId: validated.roleId,
         officeId: validated.officeId || null,
         reportsToId: validated.reportsToId || null,
         status: validated.status,
         hireDate: validated.hireDate || null,
       })
-      .returning({ id: people.id });
+      .returning({ id: people.id, kinId: people.kinId });
 
     return NextResponse.json(
-      { id: newPerson?.id, message: "Person created successfully" },
+      { id: newPerson?.id, kinId: newPerson?.kinId, message: "Person created successfully" },
       { status: 201 }
     );
   } catch (error: any) {

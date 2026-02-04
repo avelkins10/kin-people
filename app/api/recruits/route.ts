@@ -7,6 +7,12 @@ import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { getRecruitVisibilityFilterAsync } from "@/lib/auth/visibility-rules";
 import { createRecruitHistoryRecord } from "@/lib/db/helpers/recruit-helpers";
+import {
+  normalizePhone,
+  checkForDuplicateRecruit,
+  checkIfAlreadyHired,
+  formatDuplicateError,
+} from "@/lib/db/helpers/duplicate-helpers";
 
 const createRecruitSchema = z.object({
   firstName: z.string().min(1),
@@ -159,6 +165,24 @@ export const POST = withPermission(Permission.CREATE_RECRUITS, async (req: NextR
     const body = await req.json();
     const validated = createRecruitSchema.parse(body);
 
+    // Check for duplicate recruit
+    const duplicateRecruit = await checkForDuplicateRecruit(
+      validated.email,
+      validated.phone
+    );
+    if (duplicateRecruit.isDuplicate) {
+      return NextResponse.json(
+        { error: formatDuplicateError(duplicateRecruit, "recruit") },
+        { status: 409 }
+      );
+    }
+
+    // Check if already hired (optional warning - return as separate field)
+    const alreadyHired = await checkIfAlreadyHired(validated.email, validated.phone);
+
+    // Normalize phone for storage
+    const normalizedPhone = normalizePhone(validated.phone);
+
     // Create recruit record
     const [newRecruit] = await db
       .insert(recruits)
@@ -167,6 +191,7 @@ export const POST = withPermission(Permission.CREATE_RECRUITS, async (req: NextR
         lastName: validated.lastName,
         email: validated.email || null,
         phone: validated.phone || null,
+        normalizedPhone,
         source: validated.source || null,
         priority: validated.priority ?? null,
         recruiterId: user.id,
@@ -214,7 +239,14 @@ export const POST = withPermission(Permission.CREATE_RECRUITS, async (req: NextR
       .where(eq(recruits.id, newRecruit.id))
       .limit(1);
 
-    return NextResponse.json(recruitWithDetails[0], { status: 201 });
+    // Include warning if person is already hired
+    const response: any = recruitWithDetails[0];
+    if (alreadyHired.isDuplicate && alreadyHired.existingRecord) {
+      const { firstName, lastName, kinId } = alreadyHired.existingRecord;
+      response.warning = `Note: This person may already be hired as ${firstName} ${lastName}${kinId ? ` (${kinId})` : ""}`;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

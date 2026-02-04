@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { people, roles } from "@/lib/db/schema";
+import { sanitizeErrorMessage } from "@/lib/utils";
 import { and, eq } from "drizzle-orm";
 
 /**
@@ -124,6 +125,9 @@ export async function POST(req: NextRequest) {
         ? err.message
         : "Internal server error";
 
-    return NextResponse.json({ error: userMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: sanitizeErrorMessage(userMessage, "Internal server error") },
+      { status: 500 }
+    );
   }
 }

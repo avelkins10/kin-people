@@ -60,6 +60,26 @@ function replaceTemplateVariables(text: string, variables: Record<string, string
   return result;
 }
 
+/** Normalize Resend/third-party API errors so we don't expose raw API JSON to users. */
+function normalizeEmailError(error: unknown): string {
+  const raw =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : String(error);
+  // Resend returns JSON like {"type":"error","error":{"type":"api_error","message":"Internal server error"},"request_id":"req_..."}
+  if (
+    raw.includes("api_error") ||
+    raw.includes("request_id") ||
+    (raw.trimStart().startsWith("{") && raw.includes("Internal server error"))
+  ) {
+    return "Email service temporarily unavailable. Please try again later.";
+  }
+  if (raw.length > 200) return "Email service temporarily unavailable. Please try again later.";
+  return raw || "Failed to send email.";
+}
+
 export interface WelcomeEmailParams {
   email: string;
   firstName: string;
@@ -142,7 +162,7 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ su
     console.error('[email-service] Failed to send welcome email:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: normalizeEmailError(error),
     };
   }
 }
@@ -206,7 +226,7 @@ export async function sendOnboardingReminderEmail(params: ReminderEmailParams): 
     console.error('[email-service] Failed to send reminder email:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: normalizeEmailError(error),
     };
   }
 }
@@ -263,7 +283,7 @@ export async function sendOnboardingCompleteEmail(params: CompletionEmailParams)
     console.error('[email-service] Failed to send completion email:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: normalizeEmailError(error),
     };
   }
 }

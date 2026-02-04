@@ -85,6 +85,13 @@
       "when": 1739134800000,
       "tag": "0011_onboarding_enhancements",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1739221200000,
+      "tag": "0012_kin_id_system",
+      "breakpoints": true
     }
   ]
 }

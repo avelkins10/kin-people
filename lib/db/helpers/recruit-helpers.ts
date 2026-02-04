@@ -17,6 +17,8 @@ import { eq, and, desc, or } from "drizzle-orm";
 import type { Recruit, NewRecruit } from "@/lib/db/schema/recruits";
 import type { NewRecruitHistory } from "@/lib/db/schema/recruit-history";
 import { sendWelcomeEmail } from "@/lib/services/email-service";
+import { generateKinId } from "@/lib/db/helpers/kin-id-helpers";
+import { normalizePhone, checkForDuplicatePerson } from "@/lib/db/helpers/duplicate-helpers";
 
 export interface RecruitWithDetails {
   recruit: Recruit;
@@ -334,18 +336,39 @@ export async function convertRecruitToOnboarding(
     return null;
   }
 
+  // Check for duplicate person before conversion
+  if (recruit.email) {
+    const duplicatePerson = await checkForDuplicatePerson(recruit.email, recruit.phone);
+    if (duplicatePerson.isDuplicate) {
+      console.warn(
+        "[convertRecruitToOnboarding] Duplicate person found for recruit:",
+        recruitId,
+        duplicatePerson.existingRecord
+      );
+      return null;
+    }
+  }
+
   const hireDate = new Date().toISOString().split("T")[0]; // Today's date
 
   try {
     const result = await db.transaction(async (tx) => {
+      // Generate KIN ID for the new person
+      const kinId = await generateKinId(tx);
+
+      // Normalize phone for storage
+      const normalizedPhone = normalizePhone(recruit.phone);
+
       // Create person with onboarding status
       const [newPerson] = await tx
         .insert(people)
         .values({
+          kinId,
           firstName: recruit.firstName ?? "",
           lastName: recruit.lastName ?? "",
           email: recruit.email ?? "",
           phone: recruit.phone ?? null,
+          normalizedPhone,
           officeId: targetOffice.id,
           roleId: targetRole.id,
           reportsToId: targetReportsTo?.id ?? null,
@@ -435,7 +458,7 @@ export async function convertRecruitToOnboarding(
     });
 
     console.log(
-      `[convertRecruitToOnboarding] Recruit ${recruitId} converted to person ${result.id} with onboarding status`
+      `[convertRecruitToOnboarding] Recruit ${recruitId} converted to person ${result.id} (${result.kinId}) with onboarding status`
     );
 
     // Send welcome email to the new hire (async, don't block on failure)

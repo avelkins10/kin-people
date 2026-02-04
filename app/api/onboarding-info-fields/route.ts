@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { onboardingInfoFields } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { INFO_FIELD_TYPES, INFO_FIELD_CATEGORIES } from "@/lib/db/schema/onboarding-info-fields";
@@ -34,9 +34,6 @@ export const GET = withAuth(async (req: NextRequest) => {
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
     const category = url.searchParams.get('category');
 
-    let query = db.select().from(onboardingInfoFields);
-
-    // Build where conditions
     const conditions = [];
     if (!includeInactive) {
       conditions.push(eq(onboardingInfoFields.isActive, true));
@@ -45,16 +42,11 @@ export const GET = withAuth(async (req: NextRequest) => {
       conditions.push(eq(onboardingInfoFields.category, category));
     }
 
-    if (conditions.length === 1) {
-      query = query.where(conditions[0]) as typeof query;
-    } else if (conditions.length > 1) {
-      // Apply all conditions with AND
-      let filtered = query.where(conditions[0]) as typeof query;
-      for (let i = 1; i < conditions.length; i++) {
-        filtered = filtered.where(conditions[i]) as typeof query;
-      }
-      query = filtered;
-    }
+    const baseQuery = db.select().from(onboardingInfoFields);
+    const query =
+      conditions.length === 0
+        ? baseQuery
+        : baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions));
 
     const fields = await query.orderBy(asc(onboardingInfoFields.displayOrder));
 

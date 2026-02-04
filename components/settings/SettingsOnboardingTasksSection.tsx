@@ -414,106 +414,89 @@ export function SettingsOnboardingTasksSection({
     }
   }
 
-  const TaskForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
-    <form onSubmit={onSubmit}>
-      <div className="grid gap-4 py-4">
+  const formContent = (
+    <div className="grid gap-4 py-4">
+      <div className="grid gap-2">
+        <Label htmlFor="task-title">Title</Label>
+        <Input
+          id="task-title"
+          value={formTitle}
+          onChange={(e) => setFormTitle(e.target.value)}
+          placeholder="e.g. Complete I-9 Form"
+          required
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="task-description">Description</Label>
+        <Textarea
+          id="task-description"
+          value={formDescription}
+          onChange={(e) => setFormDescription(e.target.value)}
+          placeholder="Brief description of the task"
+          rows={2}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="task-title">Title</Label>
-          <Input
-            id="task-title"
-            value={formTitle}
-            onChange={(e) => setFormTitle(e.target.value)}
-            placeholder="e.g. Complete I-9 Form"
-            required
-          />
+          <Label htmlFor="task-category">Category</Label>
+          <Select value={formCategory} onValueChange={setFormCategory}>
+            <SelectTrigger id="task-category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TASK_CATEGORIES.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {CATEGORY_LABELS[cat] || cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="task-description">Description</Label>
-          <Textarea
-            id="task-description"
-            value={formDescription}
-            onChange={(e) => setFormDescription(e.target.value)}
-            placeholder="Brief description of the task"
-            rows={2}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="task-category">Category</Label>
-            <Select value={formCategory} onValueChange={setFormCategory}>
-              <SelectTrigger id="task-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TASK_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat] || cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="task-type">Task Type</Label>
-            <Select value={formTaskType} onValueChange={setFormTaskType}>
-              <SelectTrigger id="task-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TASK_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {TASK_TYPE_LABELS[type] || type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="task-assignee">Assignee</Label>
-            <Select value={formAssigneeType} onValueChange={setFormAssigneeType}>
-              <SelectTrigger id="task-assignee">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ASSIGNEE_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {ASSIGNEE_TYPE_LABELS[type] || type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="task-due-days">Due Days (optional)</Label>
-            <Input
-              id="task-due-days"
-              type="number"
-              min="0"
-              value={formDueDays}
-              onChange={(e) => setFormDueDays(e.target.value)}
-              placeholder="Days from hire"
-            />
-          </div>
+          <Label htmlFor="task-type">Task Type</Label>
+          <Select value={formTaskType} onValueChange={setFormTaskType}>
+            <SelectTrigger id="task-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TASK_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {TASK_TYPE_LABELS[type] || type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setAddOpen(false);
-            setEditTask(null);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={saving || !formTitle.trim()}>
-          {saving ? "Saving..." : submitLabel}
-        </Button>
-      </DialogFooter>
-    </form>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="task-assignee">Assignee</Label>
+          <Select value={formAssigneeType} onValueChange={setFormAssigneeType}>
+            <SelectTrigger id="task-assignee">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ASSIGNEE_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {ASSIGNEE_TYPE_LABELS[type] || type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="task-due-days">Due Days (optional)</Label>
+          <Input
+            id="task-due-days"
+            type="number"
+            min="0"
+            value={formDueDays}
+            onChange={(e) => setFormDueDays(e.target.value)}
+            placeholder="Days from hire"
+          />
+        </div>
+      </div>
+    </div>
   );
 
   return (
@@ -559,7 +542,21 @@ export function SettingsOnboardingTasksSection({
           <DialogHeader>
             <DialogTitle>Add Onboarding Task</DialogTitle>
           </DialogHeader>
-          <TaskForm onSubmit={handleCreate} submitLabel="Create" />
+          <form onSubmit={handleCreate}>
+            {formContent}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving || !formTitle.trim()}>
+                {saving ? "Saving..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -569,7 +566,21 @@ export function SettingsOnboardingTasksSection({
           <DialogHeader>
             <DialogTitle>Edit Onboarding Task</DialogTitle>
           </DialogHeader>
-          <TaskForm onSubmit={handleUpdate} submitLabel="Save" />
+          <form onSubmit={handleUpdate}>
+            {formContent}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditTask(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving || !formTitle.trim()}>
+                {saving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
