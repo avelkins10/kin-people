@@ -9,7 +9,7 @@ import {
   getDocumentBySignnowId,
   updateDocumentStatus,
 } from "@/lib/db/helpers/document-helpers";
-import { createRecruitHistoryRecord } from "@/lib/db/helpers/recruit-helpers";
+import { createRecruitHistoryRecord, convertRecruitToOnboarding } from "@/lib/db/helpers/recruit-helpers";
 
 const LOG_PREFIX = "[webhook/signnow]";
 
@@ -277,6 +277,18 @@ export async function POST(req: NextRequest) {
           console.log(
             `${LOG_PREFIX} document.complete: recruitId=${document.recruitId} → status=agreement_signed (from ${previousStatus})`
           );
+
+          // Automatically convert recruit to person and start onboarding
+          const conversion = await convertRecruitToOnboarding(document.recruitId);
+          if (conversion) {
+            console.log(
+              `${LOG_PREFIX} document.complete: recruitId=${document.recruitId} → auto-converted to personId=${conversion.personId} with onboarding`
+            );
+          } else {
+            console.warn(
+              `${LOG_PREFIX} document.complete: recruitId=${document.recruitId} → auto-conversion failed or skipped`
+            );
+          }
         }
 
         console.log(

@@ -7,6 +7,11 @@ import {
   teams,
   roles,
   payPlans,
+  personPayPlans,
+  personTeams,
+  personHistory,
+  onboardingTasks,
+  personOnboardingProgress,
 } from "@/lib/db/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import type { Recruit, NewRecruit } from "@/lib/db/schema/recruits";
@@ -294,4 +299,149 @@ export async function updateRecruitStatus(
   });
 
   return updated;
+}
+
+/**
+ * Convert a recruit to a person and initialize onboarding.
+ * Called automatically when rep agreement is signed.
+ *
+ * - Creates person with status "onboarding"
+ * - Sets up pay plan and team if configured
+ * - Initializes onboarding task progress
+ * - Updates recruit status to "onboarding" (keeps them visible in pipeline)
+ */
+export async function convertRecruitToOnboarding(
+  recruitId: string
+): Promise<{ personId: string } | null> {
+  const recruitData = await getRecruitWithDetails(recruitId);
+  if (!recruitData) {
+    console.error("[convertRecruitToOnboarding] Recruit not found:", recruitId);
+    return null;
+  }
+
+  const { recruit, targetOffice, targetRole, targetPayPlan, targetTeam, targetReportsTo } = recruitData;
+
+  // Skip if already converted
+  if (recruit.convertedToPersonId) {
+    console.log("[convertRecruitToOnboarding] Recruit already converted:", recruitId);
+    return { personId: recruit.convertedToPersonId };
+  }
+
+  // Require office and role
+  if (!targetOffice || !targetRole) {
+    console.warn("[convertRecruitToOnboarding] Missing target office or role for recruit:", recruitId);
+    return null;
+  }
+
+  const hireDate = new Date().toISOString().split("T")[0]; // Today's date
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Create person with onboarding status
+      const [newPerson] = await tx
+        .insert(people)
+        .values({
+          firstName: recruit.firstName ?? "",
+          lastName: recruit.lastName ?? "",
+          email: recruit.email ?? "",
+          phone: recruit.phone ?? null,
+          officeId: targetOffice.id,
+          roleId: targetRole.id,
+          reportsToId: targetReportsTo?.id ?? null,
+          recruitedById: recruit.recruiterId ?? null,
+          status: "onboarding",
+          hireDate,
+        })
+        .returning();
+
+      // Create pay plan record
+      if (targetPayPlan) {
+        await tx.insert(personPayPlans).values({
+          personId: newPerson.id,
+          payPlanId: targetPayPlan.id,
+          effectiveDate: hireDate,
+          notes: "Assigned from automatic recruit conversion",
+        });
+      }
+
+      // Create team record
+      if (targetTeam) {
+        await tx.insert(personTeams).values({
+          personId: newPerson.id,
+          teamId: targetTeam.id,
+          roleInTeam: "member",
+          effectiveDate: hireDate,
+        });
+      }
+
+      // Create person history record
+      await tx.insert(personHistory).values({
+        personId: newPerson.id,
+        changeType: "hired",
+        previousValue: null,
+        newValue: {
+          office_id: targetOffice.id,
+          office_name: targetOffice.name,
+          role_id: targetRole.id,
+          role_name: targetRole.name,
+          hire_date: hireDate,
+          auto_converted: true,
+        },
+        effectiveDate: hireDate,
+        reason: "Auto-converted from recruit after agreement signed",
+        changedById: null, // System action
+      });
+
+      // Update recruit to onboarding status (keeps in pipeline)
+      await tx
+        .update(recruits)
+        .set({
+          convertedToPersonId: newPerson.id,
+          convertedAt: new Date(),
+          status: "onboarding",
+          updatedAt: new Date(),
+        })
+        .where(eq(recruits.id, recruitId));
+
+      // Create recruit history record
+      await tx.insert(recruitHistory).values({
+        recruitId,
+        previousStatus: recruit.status,
+        newStatus: "onboarding",
+        notes: `Auto-converted to person (${newPerson.id}) after agreement signed`,
+        changedById: null, // System action
+      });
+
+      // Initialize onboarding tasks
+      const activeTasks = await tx
+        .select({ id: onboardingTasks.id })
+        .from(onboardingTasks)
+        .where(eq(onboardingTasks.isActive, true));
+
+      if (activeTasks.length > 0) {
+        const progressRecords = activeTasks.map((task) => ({
+          personId: newPerson.id,
+          taskId: task.id,
+          completed: false,
+        }));
+        await tx
+          .insert(personOnboardingProgress)
+          .values(progressRecords)
+          .onConflictDoNothing();
+      }
+
+      return newPerson;
+    });
+
+    console.log(
+      `[convertRecruitToOnboarding] Recruit ${recruitId} converted to person ${result.id} with onboarding status`
+    );
+    return { personId: result.id };
+  } catch (err) {
+    console.error("[convertRecruitToOnboarding] Failed to convert recruit:", {
+      recruitId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
 }
