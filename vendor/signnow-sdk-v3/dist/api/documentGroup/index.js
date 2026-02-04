@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DownloadDocumentGroupPostRequest = exports.DocumentGroupRecipientsGetRequest = exports.DocumentGroupPostRequest = exports.DocumentGroupGetRequest = exports.DocumentGroupDeleteRequest = void 0;
+var documentGroupDelete_1 = require("./request/documentGroupDelete");
+Object.defineProperty(exports, "DocumentGroupDeleteRequest", { enumerable: true, get: function () { return documentGroupDelete_1.DocumentGroupDelete; } });
+var documentGroupGet_1 = require("./request/documentGroupGet");
+Object.defineProperty(exports, "DocumentGroupGetRequest", { enumerable: true, get: function () { return documentGroupGet_1.DocumentGroupGet; } });
+var documentGroupPost_1 = require("./request/documentGroupPost");
+Object.defineProperty(exports, "DocumentGroupPostRequest", { enumerable: true, get: function () { return documentGroupPost_1.DocumentGroupPost; } });
+var documentGroupRecipientsGet_1 = require("./request/documentGroupRecipientsGet");
+Object.defineProperty(exports, "DocumentGroupRecipientsGetRequest", { enumerable: true, get: function () { return documentGroupRecipientsGet_1.DocumentGroupRecipientsGet; } });
+var downloadDocumentGroupPost_1 = require("./request/downloadDocumentGroupPost");
+Object.defineProperty(exports, "DownloadDocumentGroupPostRequest", { enumerable: true, get: function () { return downloadDocumentGroupPost_1.DownloadDocumentGroupPost; } });
