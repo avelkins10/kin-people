@@ -1,4 +1,7 @@
 import { Resend } from 'resend';
+import { db } from '@/lib/db';
+import { appSettings } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 // Initialize Resend client - requires RESEND_API_KEY environment variable
 const resend = process.env.RESEND_API_KEY
@@ -7,6 +10,55 @@ const resend = process.env.RESEND_API_KEY
 
 // Default "from" address - matches Supabase SMTP config
 const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'The KIN Team <team@kinhome.com>';
+
+// Email template types and keys
+type EmailTemplateType = 'welcome' | 'reminder' | 'completion';
+
+const EMAIL_TEMPLATE_KEYS: Record<EmailTemplateType, string> = {
+  welcome: 'email_template_welcome',
+  reminder: 'email_template_reminder',
+  completion: 'email_template_completion',
+};
+
+interface EmailTemplate {
+  subject: string;
+  body: string;
+}
+
+/**
+ * Fetch an email template from the database, falling back to default if not found.
+ */
+async function getEmailTemplate(type: EmailTemplateType): Promise<EmailTemplate | null> {
+  try {
+    const key = EMAIL_TEMPLATE_KEYS[type];
+    const result = await db
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.key, key))
+      .limit(1);
+
+    if (result.length > 0 && result[0].value) {
+      const parsed = JSON.parse(result[0].value);
+      if (parsed.subject && parsed.body) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.warn(`[email-service] Failed to fetch ${type} template from DB, using default:`, error);
+  }
+  return null;
+}
+
+/**
+ * Replace template variables with actual values.
+ */
+function replaceTemplateVariables(text: string, variables: Record<string, string>): string {
+  let result = text;
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+  }
+  return result;
+}
 
 export interface WelcomeEmailParams {
   email: string;
@@ -48,17 +100,40 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ su
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const portalUrl = onboardingUrl || `${baseUrl}/onboarding`;
 
-    const result = await resend.emails.send({
-      from: DEFAULT_FROM,
-      to: email,
-      subject: `Welcome to the team${officeName ? ` at ${officeName}` : ''}!`,
-      html: generateWelcomeEmailHtml({
+    // Try to get custom template from database
+    const customTemplate = await getEmailTemplate('welcome');
+
+    let subject: string;
+    let html: string;
+
+    if (customTemplate) {
+      // Use custom template with variable replacement
+      const variables: Record<string, string> = {
+        firstName,
+        lastName: lastName || '',
+        managerName: managerName ? `<strong>${managerName}</strong> will be your manager and is looking forward to working with you.` : '',
+        officeName: officeName ? ` at <strong>${officeName}</strong>` : '',
+        portalUrl,
+      };
+      subject = replaceTemplateVariables(customTemplate.subject, variables);
+      html = replaceTemplateVariables(customTemplate.body, variables);
+    } else {
+      // Use default hardcoded template
+      subject = `Welcome to the team${officeName ? ` at ${officeName}` : ''}!`;
+      html = generateWelcomeEmailHtml({
         firstName,
         lastName,
         managerName,
         officeName,
         portalUrl,
-      }),
+      });
+    }
+
+    const result = await resend.emails.send({
+      from: DEFAULT_FROM,
+      to: email,
+      subject,
+      html,
     });
 
     console.log('[email-service] Welcome email sent:', { email, messageId: result.data?.id });
@@ -88,16 +163,41 @@ export async function sendOnboardingReminderEmail(params: ReminderEmailParams): 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const portalUrl = onboardingUrl || `${baseUrl}/onboarding`;
 
-    const result = await resend.emails.send({
-      from: DEFAULT_FROM,
-      to: email,
-      subject: `Reminder: ${pendingTaskCount} onboarding task${pendingTaskCount !== 1 ? 's' : ''} remaining`,
-      html: generateReminderEmailHtml({
+    // Try to get custom template from database
+    const customTemplate = await getEmailTemplate('reminder');
+
+    let subject: string;
+    let html: string;
+
+    if (customTemplate) {
+      // Use custom template with variable replacement
+      const taskPlural = pendingTaskCount !== 1 ? 's' : '';
+      const variables: Record<string, string> = {
+        firstName,
+        managerName: managerName || '',
+        managerHelp: managerName ? `<p style="font-size: 14px; color: #6b7280;">If you need help with any tasks, please reach out to ${managerName}.</p>` : '',
+        pendingTaskCount: String(pendingTaskCount),
+        taskPlural,
+        portalUrl,
+      };
+      subject = replaceTemplateVariables(customTemplate.subject, variables);
+      html = replaceTemplateVariables(customTemplate.body, variables);
+    } else {
+      // Use default hardcoded template
+      subject = `Reminder: ${pendingTaskCount} onboarding task${pendingTaskCount !== 1 ? 's' : ''} remaining`;
+      html = generateReminderEmailHtml({
         firstName,
         managerName,
         pendingTaskCount,
         portalUrl,
-      }),
+      });
+    }
+
+    const result = await resend.emails.send({
+      from: DEFAULT_FROM,
+      to: email,
+      subject,
+      html,
     });
 
     console.log('[email-service] Reminder email sent:', { email, messageId: result.data?.id });
@@ -124,16 +224,37 @@ export async function sendOnboardingCompleteEmail(params: CompletionEmailParams)
   }
 
   try {
+    // Try to get custom template from database
+    const customTemplate = await getEmailTemplate('completion');
+
+    let subject: string;
+    let html: string;
+
+    if (customTemplate) {
+      // Use custom template with variable replacement
+      const variables: Record<string, string> = {
+        firstName,
+        managerName: managerName || '',
+        managerNotification: managerName ? `<p style="font-size: 16px;">${managerName} has been notified of your completion and will be in touch about next steps.</p>` : '',
+      };
+      subject = replaceTemplateVariables(customTemplate.subject, variables);
+      html = replaceTemplateVariables(customTemplate.body, variables);
+    } else {
+      // Use default hardcoded template
+      subject = `Congratulations! You've completed onboarding`;
+      html = generateCompletionEmailHtml({
+        firstName,
+        managerName,
+      });
+    }
+
     // Send to new hire
     const result = await resend.emails.send({
       from: DEFAULT_FROM,
       to: email,
       cc: managerEmail ? [managerEmail] : undefined,
-      subject: `Congratulations! You've completed onboarding`,
-      html: generateCompletionEmailHtml({
-        firstName,
-        managerName,
-      }),
+      subject,
+      html,
     });
 
     console.log('[email-service] Completion email sent:', { email, messageId: result.data?.id });

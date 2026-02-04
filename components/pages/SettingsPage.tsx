@@ -3,7 +3,7 @@
 import React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSettingsData } from "@/hooks/use-settings-data";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SettingsOverview } from "@/components/settings/settings-overview";
 import { SettingsRolesSection } from "@/components/settings/SettingsRolesSection";
 import { SettingsOfficesSection } from "@/components/settings/SettingsOfficesSection";
@@ -14,9 +14,16 @@ import { SettingsDocumentTemplatesSection } from "@/components/settings/Settings
 import { SettingsOnboardingMetricsSection } from "@/components/settings/SettingsOnboardingMetricsSection";
 import { SettingsOnboardingTasksSection } from "@/components/settings/SettingsOnboardingTasksSection";
 import { SettingsOnboardingFieldsSection } from "@/components/settings/SettingsOnboardingFieldsSection";
+import { SettingsEmailTemplatesSection } from "@/components/settings/SettingsEmailTemplatesSection";
 import { SettingsHistorySection } from "@/components/settings/SettingsHistorySection";
 import { SettingsUsersSection } from "@/components/settings/SettingsUsersSection";
 import { SettingsIntegrationsSection } from "@/components/settings/SettingsIntegrationsSection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   LayoutDashboard,
   Users,
@@ -24,10 +31,12 @@ import {
   MapPin,
   UsersRound,
   FileText,
+  DollarSign,
   Percent,
   GraduationCap,
   History,
   Plug,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +53,112 @@ const TAB_VALUES = [
   "history",
   "integrations",
 ] as const;
+
+type TabValue = (typeof TAB_VALUES)[number];
+
+// Tab groupings for the navigation
+const PEOPLE_TABS: TabValue[] = ["users", "roles"];
+const STRUCTURE_TABS: TabValue[] = ["offices", "teams"];
+const COMPENSATION_TABS: TabValue[] = ["pay-plans", "commission-rules"];
+const SYSTEM_TABS: TabValue[] = ["history", "integrations"];
+
+const TAB_CONFIG: Record<TabValue, { label: string; icon: typeof LayoutDashboard }> = {
+  overview: { label: "Overview", icon: LayoutDashboard },
+  users: { label: "Users", icon: Users },
+  roles: { label: "Roles", icon: Shield },
+  offices: { label: "Offices", icon: MapPin },
+  teams: { label: "Teams", icon: UsersRound },
+  documents: { label: "Documents", icon: FileText },
+  "pay-plans": { label: "Pay Plans", icon: DollarSign },
+  "commission-rules": { label: "Commission", icon: Percent },
+  onboarding: { label: "Onboarding", icon: GraduationCap },
+  history: { label: "History", icon: History },
+  integrations: { label: "Integrations", icon: Plug },
+};
+
+interface TabButtonProps {
+  value: TabValue;
+  activeTab: string;
+  onClick: (value: string) => void;
+}
+
+function TabButton({ value, activeTab, onClick }: TabButtonProps) {
+  const config = TAB_CONFIG[value];
+  const Icon = config.icon;
+  const isActive = activeTab === value;
+
+  return (
+    <button
+      onClick={() => onClick(value)}
+      className={cn(
+        "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
+        "border-b-2 whitespace-nowrap",
+        isActive
+          ? "border-black text-black"
+          : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {config.label}
+    </button>
+  );
+}
+
+interface TabDropdownProps {
+  label: string;
+  icon: typeof LayoutDashboard;
+  tabs: TabValue[];
+  activeTab: string;
+  onClick: (value: string) => void;
+}
+
+function TabDropdown({ label, icon: Icon, tabs, activeTab, onClick }: TabDropdownProps) {
+  const isGroupActive = tabs.includes(activeTab as TabValue);
+  const activeTabConfig = isGroupActive ? TAB_CONFIG[activeTab as TabValue] : null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className={cn(
+            "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
+            "border-b-2 whitespace-nowrap",
+            isGroupActive
+              ? "border-black text-black"
+              : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+          )}
+        >
+          <Icon className="h-4 w-4 shrink-0" />
+          {isGroupActive ? activeTabConfig?.label : label}
+          <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[160px]">
+        {tabs.map((tab) => {
+          const config = TAB_CONFIG[tab];
+          const TabIcon = config.icon;
+          return (
+            <DropdownMenuItem
+              key={tab}
+              onClick={() => onClick(tab)}
+              className={cn(
+                "flex items-center gap-2 cursor-pointer",
+                activeTab === tab && "bg-indigo-50 text-indigo-700"
+              )}
+            >
+              <TabIcon className="h-4 w-4" />
+              {config.label}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function Divider() {
+  return <div className="h-6 w-px bg-gray-200 mx-1 self-center shrink-0" />;
+}
 
 export function SettingsPage() {
   const searchParams = useSearchParams();
@@ -90,96 +205,72 @@ export function SettingsPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList
+        {/* Grouped Tab Navigation */}
+        <div
           className={cn(
-            "w-full justify-start gap-0.5 rounded-none border-b border-gray-200 bg-transparent p-0 h-auto min-h-10",
-            "overflow-x-auto flex-nowrap md:flex-wrap"
+            "w-full border-b border-gray-200 bg-transparent",
+            "overflow-x-auto flex items-center gap-0.5"
           )}
         >
-          <TabsTrigger
-            value="overview"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <LayoutDashboard className="h-4 w-4 mr-2 shrink-0" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger
-            value="users"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <Users className="h-4 w-4 mr-2 shrink-0" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger
-            value="roles"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <Shield className="h-4 w-4 mr-2 shrink-0" />
-            Roles
-          </TabsTrigger>
-          <TabsTrigger
-            value="offices"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <MapPin className="h-4 w-4 mr-2 shrink-0" />
-            Offices
-          </TabsTrigger>
-          <TabsTrigger
-            value="teams"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <UsersRound className="h-4 w-4 mr-2 shrink-0" />
-            Teams
-          </TabsTrigger>
-          <TabsTrigger
-            value="documents"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <FileText className="h-4 w-4 mr-2 shrink-0" />
-            Documents
-          </TabsTrigger>
-          <TabsTrigger
-            value="pay-plans"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <FileText className="h-4 w-4 mr-2 shrink-0" />
-            Pay Plans
-          </TabsTrigger>
-          <TabsTrigger
-            value="commission-rules"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <Percent className="h-4 w-4 mr-2 shrink-0" />
-            Commission
-          </TabsTrigger>
-          <TabsTrigger
-            value="onboarding"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <GraduationCap className="h-4 w-4 mr-2 shrink-0" />
-            Onboarding
-          </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <History className="h-4 w-4 mr-2 shrink-0" />
-            History
-          </TabsTrigger>
-          <TabsTrigger
-            value="integrations"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-black data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm font-medium text-gray-600 data-[state=active]:text-black"
-          >
-            <Plug className="h-4 w-4 mr-2 shrink-0" />
-            Integrations
-          </TabsTrigger>
-        </TabsList>
+          <TabButton value="overview" activeTab={activeTab} onClick={handleTabChange} />
+
+          <Divider />
+
+          <TabDropdown
+            label="People"
+            icon={Users}
+            tabs={PEOPLE_TABS}
+            activeTab={activeTab}
+            onClick={handleTabChange}
+          />
+
+          <Divider />
+
+          <TabDropdown
+            label="Structure"
+            icon={MapPin}
+            tabs={STRUCTURE_TABS}
+            activeTab={activeTab}
+            onClick={handleTabChange}
+          />
+
+          <Divider />
+
+          <TabButton value="documents" activeTab={activeTab} onClick={handleTabChange} />
+
+          <Divider />
+
+          <TabDropdown
+            label="Compensation"
+            icon={DollarSign}
+            tabs={COMPENSATION_TABS}
+            activeTab={activeTab}
+            onClick={handleTabChange}
+          />
+
+          <Divider />
+
+          <TabButton value="onboarding" activeTab={activeTab} onClick={handleTabChange} />
+
+          <Divider />
+
+          <TabDropdown
+            label="System"
+            icon={History}
+            tabs={SYSTEM_TABS}
+            activeTab={activeTab}
+            onClick={handleTabChange}
+          />
+        </div>
 
         <TabsContent value="overview" className="mt-6 focus-visible:outline-none">
           <SettingsOverview
             activePayPlans={activePayPlans}
             totalCommissionRules={totalCommissionRules}
             peopleWithoutPayPlans={peopleWithoutPayPlans}
+            totalUsers={people.length}
+            totalOffices={offices.length}
+            onNavigate={handleTabChange}
           />
         </TabsContent>
 
@@ -262,6 +353,7 @@ export function SettingsPage() {
           <div className="max-w-2xl space-y-6">
             <SettingsOnboardingTasksSection onRefetch={refetch} />
             <SettingsOnboardingFieldsSection onRefetch={refetch} />
+            <SettingsEmailTemplatesSection onRefetch={refetch} />
             <SettingsOnboardingMetricsSection onRefetch={refetch} />
           </div>
         </TabsContent>
