@@ -113,17 +113,24 @@ function buildFieldValues(
     ? [recruitRecruiter.firstName, recruitRecruiter.lastName].filter(Boolean).join(" ").trim()
     : "";
 
+  // Send multiple possible field name formats to match various SignNow template configurations
   const fields: Array<{ field_name: string; field_value: string }> = [
+    // Common field names
     { field_name: "name", field_value: name },
     { field_name: "email", field_value: email },
     { field_name: "office", field_value: office },
     { field_name: "role", field_value: role },
     { field_name: "pay_plan", field_value: payPlan },
     { field_name: "manager", field_value: manager },
+    // Recruiter info
     { field_name: "recruiter_name", field_value: recruiter },
+    // Recruit name variants (SignNow templates may use different naming)
     { field_name: "recruit_name", field_value: name },
     { field_name: "recruit_name_2", field_value: name },
     { field_name: "recruit_name_3", field_value: name },
+    { field_name: "Full Name", field_value: name },
+    { field_name: "full_name", field_value: name },
+    // Other recruit fields
     { field_name: "recruit_email", field_value: email },
     { field_name: "target_office", field_value: office },
     { field_name: "target_role", field_value: role },
