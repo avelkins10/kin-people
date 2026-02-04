@@ -86,6 +86,9 @@ export function PersonEditForm({
   const status = watch("status");
 
   async function onSubmit(data: PersonFormData) {
+    // Map form status back to person status (inactive -> terminated)
+    const personStatus = data.status === "inactive" ? "terminated" : data.status;
+
     await updateMutation.mutateAsync({
       id: person.id,
       data: {
@@ -96,7 +99,7 @@ export function PersonEditForm({
         roleId: data.roleId,
         officeId: data.officeId,
         reportsToId: data.reportsToId,
-        status: data.status,
+        status: personStatus as "active" | "onboarding" | "terminated",
         hireDate: data.hireDate,
       },
     });
