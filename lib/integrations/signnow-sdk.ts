@@ -168,11 +168,21 @@ export async function prefillTextFields(
   try {
     await sdk.getClient().send(request);
     console.log("[signnow-sdk] prefillTextFields: success");
-  } catch (err) {
+  } catch (err: unknown) {
+    let responseBody: string | undefined;
+    // Try to get response body from SignNowApiException
+    if (err && typeof err === "object" && "getResponse" in err) {
+      try {
+        const response = (err as { getResponse: () => { text: () => Promise<string> } }).getResponse();
+        responseBody = await response.text();
+      } catch {
+        // Ignore if we can't read the body
+      }
+    }
     console.error("[signnow-sdk] prefillTextFields: failed", {
       documentId,
       error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
+      responseBody,
     });
     throw err;
   }
