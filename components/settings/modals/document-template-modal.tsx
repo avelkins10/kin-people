@@ -33,10 +33,16 @@ interface SignNowTemplate {
   name: string;
 }
 
+/** Template prop accepts API shape (string dates) or schema shape (Date). */
+type TemplateForModal = Omit<DocumentTemplate, "createdAt" | "updatedAt"> & {
+  createdAt?: Date | string | null | undefined;
+  updatedAt?: Date | string | null | undefined;
+};
+
 interface DocumentTemplateModalProps {
   open: boolean;
   onClose: () => void;
-  template?: DocumentTemplate | null;
+  template?: TemplateForModal | null;
   documentType: string;
   documentTypeLabel: string;
   onSuccess?: () => void;
