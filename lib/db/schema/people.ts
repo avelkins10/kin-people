@@ -21,11 +21,14 @@ export const people = pgTable(
   'people',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    // KIN ID - stable identifier throughout career
+    kinId: varchar('kin_id', { length: 12 }).unique(),
     // Basic info
     firstName: varchar('first_name', { length: 100 }).notNull(),
     lastName: varchar('last_name', { length: 100 }).notNull(),
     email: varchar('email', { length: 255 }).notNull().unique(),
     phone: varchar('phone', { length: 20 }),
+    normalizedPhone: varchar('normalized_phone', { length: 20 }), // For duplicate detection
     profileImageUrl: text('profile_image_url'),
     // Current state
     roleId: uuid('role_id').references(() => roles.id).notNull(),
@@ -56,6 +59,7 @@ export const people = pgTable(
     idxPeopleQuickbase: index('idx_people_quickbase').on(table.quickbaseId),
     idxPeopleAuthUser: index('idx_people_auth_user').on(table.authUserId),
     idxPeopleEmail: index('idx_people_email').on(table.email),
+    idxPeopleKinId: index('idx_people_kin_id').on(table.kinId),
   })
 );
 

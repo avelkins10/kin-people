@@ -38,6 +38,9 @@ export * from './person-onboarding-info';
 export * from './recruits';
 export * from './recruit-history';
 
+// System tables
+export * from './kin-id-sequence';
+
 // Document Management tables
 export * from './documents';
 export * from './document-templates';
@@ -77,6 +80,7 @@ import { commissions } from './commissions';
 import { commissionHistory } from './commission-history';
 import { activityLog } from './activity-log';
 import { appSettings } from './app-settings';
+import { kinIdSequence } from './kin-id-sequence';
 
 export const schema = {
   roles,
@@ -104,4 +108,5 @@ export const schema = {
   commissionHistory,
   activityLog,
   appSettings,
+  kinIdSequence,
 };
