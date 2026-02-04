@@ -6,6 +6,8 @@ This guide covers the SignNow document signing and tracking system for recruits 
 
 ## API reference (for developers and AI agents)
 
+**Resources for agents:** See **docs/signnow-integration-resources.md** for MCPs (SignNow + SignNow API Helper), Postman collection, and other docs to use when building SignNow integrations.
+
 **Use the official SignNow API Postman collection** when implementing or debugging SignNow integration:
 
 - **File:** `SignNow API.postman_collection.json` (project root)

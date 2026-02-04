@@ -2,6 +2,8 @@
 
 This document lists every SignNow API call used by the app and how it aligns with the official **SignNow API Postman collection** (`SignNow API.postman_collection.json` in the project root). Use it when changing `lib/integrations/signnow.ts` or debugging integration issues.
 
+**Resources for agents:** See **docs/signnow-integration-resources.md** for MCPs (SignNow + SignNow API Helper), Postman collection, and other docs to use when building SignNow integrations.
+
 ---
 
 ## Endpoints we use
@@ -11,7 +13,7 @@ This document lists every SignNow API call used by the app and how it aligns wit
 | **Auth** | `POST https://api.signnow.com/oauth2/token` | `POST {{url}}/oauth2/token` | ✅ Same. Body: `username`, `password`, `grant_type=password` (or `grant_type=client_credentials`). Header: `Authorization: Basic <base64(apiKey:apiSecret)>`. |
 | **List templates** | `GET /v2/templates` then fallback `GET /user/folder` + `GET /folder/{{id}}` | No `GET /v2/templates` in collection. Collection has **Get all folders** (`GET /user/folder`) and **Get folder by id** (`GET /folder/{{folder_id}}`). | We try `/v2/templates` first; if it fails or returns empty, we use folder-based listing (Templates folder → documents in folder). |
 | **Template copies** | `GET /v2/templates/{{template_id}}/copies` | **Get list of documents from template**: `GET {{url}}/v2/templates/{{template_id}}/copies` | ✅ Same. |
-| **Create doc from template** | `POST /v2/templates/{{template_id}}/documents` | Collection has **Get document out of template**: `POST /template/{{template_id}}/copy` (legacy path). | We use v2 path; both may be supported. |
+| **Create doc from template** | `POST /template/{{template_id}}/copy` | **Get document out of template**: `POST /template/{{template_id}}/copy`. Body: `document_name` only. | ✅ Same. We use legacy path; v2 path `/documents` does not exist. |
 | **Send invite** | `POST /v2/documents/{{documentId}}/invite` | **Field Invite**: `POST /document/{{document_id}}/invite` (no v2). Body in Postman: `to`, `from`, `subject`, `message`; we send `invites`, `from`, `subject`, `message`. | v2 API may accept `invites` array; Postman shows legacy `to` array. |
 | **Get document status** | `GET /v2/documents/{{documentId}}` | **Get document**: `GET /document/{{document_id}}` (no v2). | We use v2; both may be supported. |
 | **Void document** | `PUT /v2/document/fieldinvitecancel` with body `{ document_id }` | **Cancel field invite**: `PUT {{url}}/document/{{document_id}}/fieldinvitecancel` (document_id in path, no v2). | We use v2 singular `document` with document_id in body; Postman uses path param. |
