@@ -34,7 +34,8 @@ export async function POST(req: NextRequest) {
     const rawEvent = (body.meta?.event ?? body.event) as string | undefined;
     // User-scoped webhooks prefix events with "user." (e.g. "user.document.complete" instead of "document.complete")
     const event = rawEvent?.replace(/^user\./, "") as string | undefined;
-    const document_id = (body.content?.document_id ?? body.document_id) as string | undefined;
+    // Document ID may be camelCase (documentId) or snake_case (document_id), at top level or under content
+    const document_id = (body.content?.documentId ?? body.content?.document_id ?? body.documentId ?? body.document_id) as string | undefined;
 
     console.log(`${LOG_PREFIX} received rawEvent=${rawEvent} event=${event} document_id=${document_id}`);
 
