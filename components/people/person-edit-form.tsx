@@ -68,7 +68,7 @@ export function PersonEditForm({
       roleId: person.roleId || "",
       officeId: person.officeId || "",
       reportsToId: person.reportsToId || "",
-      status: person.status || "active",
+      status: person.status === "terminated" ? "inactive" : (person.status || "active"),
       hireDate: person.hireDate ? person.hireDate.toString().split("T")[0] : "",
     },
   });
