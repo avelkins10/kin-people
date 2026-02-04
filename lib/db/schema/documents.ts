@@ -20,6 +20,11 @@ export const documents = pgTable(
     signedAt: timestamp('signed_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     voidedAt: timestamp('voided_at', { withTimezone: true }),
+    declinedAt: timestamp('declined_at', { withTimezone: true }),
+    declinedBy: varchar('declined_by', { length: 255 }), // email of signer who declined
+    declineReason: text('decline_reason'),
+    deliveryFailedAt: timestamp('delivery_failed_at', { withTimezone: true }),
+    deliveryFailedEmail: varchar('delivery_failed_email', { length: 255 }),
     storagePath: text('storage_path'),
     storageUrl: text('storage_url'),
     metadata: jsonb('metadata').default('{}'),

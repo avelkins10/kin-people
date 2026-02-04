@@ -101,6 +101,70 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "document.fieldinvite.decline": {
+        // Extract decline info from payload
+        const declinedBy = (body.content?.signer_email ?? body.content?.email ?? body.signer_email) as string | undefined;
+        const declineReason = (body.content?.decline_reason ?? body.content?.reason ?? body.decline_reason) as string | undefined;
+
+        await db
+          .update(documents)
+          .set({
+            status: "declined",
+            declinedAt: new Date(),
+            declinedBy: declinedBy ?? null,
+            declineReason: declineReason ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(documents.id, documentId));
+
+        // If this was a rep_agreement for a recruit, update recruit status
+        if (document.recruitId && document.documentType === "rep_agreement") {
+          await db
+            .update(recruits)
+            .set({
+              status: "agreement_sent", // Back to agreement_sent so they can resend
+              updatedAt: new Date(),
+            })
+            .where(eq(recruits.id, document.recruitId));
+          console.log(
+            `${LOG_PREFIX} document.fieldinvite.decline: recruitId=${document.recruitId} → status reverted to agreement_sent`
+          );
+        }
+
+        console.log(
+          `${LOG_PREFIX} document.fieldinvite.decline: documentId=${documentId}, declinedBy=${declinedBy ?? "unknown"}, reason=${declineReason ?? "none"}`
+        );
+        break;
+      }
+
+      case "document.fieldinvite.email.delivery.failed": {
+        // Extract failed email info from payload
+        const failedEmail = (body.content?.email ?? body.content?.signer_email ?? body.email) as string | undefined;
+
+        await db
+          .update(documents)
+          .set({
+            deliveryFailedAt: new Date(),
+            deliveryFailedEmail: failedEmail ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(documents.id, documentId));
+
+        console.error(
+          `${LOG_PREFIX} document.fieldinvite.email.delivery.failed: documentId=${documentId}, email=${failedEmail ?? "unknown"} - EMAIL DELIVERY FAILED`
+        );
+        break;
+      }
+
+      case "document.update": {
+        // Just log document updates for audit trail
+        const documentName = (body.content?.document_name ?? body.content?.documentName ?? body.document_name) as string | undefined;
+        console.log(
+          `${LOG_PREFIX} document.update: documentId=${documentId}, name=${documentName ?? "unknown"}`
+        );
+        break;
+      }
+
       case "document.complete": {
         let storagePath: string | null = null;
 
