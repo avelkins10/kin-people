@@ -1241,11 +1241,26 @@ export function verifyWebhookSignature(
   }
 
   const crypto = require("crypto");
+  const signatureBuffer = Buffer.from(signature, "utf8");
+
+  // Try hex-encoded HMAC
   const expectedHex = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-  if (crypto.timingSafeEqual(Buffer.from(signature, "utf8"), Buffer.from(expectedHex, "utf8"))) {
+  const expectedHexBuffer = Buffer.from(expectedHex, "utf8");
+  // timingSafeEqual requires same length - check first to avoid error
+  if (signatureBuffer.length === expectedHexBuffer.length &&
+      crypto.timingSafeEqual(signatureBuffer, expectedHexBuffer)) {
     return true;
   }
-  // Some SignNow setups send Base64-encoded HMAC; try that if hex fails
+
+  // Try Base64-encoded HMAC (some SignNow setups use this)
   const expectedBase64 = crypto.createHmac("sha256", secret).update(payload).digest("base64");
-  return crypto.timingSafeEqual(Buffer.from(signature, "utf8"), Buffer.from(expectedBase64, "utf8"));
+  const expectedBase64Buffer = Buffer.from(expectedBase64, "utf8");
+  if (signatureBuffer.length === expectedBase64Buffer.length &&
+      crypto.timingSafeEqual(signatureBuffer, expectedBase64Buffer)) {
+    return true;
+  }
+
+  // Log for debugging when signature doesn't match any expected format
+  console.warn(`[verifyWebhookSignature] signature mismatch - received length=${signatureBuffer.length}, expected hex length=${expectedHexBuffer.length}, expected base64 length=${expectedBase64Buffer.length}`);
+  return false;
 }
