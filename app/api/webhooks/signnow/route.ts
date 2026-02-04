@@ -40,6 +40,18 @@ export async function POST(req: NextRequest) {
 
     console.log(`${LOG_PREFIX} received rawEvent=${rawEvent} event=${event} document_id=${document_id}`);
 
+    // Handle early-lifecycle events that fire before document is saved to our database
+    // These are informational and don't require a document lookup
+    const earlyLifecycleEvents = [
+      "template.copy",
+      "document.create",
+      "document.fieldinvite.create",
+    ];
+    if (earlyLifecycleEvents.includes(event ?? "")) {
+      console.log(`${LOG_PREFIX} ${event}: document_id=${document_id ?? "none"}, acknowledged (early lifecycle event)`);
+      return NextResponse.json({ received: true });
+    }
+
     if (!document_id) {
       console.warn(`${LOG_PREFIX} missing document_id in webhook body, acknowledging to avoid retries`);
       return NextResponse.json({ received: true, error: "Missing document_id" });
@@ -60,7 +72,8 @@ export async function POST(req: NextRequest) {
         await updateDocumentStatus(documentId, "viewed", {
           viewedAt: new Date(),
         });
-        console.log(`${LOG_PREFIX} document.open: documentId=${documentId}, status=viewed`);
+        // Note: viewedAt timestamp is stored on the document - check documents table to see if recruit viewed their agreement
+        console.log(`${LOG_PREFIX} document.open: documentId=${documentId}, status=viewed, recruitId=${document.recruitId ?? "none"}`);
         break;
       }
 
