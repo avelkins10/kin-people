@@ -163,8 +163,19 @@ export async function prefillTextFields(
     field_name: f.field_name,
     prefilled_text: f.field_value,
   }));
+  console.log("[signnow-sdk] prefillTextFields: documentId=", documentId, "fields=", JSON.stringify(fields.slice(0, 5)));
   const request = new DocumentPrefillPutRequest(documentId, fields);
-  await sdk.getClient().send(request);
+  try {
+    await sdk.getClient().send(request);
+    console.log("[signnow-sdk] prefillTextFields: success");
+  } catch (err) {
+    console.error("[signnow-sdk] prefillTextFields: failed", {
+      documentId,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    throw err;
+  }
 }
 
 /**
