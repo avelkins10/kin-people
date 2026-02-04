@@ -16,6 +16,7 @@ import {
 import { eq, and, desc, or } from "drizzle-orm";
 import type { Recruit, NewRecruit } from "@/lib/db/schema/recruits";
 import type { NewRecruitHistory } from "@/lib/db/schema/recruit-history";
+import { sendWelcomeEmail } from "@/lib/services/email-service";
 
 export interface RecruitWithDetails {
   recruit: Recruit;
@@ -436,6 +437,28 @@ export async function convertRecruitToOnboarding(
     console.log(
       `[convertRecruitToOnboarding] Recruit ${recruitId} converted to person ${result.id} with onboarding status`
     );
+
+    // Send welcome email to the new hire (async, don't block on failure)
+    if (recruit.email) {
+      sendWelcomeEmail({
+        email: recruit.email,
+        firstName: recruit.firstName ?? '',
+        lastName: recruit.lastName ?? undefined,
+        managerName: targetReportsTo
+          ? `${targetReportsTo.firstName} ${targetReportsTo.lastName}`.trim()
+          : undefined,
+        officeName: targetOffice?.name,
+      }).then((emailResult) => {
+        if (emailResult.success) {
+          console.log(`[convertRecruitToOnboarding] Welcome email sent to ${recruit.email}`);
+        } else {
+          console.warn(`[convertRecruitToOnboarding] Failed to send welcome email: ${emailResult.error}`);
+        }
+      }).catch((err) => {
+        console.warn('[convertRecruitToOnboarding] Welcome email error:', err);
+      });
+    }
+
     return { personId: result.id };
   } catch (err) {
     console.error("[convertRecruitToOnboarding] Failed to convert recruit:", {

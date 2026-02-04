@@ -12,6 +12,8 @@ import { SettingsPayPlansSection } from "@/components/settings/SettingsPayPlansS
 import { SettingsCommissionRulesSection } from "@/components/settings/SettingsCommissionRulesSection";
 import { SettingsDocumentTemplatesSection } from "@/components/settings/SettingsDocumentTemplatesSection";
 import { SettingsOnboardingMetricsSection } from "@/components/settings/SettingsOnboardingMetricsSection";
+import { SettingsOnboardingTasksSection } from "@/components/settings/SettingsOnboardingTasksSection";
+import { SettingsOnboardingFieldsSection } from "@/components/settings/SettingsOnboardingFieldsSection";
 import { SettingsHistorySection } from "@/components/settings/SettingsHistorySection";
 import { SettingsUsersSection } from "@/components/settings/SettingsUsersSection";
 import { SettingsIntegrationsSection } from "@/components/settings/SettingsIntegrationsSection";
@@ -257,7 +259,9 @@ export function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="onboarding" className="mt-6 focus-visible:outline-none">
-          <div className="max-w-2xl">
+          <div className="max-w-2xl space-y-6">
+            <SettingsOnboardingTasksSection onRefetch={refetch} />
+            <SettingsOnboardingFieldsSection onRefetch={refetch} />
             <SettingsOnboardingMetricsSection onRefetch={refetch} />
           </div>
         </TabsContent>

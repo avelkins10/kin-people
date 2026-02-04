@@ -57,6 +57,34 @@
       "when": 1738789200000,
       "tag": "0007_documents_and_templates_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1738875600000,
+      "tag": "0008_onboarding_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1738962000000,
+      "tag": "0009_documents_webhook_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1739048400000,
+      "tag": "0010_regions_hierarchy",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1739134800000,
+      "tag": "0011_onboarding_enhancements",
+      "breakpoints": true
     }
   ]
 }

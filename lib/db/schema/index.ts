@@ -16,6 +16,7 @@
 
 // Configuration tables
 export * from './roles';
+export * from './regions';
 export * from './offices';
 export * from './office-leadership';
 export * from './teams';
@@ -30,6 +31,8 @@ export * from './person-history';
 export * from './org-snapshots';
 export * from './onboarding-tasks';
 export * from './person-onboarding-progress';
+export * from './onboarding-info-fields';
+export * from './person-onboarding-info';
 
 // Recruiting tables
 export * from './recruits';
@@ -50,6 +53,7 @@ export * from './app-settings';
 
 // Export schema object for Drizzle migrations
 import { roles } from './roles';
+import { regions } from './regions';
 import { offices } from './offices';
 import { officeLeadership } from './office-leadership';
 import { teams } from './teams';
@@ -62,6 +66,8 @@ import { personHistory } from './person-history';
 import { orgSnapshots } from './org-snapshots';
 import { onboardingTasks } from './onboarding-tasks';
 import { personOnboardingProgress } from './person-onboarding-progress';
+import { onboardingInfoFields } from './onboarding-info-fields';
+import { personOnboardingInfo } from './person-onboarding-info';
 import { recruits } from './recruits';
 import { recruitHistory } from './recruit-history';
 import { documents } from './documents';
@@ -74,6 +80,7 @@ import { appSettings } from './app-settings';
 
 export const schema = {
   roles,
+  regions,
   offices,
   officeLeadership,
   teams,
@@ -86,6 +93,8 @@ export const schema = {
   orgSnapshots,
   onboardingTasks,
   personOnboardingProgress,
+  onboardingInfoFields,
+  personOnboardingInfo,
   recruits,
   recruitHistory,
   documents,
