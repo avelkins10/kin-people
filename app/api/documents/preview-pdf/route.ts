@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const buffer = await downloadDocument(payload.signnowDocumentId);
-    return new NextResponse(buffer, {
+    const body = new Uint8Array(buffer);
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
