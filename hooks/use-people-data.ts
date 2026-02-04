@@ -32,6 +32,7 @@ interface UsePeopleParams {
   status?: string;
   officeId?: string;
   roleId?: string;
+  roleLevel?: string;
   search?: string;
 }
 
@@ -40,6 +41,7 @@ export function usePeople(params: UsePeopleParams = {}) {
   if (params.status) queryParams.append("status", params.status);
   if (params.officeId) queryParams.append("officeId", params.officeId);
   if (params.roleId) queryParams.append("roleId", params.roleId);
+  if (params.roleLevel) queryParams.append("roleLevel", params.roleLevel);
   if (params.search) queryParams.append("search", params.search);
 
   return useQuery({
