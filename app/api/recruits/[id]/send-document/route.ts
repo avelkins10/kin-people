@@ -86,6 +86,7 @@ export async function POST(
       }
 
       if (validated.documentType === "rep_agreement") {
+        console.log(`[send-document] Updating recruit ${id} status to agreement_sent`);
         await db
           .update(recruits)
           .set({
@@ -94,6 +95,7 @@ export async function POST(
             updatedAt: new Date(),
           })
           .where(eq(recruits.id, id));
+        console.log(`[send-document] Recruit ${id} status updated to agreement_sent`);
       }
 
       return NextResponse.json({
