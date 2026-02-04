@@ -231,23 +231,36 @@ function throwWithStatus(message: string, status?: number): never {
 }
 
 /**
- * Get SignNow access token using client_credentials grant (OAuth2)
- * SignNow uses client_id and client_secret with basic auth for server-to-server authentication
+ * Get SignNow access token (OAuth2).
+ * SignNow's API expects password grant: Basic auth (client_id:client_secret) plus body username, password, grant_type=password.
+ * If SIGNNOW_USER_EMAIL and SIGNNOW_PASSWORD are set, use password grant; otherwise try client_credentials.
  */
 async function getAccessToken(): Promise<string> {
   const startTime = Date.now();
+  const { apiKey, apiSecret } = getCredentials();
+  const basicAuth = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+  const userEmail = process.env.SIGNNOW_USER_EMAIL?.trim();
+  const userPassword = process.env.SIGNNOW_PASSWORD;
+
+  const body =
+    userEmail && userPassword
+      ? new URLSearchParams({
+          username: userEmail,
+          password: userPassword,
+          grant_type: "password",
+        })
+      : new URLSearchParams({ grant_type: "client_credentials" });
+
   try {
     const token = await withRetry(async () =>
       withTimeout(async (signal) => {
-        const { apiKey, apiSecret } = getCredentials();
-        const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
         const response = await fetch("https://api.signnow.com/oauth2/token", {
           method: "POST",
           headers: {
-            Authorization: `Basic ${credentials}`,
+            Authorization: `Basic ${basicAuth}`,
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: new URLSearchParams({ grant_type: "client_credentials" }),
+          body: body.toString(),
           signal,
         });
         if (!response.ok) {
@@ -262,14 +275,29 @@ async function getAccessToken(): Promise<string> {
     return token;
   } catch (error) {
     logApiError("getAccessToken", error, {});
+    if (userEmail && userPassword) {
+      throw new Error(
+        "Failed to authenticate with SignNow. Check API key/secret and user email/password (Settings → Integrations)."
+      );
+    }
     throw new Error(
       "Failed to authenticate with SignNow. Please check API credentials and try again."
     );
   }
 }
 
+/** Map API doc/template item to { id, name } */
+function mapToTemplate(t: { id?: string; template_id?: string; name?: string; template_name?: string; document_name?: string }) {
+  return {
+    id: t.id ?? t.template_id ?? "",
+    name: t.name ?? t.template_name ?? t.document_name ?? t.id ?? t.template_id ?? "",
+  };
+}
+
 /**
- * Get list of available SignNow templates
+ * Get list of available SignNow templates.
+ * Tries GET /v2/templates first; if that fails (e.g. 404/401), falls back to folder-based listing
+ * per SignNow API: GET /user/folder then GET /folder/{{id}} for Templates folder documents.
  */
 export async function getTemplates(): Promise<Array<{ id: string; name: string }>> {
   const startTime = Date.now();
@@ -277,42 +305,195 @@ export async function getTemplates(): Promise<Array<{ id: string; name: string }
     const accessToken = await getAccessToken();
     const templates = await withRetry(() =>
       withTimeout(async (signal) => {
-        const response = await fetch("https://api.signnow.com/v2/templates", {
+        const headers = { Authorization: `Bearer ${accessToken}` };
+
+        // 1) Try official list endpoint (may not exist in all SignNow setups)
+        const listRes = await fetch("https://api.signnow.com/v2/templates", {
           method: "GET",
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers,
           signal,
         });
-        if (!response.ok) {
-          const text = await response.text();
-          throwWithStatus(`Failed to get SignNow templates: ${text}`, response.status);
+        if (listRes.ok) {
+          const data = await listRes.json();
+          if (Array.isArray(data)) return data.map(mapToTemplate);
+          if (data.templates && Array.isArray(data.templates)) return data.templates.map(mapToTemplate);
+          if (data.data && Array.isArray(data.data)) return data.data.map(mapToTemplate);
+          const documents = data.documents ?? data.items;
+          if (Array.isArray(documents) && documents.length > 0) return documents.map(mapToTemplate);
+          if (Object.keys(data).length > 0) console.warn("[signnow] getTemplates: unexpected /v2/templates shape", { keys: Object.keys(data) });
+          return [];
         }
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          return data.map((t: { id?: string; template_id?: string; name?: string; template_name?: string }) => ({
-            id: t.id ?? t.template_id ?? "",
-            name: t.name ?? t.template_name ?? t.id ?? t.template_id ?? "",
-          }));
+
+        // 2) Fallback: list templates via user folders (per SignNow Postman collection)
+        const folderRes = await fetch("https://api.signnow.com/user/folder", {
+          method: "GET",
+          headers,
+          signal,
+        });
+        if (!folderRes.ok) {
+          const text = await folderRes.text();
+          throwWithStatus(`Failed to get SignNow templates or folders: ${text}`, folderRes.status);
         }
-        if (data.templates && Array.isArray(data.templates)) {
-          return data.templates.map((t: { id?: string; template_id?: string; name?: string; template_name?: string }) => ({
-            id: t.id ?? t.template_id ?? "",
-            name: t.name ?? t.template_name ?? t.id ?? t.template_id ?? "",
-          }));
+        const folderData = await folderRes.json();
+        const folders: Array<{ id?: string; folder_id?: string; name?: string }> = Array.isArray(folderData)
+          ? folderData
+          : folderData.folders ?? folderData.data ?? folderData.subfolders ?? [];
+        const templatesFolder = folders.find(
+          (f) => (f.id ?? f.folder_id) && (/\btemplate(s)?\b/i.test(String(f.name ?? "")) || /\btemplate(s)?\b/i.test(String(f.id ?? f.folder_id ?? "")))
+        );
+        if (!templatesFolder) {
+          console.warn("[signnow] getTemplates: no Templates folder found in /user/folder", { folderCount: folders.length });
+          return [];
         }
-        if (data.data && Array.isArray(data.data)) {
-          return data.data.map((t: { id?: string; template_id?: string; name?: string; template_name?: string }) => ({
-            id: t.id ?? t.template_id ?? "",
-            name: t.name ?? t.template_name ?? t.id ?? t.template_id ?? "",
-          }));
+        const folderId = templatesFolder.id ?? templatesFolder.folder_id ?? "";
+        if (!folderId) return [];
+
+        const docRes = await fetch(
+          `https://api.signnow.com/folder/${encodeURIComponent(folderId)}?limit=100&exclude_documents_relations=true`,
+          { method: "GET", headers, signal }
+        );
+        if (!docRes.ok) {
+          const text = await docRes.text();
+          throwWithStatus(`Failed to get folder documents: ${text}`, docRes.status);
         }
-        return [];
+        const docData = await docRes.json();
+        const documents: Array<{ id?: string; document_name?: string; name?: string }> =
+          docData.documents ?? docData.data ?? (Array.isArray(docData) ? docData : []);
+        const out = documents
+          .filter((d) => d.id)
+          .map((d) => ({ id: d.id!, name: d.document_name ?? d.name ?? d.id! }));
+        logApiCall("getTemplates (folder fallback)", { count: out.length, folderId }, startTime);
+        return out;
       }, DEFAULT_TIMEOUT_MS, "getTemplates")
     );
     logApiCall("getTemplates", { count: templates.length }, startTime);
     return templates;
   } catch (error) {
-    logApiError("getTemplates", error, {});
-    throw new Error("Failed to retrieve SignNow templates. Please try again later.");
+    const errType = error?.constructor?.name ?? typeof error;
+    logApiError("getTemplates", error, { errType, isError: error instanceof Error });
+    const err = error as Error & { cause?: Error; message?: string };
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : err?.message && typeof err.message === "string"
+            ? err.message
+            : err?.cause instanceof Error
+              ? err.cause.message
+              : "Failed to retrieve SignNow templates. Check SIGNNOW_API_KEY, SIGNNOW_API_SECRET, SIGNNOW_USER_EMAIL, and SIGNNOW_PASSWORD in Vercel, then redeploy.";
+    throw new Error(message);
+  }
+}
+
+/** Signing status filter for template copies. */
+export type TemplateCopySigningStatus =
+  | "waiting-for-me"
+  | "waiting-for-others"
+  | "signed"
+  | "pending"
+  | "has-invites"
+  | "expired";
+
+/** Entity label filter (declined / undelivered). */
+export type TemplateCopyEntityLabel = "declinied" | "undelivered";
+
+/** Options for GET /v2/templates/{template_id}/copies. */
+export interface GetTemplateCopiesOptions {
+  sort_by?: "updated" | "created" | "document_name";
+  sort_order?: "asc" | "desc";
+  per_page?: number;
+  page?: number;
+  filters?: {
+    signing_status?: TemplateCopySigningStatus;
+    entity_labels?: TemplateCopyEntityLabel | TemplateCopyEntityLabel[];
+  };
+  exclude?: "doc-from-dg";
+  search_by?: "document-name" | "signer-email" | "inviter-email" | "document-text" | "document-id";
+  search_key?: string;
+}
+
+/** Document item in template copies response (minimal fields from API). */
+export interface TemplateCopyDocument {
+  id: string;
+  user_id?: string;
+  document_name?: string;
+  page_count?: number;
+  created?: number;
+  updated?: number;
+  original_filename?: string;
+  origin_document_id?: string;
+  owner?: string;
+  origin_user_id?: string;
+}
+
+/** Pagination in template copies response. */
+export interface TemplateCopiesPagination {
+  page?: number;
+  per_page?: number;
+  total?: number;
+}
+
+/** Response from GET /v2/templates/{template_id}/copies. */
+export interface GetTemplateCopiesResult {
+  data: TemplateCopyDocument[];
+  pagination?: TemplateCopiesPagination;
+}
+
+/**
+ * Get list of documents created from a template.
+ * GET /v2/templates/{template_id}/copies
+ */
+export async function getTemplateCopies(
+  templateId: string,
+  options: GetTemplateCopiesOptions = {}
+): Promise<GetTemplateCopiesResult> {
+  const startTime = Date.now();
+  try {
+    const accessToken = await getAccessToken();
+    const params = new URLSearchParams();
+    if (options.sort_by) params.set("sort_by", options.sort_by);
+    if (options.sort_order) params.set("sort_order", options.sort_order);
+    if (options.per_page != null) params.set("per_page", String(options.per_page));
+    if (options.page != null) params.set("page", String(options.page));
+    if (options.exclude) params.set("exclude", options.exclude);
+    if (options.search_by) params.set("search_by", options.search_by);
+    if (options.search_key) params.set("search_key", options.search_key);
+    if (options.filters?.signing_status) {
+      params.set("filters[signing_status]", options.filters.signing_status);
+    }
+    if (options.filters?.entity_labels) {
+      const labels = Array.isArray(options.filters.entity_labels)
+        ? options.filters.entity_labels
+        : [options.filters.entity_labels];
+      labels.forEach((l) => params.append("filters[entity_labels]", l));
+    }
+    const query = params.toString();
+    const url = `https://api.signnow.com/v2/templates/${encodeURIComponent(templateId)}/copies${query ? `?${query}` : ""}`;
+    const result = await withRetry(() =>
+      withTimeout(async (signal) => {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          signal,
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throwWithStatus(`Failed to get template copies: ${text}`, response.status);
+        }
+        return response.json() as Promise<GetTemplateCopiesResult>;
+      }, DEFAULT_TIMEOUT_MS, "getTemplateCopies")
+    );
+    const data = Array.isArray(result?.data) ? result.data : [];
+    const pagination = result?.pagination;
+    logApiCall("getTemplateCopies", { templateId, count: data.length }, startTime);
+    return { data, pagination };
+  } catch (error) {
+    logApiError("getTemplateCopies", error, { templateId });
+    throw new Error("Failed to retrieve documents from template. Please try again later.");
   }
 }
 

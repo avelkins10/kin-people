@@ -143,6 +143,7 @@ See `docs/authentication.md` for complete documentation on:
 ## Documentation
 
 - [Authentication & Authorization](./docs/authentication.md) - Complete auth system documentation
+- **SignNow:** [Document management](./docs/signnow-document-management.md) (user/admin guide). For API details (endpoints, auth, responses), use **`SignNow API.postman_collection.json`** in the project root (official SignNow API Postman collection). Use this file when implementing or debugging SignNow integration.
 
 ## License
 

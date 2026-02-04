@@ -61,10 +61,12 @@ export function DocumentTemplateModal({
   const [loading, setLoading] = useState(false);
   const [signNowTemplates, setSignNowTemplates] = useState<SignNowTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
 
   useEffect(() => {
     if (open) {
+      setTemplatesError(null);
       setFormData(
         template
           ? {
@@ -88,15 +90,21 @@ export function DocumentTemplateModal({
 
   async function fetchSignNowTemplates() {
     setTemplatesLoading(true);
+    setTemplatesError(null);
     try {
       const res = await fetch("/api/signnow/templates");
       if (res.ok) {
         const data = await res.json();
         setSignNowTemplates(Array.isArray(data) ? data : []);
+        setTemplatesError(null);
       } else {
+        const body = await res.json().catch(() => ({}));
+        const message = (body as { error?: string }).error ?? "Failed to load templates";
+        setTemplatesError(message);
         setSignNowTemplates([]);
       }
     } catch {
+      setTemplatesError("Failed to load templates. Check that the e-sign integration is configured in Settings → Integrations.");
       setSignNowTemplates([]);
     } finally {
       setTemplatesLoading(false);
@@ -251,6 +259,16 @@ export function DocumentTemplateModal({
                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Loading templates…
+                </p>
+              )}
+              {!templatesLoading && templatesError && (
+                <p className="text-sm text-amber-700 mt-2 font-medium" role="alert">
+                  {templatesError}
+                </p>
+              )}
+              {!templatesLoading && !templatesError && signNowTemplates.length === 0 && (
+                <p className="text-xs text-gray-500 mt-2">
+                  No SignNow templates found. Configure SignNow in Settings → Integrations and ensure your account has templates.
                 </p>
               )}
             </div>

@@ -4,6 +4,18 @@ This guide covers the SignNow document signing and tracking system for recruits 
 
 ---
 
+## API reference (for developers and AI agents)
+
+**Use the official SignNow API Postman collection** when implementing or debugging SignNow integration:
+
+- **File:** `SignNow API.postman_collection.json` (project root)
+- **What it is:** The full SignNow API docs exported as a Postman collection (endpoints, auth, request/response shapes).
+- **When to use it:** To confirm correct endpoints (e.g. `GET /user/folder` + `GET /folder/{{id}}` for listing templates, `POST /oauth2/token` for auth), response formats, and optional parameters. The collection does **not** include a standalone `GET /v2/templates`; template listing in this app may use a folder-based fallback per the collection.
+
+Any future agent or developer working on SignNow should open this file (or import it into Postman) before changing `lib/integrations/signnow.ts` or related APIs.
+
+---
+
 ## User guide
 
 ### How to send documents

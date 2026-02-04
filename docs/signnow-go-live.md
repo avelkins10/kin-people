@@ -49,4 +49,10 @@ In the SignNow dashboard, set the webhook URL to your production base URL, e.g.:
 
 ---
 
+## References
+
+- **SignNow API (Postman collection):** `SignNow API.postman_collection.json` in the project root — use this for exact endpoints, auth, and response shapes when configuring or debugging SignNow. See also `docs/signnow-document-management.md` (API reference section).
+
+---
+
 After 2–4, the document feature is live in production.

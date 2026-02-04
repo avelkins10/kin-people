@@ -30,10 +30,14 @@ Required only if you use the SignNow document management feature (send/track doc
 
 | Name | Description | Where to get it |
 |------|-------------|-----------------|
-| `SIGNNOW_API_KEY` | SignNow API key | SignNow developer / app settings |
-| `SIGNNOW_API_SECRET` | SignNow API secret | SignNow developer / app settings |
+| `SIGNNOW_API_KEY` | SignNow Client ID (OAuth) | SignNow app → OAuth 2.0 / API credentials |
+| `SIGNNOW_API_SECRET` | SignNow Secret Key (OAuth) | SignNow app → OAuth 2.0 / API credentials |
+| `SIGNNOW_USER_EMAIL` | SignNow account email (for password grant) | The SignNow user that owns the API app |
+| `SIGNNOW_PASSWORD` | SignNow account password (for password grant) | Same account as above |
 | `SIGNNOW_WEBHOOK_SECRET` | Secret used to verify webhook payloads (HMAC-SHA256) | SignNow webhook configuration; leave unset to skip verification |
 | `SIGNNOW_FROM_EMAIL` | From address for invite emails (e.g. `noreply@yourdomain.com`) | Your sending domain |
+
+**Note:** SignNow’s token endpoint uses **password grant**. Set `SIGNNOW_USER_EMAIL` and `SIGNNOW_PASSWORD` (the account that owns the API app) so the app can fetch templates and create documents. Without them, you may see “Failed to retrieve SignNow templates.”
 
 **Webhook URL (configure in SignNow dashboard):**
 
