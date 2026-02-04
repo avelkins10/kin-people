@@ -12,10 +12,11 @@ import { getAccessToken } from "@/lib/integrations/signnow";
 import type { InviteOptions, SignerConfig } from "@/lib/integrations/signnow";
 
 // Import v3 SDK core and request/response types
-import { Sdk } from "@signnow/api-client-v3/core";
-import { CloneTemplatePostRequest, type CloneTemplatePostResponse } from "@signnow/api-client-v3/api/template";
-import { DocumentGetRequest, type DocumentGetResponse, type RoleResponseAttribute } from "@signnow/api-client-v3/api/document";
-import { SendInvitePostRequest, type SendInvitePostResponse, type ToRequestAttribute } from "@signnow/api-client-v3/api/documentInvite";
+// Note: Using direct dist paths for Vercel compatibility (subpath exports may not resolve for file: dependencies)
+import { Sdk } from "@signnow/api-client-v3/dist/core/index";
+import { CloneTemplatePostRequest, type CloneTemplatePostResponse } from "@signnow/api-client-v3/dist/api/template/index";
+import { DocumentGetRequest, type DocumentGetResponse, type RoleResponseAttribute } from "@signnow/api-client-v3/dist/api/document/index";
+import { SendInvitePostRequest, type SendInvitePostResponse, type ToRequestAttribute } from "@signnow/api-client-v3/dist/api/documentInvite/index";
 
 let sdkInstance: Sdk | null = null;
 

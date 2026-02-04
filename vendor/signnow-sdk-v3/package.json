@@ -8,6 +8,31 @@
   },
   "type": "commonjs",
   "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/core/index": {
+      "require": "./dist/core/index.js",
+      "import": "./dist/core/index.js",
+      "types": "./dist/core/index.d.ts"
+    },
+    "./dist/api/template/index": {
+      "require": "./dist/api/template/index.js",
+      "import": "./dist/api/template/index.js",
+      "types": "./dist/api/template/index.d.ts"
+    },
+    "./dist/api/document/index": {
+      "require": "./dist/api/document/index.js",
+      "import": "./dist/api/document/index.js",
+      "types": "./dist/api/document/index.d.ts"
+    },
+    "./dist/api/documentInvite/index": {
+      "require": "./dist/api/documentInvite/index.js",
+      "import": "./dist/api/documentInvite/index.js",
+      "types": "./dist/api/documentInvite/index.d.ts"
+    },
     "./api/auth": {
       "require": "./dist/api/auth/index.js",
       "import": "./dist/api/auth/index.js",
