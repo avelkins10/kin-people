@@ -4,13 +4,13 @@ import { personOnboardingProgress, people } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/route-protection";
 
-export const PATCH = withAuth(async (
+export async function PATCH(
   req: NextRequest,
-  user,
-  context: { params: Promise<{ id: string; taskId: string }> }
-) => {
-  try {
-    const { id: personId, taskId } = await context.params;
+  { params }: { params: Promise<{ id: string; taskId: string }> }
+) {
+  const { id: personId, taskId } = await params;
+  return withAuth(async (req, user) => {
+    try {
 
     // Get current user's person record
     const [currentUserPerson] = await db
@@ -59,12 +59,13 @@ export const PATCH = withAuth(async (
       .where(eq(personOnboardingProgress.id, currentProgress.id))
       .returning();
 
-    return NextResponse.json(updatedProgress);
-  } catch (error: any) {
-    console.error("Error toggling task completion:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
-  }
-});
+      return NextResponse.json(updatedProgress);
+    } catch (error: any) {
+      console.error("Error toggling task completion:", error);
+      return NextResponse.json(
+        { error: error.message || "Internal server error" },
+        { status: 500 }
+      );
+    }
+  })(req);
+}
