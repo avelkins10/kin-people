@@ -711,6 +711,7 @@ export async function sendForSignature(
  * Template must have smart fields added in SignNow; field names must match.
  * POST /document/{document_id}/integration/object/smartfields
  *
+ * @deprecated Use signnow-sdk.ts prefillSmartFields instead (SDK version).
  * @param documentId - SignNow document ID
  * @param fieldValues - Array of { field_name, field_value }; names must match template smart fields
  */
@@ -1110,6 +1111,7 @@ export async function voidDocument(documentId: string): Promise<void> {
 /**
  * Download document as a PDF buffer (signed or draft).
  * Tries v2 first; on 403/404 falls back to legacy /document/{id}/download for draft/preview docs.
+ * @deprecated Use signnow-sdk.ts downloadDocument instead (SDK version).
  */
 export async function downloadDocument(documentId: string): Promise<Buffer> {
   const startTime = Date.now();

@@ -16,19 +16,20 @@ import {
 } from "@/lib/services/template-service";
 import {
   createDocumentWithMultipleSigners as createDocumentWithMultipleSignersDirect,
-  prefillSmartFields,
+  prefillSmartFields as prefillSmartFieldsDirect,
   sendMultipleInvites as sendMultipleInvitesDirect,
   voidDocument as voidSignNowDocument,
   type InviteOptions,
 } from "@/lib/integrations/signnow";
 import * as signnowSdk from "@/lib/integrations/signnow-sdk";
 
-// Use SDK by default; set USE_SIGNNOW_SDK=false to use direct API for create/invite.
+// Use SDK by default; set USE_SIGNNOW_SDK=false to use direct API for create/invite/prefill.
 const useSignNowSdk = process.env.USE_SIGNNOW_SDK !== "false";
 const createDocumentWithMultipleSigners = useSignNowSdk
   ? signnowSdk.createDocumentWithMultipleSigners
   : createDocumentWithMultipleSignersDirect;
 const sendMultipleInvites = useSignNowSdk ? signnowSdk.sendMultipleInvites : sendMultipleInvitesDirect;
+const prefillSmartFields = useSignNowSdk ? signnowSdk.prefillSmartFields : prefillSmartFieldsDirect;
 import { documents, recruits, people, roles } from "@/lib/db/schema";
 import { eq, and, lt, or, isNotNull, inArray, asc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";

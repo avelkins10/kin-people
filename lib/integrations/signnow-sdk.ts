@@ -15,8 +15,21 @@ import type { InviteOptions, SignerConfig } from "@/lib/integrations/signnow";
 // (package.json subpath exports and webpack aliases don't resolve reliably in Vercel's build)
 import { Sdk } from "../../vendor/signnow-sdk-v3/dist/core/index";
 import { CloneTemplatePostRequest, type CloneTemplatePostResponse } from "../../vendor/signnow-sdk-v3/dist/api/template/index";
-import { DocumentGetRequest, type DocumentGetResponse, type RoleResponseAttribute } from "../../vendor/signnow-sdk-v3/dist/api/document/index";
+import {
+  DocumentGetRequest,
+  type DocumentGetResponse,
+  type RoleResponseAttribute,
+  DocumentDownloadGetRequest,
+  DocumentDownloadLinkPostRequest,
+  type DocumentDownloadLinkPostResponse,
+} from "../../vendor/signnow-sdk-v3/dist/api/document/index";
 import { SendInvitePostRequest, type SendInvitePostResponse, type ToRequestAttribute } from "../../vendor/signnow-sdk-v3/dist/api/documentInvite/index";
+import { DocumentPrefillSmartFieldPostRequest } from "../../vendor/signnow-sdk-v3/dist/api/smartFields/index";
+import {
+  DocumentInviteLinkPostRequest,
+  type DocumentInviteLinkPostResponse,
+  DocumentInviteDeleteRequest,
+} from "../../vendor/signnow-sdk-v3/dist/api/embeddedInvite/index";
 
 let sdkInstance: Sdk | null = null;
 
@@ -132,4 +145,102 @@ export async function sendMultipleInvites(
   );
 
   await sdk.getClient().send<SendInvitePostResponse>(request);
+}
+
+/**
+ * Prefill smart fields on a document using SDK (replaces direct API).
+ * Template must have smart fields added in SignNow; field names must match.
+ */
+export async function prefillSmartFields(
+  documentId: string,
+  fieldValues: Array<{ field_name: string; field_value: string }>
+): Promise<void> {
+  if (!fieldValues?.length) return;
+  const sdk = await getSdk();
+  const data = fieldValues.map((f) => ({
+    field_name: f.field_name,
+    prefilled_text: f.field_value,
+  }));
+  const request = new DocumentPrefillSmartFieldPostRequest(
+    documentId,
+    data,
+    new Date().toISOString()
+  );
+  await sdk.getClient().send(request);
+}
+
+/**
+ * Download document as a PDF buffer using SDK.
+ * Note: The SDK downloads to a temp file and returns the file path,
+ * so we read the file contents and return as Buffer.
+ */
+export async function downloadDocument(documentId: string): Promise<Buffer> {
+  const sdk = await getSdk();
+  const request = new DocumentDownloadGetRequest(documentId);
+  const response = await sdk.getClient().send(request);
+
+  // SDK returns file path (string) for PDF downloads, not binary data
+  if (typeof response === "string") {
+    const fs = await import("fs/promises");
+    const buffer = await fs.readFile(response);
+    // Clean up temp file after reading
+    try {
+      await fs.unlink(response);
+    } catch {
+      // Ignore cleanup errors
+    }
+    return buffer;
+  }
+
+  // Fallback for other response types (shouldn't happen with current SDK)
+  if (response instanceof ArrayBuffer) {
+    return Buffer.from(response);
+  }
+  if (Buffer.isBuffer(response)) {
+    return response;
+  }
+
+  throw new Error("Unexpected response type from SDK download");
+}
+
+/**
+ * Generate a shareable download link for a document using SDK.
+ */
+export async function getDownloadLink(documentId: string): Promise<string> {
+  const sdk = await getSdk();
+  const request = new DocumentDownloadLinkPostRequest(documentId);
+  const response = await sdk.getClient().send<DocumentDownloadLinkPostResponse>(request);
+  return response.link;
+}
+
+/**
+ * Create an embedded signing link for in-app signing.
+ * @param documentId - SignNow document ID
+ * @param fieldInviteId - The field invite ID (from document roles/invites)
+ * @param linkExpirationSeconds - Link expiration in seconds (default 900 = 15 min)
+ * @returns The embedded signing URL
+ */
+export async function createEmbeddedSigningLink(
+  documentId: string,
+  fieldInviteId: string,
+  linkExpirationSeconds?: number
+): Promise<string> {
+  const sdk = await getSdk();
+  const request = new DocumentInviteLinkPostRequest(
+    documentId,
+    fieldInviteId,
+    "", // auth_method - empty for no additional auth
+    linkExpirationSeconds ?? 900 // 15 min default
+  );
+  const response = await sdk.getClient().send<DocumentInviteLinkPostResponse>(request);
+  return response.data.link;
+}
+
+/**
+ * Cancel all embedded invites for a document (without voiding the document).
+ */
+export async function cancelEmbeddedInvite(documentId: string): Promise<void> {
+  const sdk = await getSdk();
+  const request = new DocumentInviteDeleteRequest(documentId);
+  await sdk.getClient().send(request);
 }
