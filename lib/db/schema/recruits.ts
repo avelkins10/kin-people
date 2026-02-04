@@ -14,6 +14,7 @@ export const recruits = pgTable(
     lastName: varchar('last_name', { length: 100 }).notNull(),
     email: varchar('email', { length: 255 }),
     phone: varchar('phone', { length: 20 }),
+    normalizedPhone: varchar('normalized_phone', { length: 20 }), // For duplicate detection
     // Pipeline
     status: varchar('status', { length: 50 }).default('lead'), // 'lead', 'contacted', 'interviewing', 'offer_sent', 'agreement_sent', 'agreement_signed', 'onboarding', 'converted', 'rejected', 'dropped'
     source: varchar('source', { length: 100 }), // where they came from
