@@ -16,6 +16,7 @@ if (!DATABASE_URL) {
   console.error("DATABASE_URL not set. Set it in .env.local or pass it when running.");
   process.exit(1);
 }
+const dbUrl: string = DATABASE_URL;
 
 const expectedTables = [
   "onboarding_info_fields",
@@ -26,9 +27,9 @@ const expectedTables = [
 ];
 
 async function main() {
-  const sql = postgres(DATABASE_URL, { max: 1, ssl: "require" });
+  const sql = postgres(dbUrl, { max: 1, ssl: "require" });
   try {
-    const host = new URL(DATABASE_URL).hostname;
+    const host = new URL(dbUrl).hostname;
     console.log("Checking database at:", host.replace(/^db\./, "").split(".")[0] + ".supabase.co");
     console.log("");
 
