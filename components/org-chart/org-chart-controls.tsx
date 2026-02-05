@@ -55,7 +55,7 @@ export function OrgChartControls({
   const searchParams = useSearchParams();
 
   const view = searchParams.get("view") || "reports_to";
-  const officeId = searchParams.get("office") || "";
+  const officeId = searchParams.get("office") || "_all";
   const search = searchParams.get("search") || "";
   const mode = searchParams.get("mode") || "tree";
 
@@ -70,7 +70,8 @@ export function OrgChartControls({
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) {
+    // Treat "_all" and "_none" as empty values (clear the filter)
+    if (value && value !== "_all" && value !== "_none") {
       params.set(key, value);
     } else {
       params.delete(key);
@@ -140,7 +141,7 @@ export function OrgChartControls({
               <SelectValue placeholder="All offices" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All offices</SelectItem>
+              <SelectItem value="_all">All offices</SelectItem>
               {offices.map((office) => (
                 <SelectItem key={office.id} value={office.id}>
                   {office.name}
@@ -262,14 +263,14 @@ export function OrgChartControls({
           <div className="min-w-[200px]">
             <label className="text-sm font-medium mb-1 block">Focus On</label>
             <Select
-              value={focusPersonId || ""}
-              onValueChange={(value) => onFocusPerson(value || null)}
+              value={focusPersonId || "_none"}
+              onValueChange={(value) => onFocusPerson(value === "_none" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select person..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No focus</SelectItem>
+                <SelectItem value="_none">No focus</SelectItem>
                 {people
                   .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`))
                   .map((person) => (

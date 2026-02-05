@@ -151,11 +151,12 @@ export function PersonEditForm({
       </div>
       <div>
         <Label htmlFor="officeId">Office</Label>
-        <Select value={officeId || ""} onValueChange={(value) => setValue("officeId", value)}>
+        <Select value={officeId || "_none"} onValueChange={(value) => setValue("officeId", value === "_none" ? "" : value)}>
           <SelectTrigger id="officeId">
             <SelectValue placeholder="Select office" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="_none">No office</SelectItem>
             {offices.map((office) => (
               <SelectItem key={office.id} value={office.id}>
                 {office.name}
@@ -170,13 +171,14 @@ export function PersonEditForm({
       <div>
         <Label htmlFor="reportsToId">Reports To</Label>
         <Select
-          value={reportsToId || ""}
-          onValueChange={(value) => setValue("reportsToId", value)}
+          value={reportsToId || "_none"}
+          onValueChange={(value) => setValue("reportsToId", value === "_none" ? "" : value)}
         >
           <SelectTrigger id="reportsToId">
             <SelectValue placeholder="Select manager" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="_none">No manager</SelectItem>
             {managers.map((m) => (
               <SelectItem key={m.id} value={m.id}>
                 {m.firstName} {m.lastName}
