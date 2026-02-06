@@ -8,7 +8,7 @@ This doc summarizes what’s required for the Kin People App on Supabase (tables
 
 - **Supabase setup**: `SUPABASE-TESTING-PLAN.md`, `DEPLOYMENT.md`
 - **Storage & RLS**: `docs/supabase-storage-agreements.md`, `drizzle/0001_supabase_agreements_bucket_rls.sql`
-- **Auth**: `docs/authentication.md`
+- **Auth**: `docs/authentication.md`. Invite/password-reset: see **Auth: invite and password reset** below.
 - **Pilot setup**: `docs/pilot-setup-workflow.md`
 - **Env**: `docs/vercel-environment-variables.md`, `.env.example`, `supabase-credentials.template.md`
 
@@ -81,6 +81,27 @@ Until this is done, recruiting agreement uploads/downloads that use the `agreeme
 
 ---
 
+## Auth: invite and password reset
+
+Invite and password-reset flows must land on a URL that can establish a session and then sync the Supabase Auth user to the `people` table (`auth_user_id`). The app handles both **PKCE** (URL with `?code=...`) and **implicit** (URL with `#access_token=...&refresh_token=...`) so links work regardless of Supabase project flow.
+
+**Supabase Dashboard – URL Configuration**
+
+In **Authentication → URL Configuration**, set:
+
+- **Site URL**: Your app origin (e.g. `https://gokinnect.com`).
+- **Redirect URLs**: Add both so invite/recovery links can land on either and still work:
+  - `https://gokinnect.com/auth-callback`
+  - `https://gokinnect.com/confirm`
+
+The API passes `redirectTo: ${origin}/auth-callback?next=/set-password` when inviting or resending; Supabase may still send some links to `/confirm` depending on template or flow. Both `/auth-callback` and `/confirm` now handle hash, code, and `token_hash` + `type`, and both call `POST /api/auth/sync-user` to link the Supabase user to the matching `people` row by email (`auth_user_id`).
+
+**User linking**
+
+- `POST /api/auth/sync-user` (called after confirmation) finds a `people` row by email and sets `auth_user_id`, or creates a placeholder person with default role "Sales Rep" and status "onboarding". Invited users should already have a person row (created when the admin added them); sync-user links that row to the new Supabase auth user.
+
+---
+
 ## Drizzle migration history
 
 Schema was applied via Supabase MCP (and/or `db:push`), not via `npm run db:migrate`. So:
@@ -106,6 +127,7 @@ If you later run `npm run db:migrate`, it may try to run 0000/0001 again. 0000 m
 | `DATABASE_URL` (e.g. IPv4 pooler) | In `.env.local` / Vercel |
 | `NEXT_PUBLIC_SUPABASE_URL` + anon key | In `.env.local` / Vercel |
 | `SUPABASE_SERVICE_ROLE_KEY` (pilot, server-side) | In `.env.local` / Vercel (optional for basic login) |
+| Auth redirect URLs (`auth-callback`, `confirm`) | Supabase Dashboard → Authentication → URL Configuration (see **Auth: invite and password reset** above) |
 
 ---
 
