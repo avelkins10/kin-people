@@ -37,7 +37,6 @@ export async function getCurrentUser() {
         reportsToId: people.reportsToId,
         recruitedById: people.recruitedById,
         status: people.status,
-        rolePermissions: roles.permissions,
       })
       .from(people)
       .leftJoin(roles, eq(people.roleId, roles.id))
@@ -46,10 +45,7 @@ export async function getCurrentUser() {
 
     const row = person[0];
     if (!row) return null;
-    const rolePermissions = Array.isArray(row.rolePermissions) && row.rolePermissions.length > 0
-      ? (row.rolePermissions as string[])
-      : undefined;
-    return { ...row, rolePermissions };
+    return row;
   } catch (error) {
     console.error("Error fetching current user:", error);
     return null;

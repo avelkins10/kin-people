@@ -32,7 +32,7 @@ function createAdminSupabaseClient() {
 /** Pilot office name used to look up office ID (must match name used in seedPilotData). */
 const PILOT_OFFICE_NAME = 'Pilot Office';
 
-type PilotRoleName = 'Office Manager' | 'Team Lead' | 'Sales Rep';
+type PilotRoleName = 'Area Director' | 'Team Lead' | 'Sales Rep';
 
 type SupabaseAdminClient = ReturnType<typeof createAdminSupabaseClient>;
 
@@ -92,9 +92,9 @@ const PILOT_USERS: PilotUserConfig[] = [
   {
     email: 'office.manager@example.com',
     password: 'ChangeMe123!',
-    firstName: 'Office',
-    lastName: 'Manager',
-    roleName: 'Office Manager',
+    firstName: 'Area',
+    lastName: 'Director',
+    roleName: 'Area Director',
     phone: '+15550100001',
     hireDate: '2025-01-01',
   },
@@ -169,7 +169,7 @@ async function createPilotUsers() {
     roleIdsByName[r.name] = r.id;
   }
 
-  const requiredRoles: PilotRoleName[] = ['Office Manager', 'Team Lead', 'Sales Rep'];
+  const requiredRoles: PilotRoleName[] = ['Area Director', 'Team Lead', 'Sales Rep'];
   for (const name of requiredRoles) {
     if (!roleIdsByName[name]) {
       throw new Error(`Role "${name}" not found. Run seedPilotData first to create roles.`);

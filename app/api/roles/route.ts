@@ -36,7 +36,6 @@ const createRoleSchema = z.object({
   description: z.string().optional(),
   isActive: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional().default(0),
-  permissions: z.array(z.string()).optional(),
 });
 
 export const POST = withPermission(Permission.MANAGE_SETTINGS, async (req, user) => {
@@ -52,7 +51,6 @@ export const POST = withPermission(Permission.MANAGE_SETTINGS, async (req, user)
         description: validated.description || null,
         isActive: validated.isActive ?? true,
         sortOrder: validated.sortOrder ?? 0,
-        permissions: Array.isArray(validated.permissions) ? validated.permissions : {},
       })
       .returning();
 

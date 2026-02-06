@@ -109,7 +109,7 @@ middleware.ts      # Supabase authentication middleware
 
 The application implements a comprehensive role-based access control (RBAC) system:
 
-- **Roles**: Admin, Regional Manager, Office Manager, Area Director, Team Lead, Sales Rep
+- **Roles**: Admin, Regional Manager, Area Director, Team Lead, Sales Rep
 - **Permissions**: Granular permissions for actions and data access
 - **Visibility Rules**: Automatic data filtering based on role hierarchy
 

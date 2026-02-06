@@ -184,7 +184,7 @@ npm run dev
 **Visibility (`lib/auth/visibility-rules.ts`):**
 - [ ] Sales Rep: own commissions only (My Deals)
 - [ ] Team Lead: team commissions
-- [ ] Office Manager: office-wide
+- [ ] Area Director: office-wide
 - [ ] Admin: all commissions
 
 ---

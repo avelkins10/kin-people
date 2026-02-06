@@ -13,7 +13,7 @@ Kin People uses **Drizzle ORM** with **PostgreSQL** (Neon/Supabase). All schema 
 | Table | Purpose |
 |-------|--------|
 | **people** | Sales reps, managers, team members. Links to role, office, manager (`reports_to`), recruiter (`recruited_by`). Has `status` (onboarding, active, inactive, terminated) and optional `setter_tier` (Rookie, Veteran, Team Lead). |
-| **roles** | Job titles with hierarchy `level` (1 = lowest). Names: Admin, Regional Manager, Office Manager, Area Director, Team Lead, Sales Rep. |
+| **roles** | Job titles with hierarchy `level` (1 = lowest). Names: Admin, Regional Manager, Area Director, Team Lead, Sales Rep. |
 | **offices** | Locations with `name`, `region`, `states[]`, `address`, `isActive`. |
 | **teams** | Groups within an office; have `team_lead_id` → people. |
 | **recruits** | Pipeline candidates (not yet people). Have `status`, `recruiter_id`, target office/team/role/pay_plan, agreement fields, `converted_to_person_id`. |
@@ -158,10 +158,9 @@ Roles are stored in **roles** and referenced by **people**. Permissions are defi
 
 1. **Admin** — Full access.
 2. **Regional Manager** — Region-wide; view all people, approve commissions; no MANAGE_ALL_OFFICES or RUN_PAYROLL.
-3. **Office Manager** — Own office; manage office, view office people, approve commissions.
-4. **Area Director** — Same permission set as Office Manager in code.
-5. **Team Lead** — Own team; manage team, view office/team, create recruits/deals, edit deals; no approve commissions.
-6. **Sales Rep** — Own data only; create recruits and deals.
+3. **Area Director** — Own office; manage office, view office people, approve commissions.
+4. **Team Lead** — Own team; manage team, view office/team, create recruits/deals, edit deals; no approve commissions.
+5. **Sales Rep** — Own data only; create recruits and deals.
 
 ### Permission Enum (summary)
 
@@ -172,7 +171,7 @@ Roles are stored in **roles** and referenced by **people**. Permissions are defi
 ### Visibility (what each role sees)
 
 - **Admin / Regional Manager:** All people, deals, recruits, commissions (no filter).
-- **Office Manager:** People and deals in their office; recruits targeting their office; commissions for their office (and “overrides” tab filtered by office).
+- **Area Director:** People and deals in their office; recruits targeting their office; commissions for their office (and "overrides" tab filtered by office).
 - **Team Lead:** People/deals in office or reporting to them; recruits targeting their office; commissions for team/office.
 - **Sales Rep:** Only own people record, own deals (as setter or closer), own recruits, own commissions. Closers can also see setter commission on the same deal (transparency).
 

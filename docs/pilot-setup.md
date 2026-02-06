@@ -21,7 +21,7 @@
 
 | Email | Role | Name | Phone | Hire Date | Setter Tier | Reports To | Recruited By |
 | ----- | ---- | ---- | ----- | --------- | ----------- | ----------- | ------------ |
-| _(fill)_ | _(Office Manager / Team Lead / Sales Rep)_ | _(Full name)_ | _(phone)_ | _(YYYY-MM-DD)_ | _(if Sales Rep)_ | _(manager email)_ | _(recruiter email)_ |
+| _(fill)_ | _(Area Director / Team Lead / Sales Rep)_ | _(Full name)_ | _(phone)_ | _(YYYY-MM-DD)_ | _(if Sales Rep)_ | _(manager email)_ | _(recruiter email)_ |
 
 ### CONFIDENTIAL — Temporary Passwords
 
@@ -41,14 +41,14 @@ _(To be changed on first login. Store securely.)_
 
 ## Section 3: Role Distribution
 
-- **Office Manager:** 1
+- **Area Director:** 1
 - **Team Lead:** 1–2
 - **Sales Rep:** 3–7
 
 ### Organizational hierarchy
 
 ```
-Office Manager
+Area Director
   └── Team Lead(s)
         └── Sales Rep(s)
 ```
@@ -60,7 +60,7 @@ _(Update with actual reporting structure after setup.)_
 ## Section 4: Setup Checklist
 
 - [ ] Pilot office created in database
-- [ ] Roles seeded (Admin, Office Manager, Team Lead, Sales Rep)
+- [ ] Roles seeded (Admin, Area Director, Team Lead, Sales Rep)
 - [ ] Pay plans seeded (if applicable)
 - [ ] Supabase Auth users created (5–10 users)
 - [ ] Person records created and linked to auth users

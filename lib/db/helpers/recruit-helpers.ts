@@ -200,7 +200,7 @@ export function getRecruitsWithVisibility(user: {
 
   // Apply visibility filters based on role
   // Admins and Regional Managers see all
-  // Office Managers see their office's recruits
+  // Area Directors see their office's recruits
   // Team Leads see their team's recruits
   // Recruiters see their own recruits
 
@@ -208,7 +208,7 @@ export function getRecruitsWithVisibility(user: {
   // Recruiters see their own
   if (user.roleName === "Sales Rep" || user.roleName === "Recruiter") {
     query = query.where(eq(recruits.recruiterId, user.id)) as any;
-  } else if (user.roleName === "Office Manager" && user.officeId) {
+  } else if (user.roleName === "Area Director" && user.officeId) {
     // Office managers see recruits targeting their office
     query = query.where(eq(recruits.targetOfficeId, user.officeId)) as any;
   }

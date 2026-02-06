@@ -2,13 +2,14 @@ import { Permission } from "@/lib/permissions/types";
 import { getRolePermissions } from "@/lib/permissions/roles";
 import type { CurrentUser } from "./get-current-user";
 
-/** User-like object with at least roleName; rolePermissions from DB is optional. */
-export type UserForPermission = { roleName: string | null; rolePermissions?: string[] };
+/** User-like object with at least roleName. */
+export type UserForPermission = { roleName: string | null };
 
 /**
  * Check if a user has a specific permission.
- * 
- * @param user - The current user object (from getCurrentUser or with roleName + optional rolePermissions)
+ * Always resolves permissions from the ROLE_PERMISSIONS const (single source of truth).
+ *
+ * @param user - The current user object (from getCurrentUser or with roleName)
  * @param permission - The permission to check
  * @returns true if user has the permission, false otherwise
  */
@@ -18,10 +19,6 @@ export function hasPermission(
 ): boolean {
   if (!user?.roleName) {
     return false;
-  }
-  const perms = (user as UserForPermission).rolePermissions;
-  if (Array.isArray(perms) && perms.length > 0) {
-    return perms.includes(permission);
   }
   const rolePermissions = getRolePermissions(user.roleName);
   return rolePermissions.includes(permission);

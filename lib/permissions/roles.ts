@@ -1,15 +1,10 @@
 import { Permission, type RolePermissions } from "./types";
 
 /**
- * Role-based permissions matrix.
+ * Role-based permissions matrix — single source of truth.
  * Maps each role to its allowed permissions.
- * 
- * Based on the permissions matrix from the spec:
- * - Admin: All permissions
- * - Regional Manager: Regional management, view all people, approve commissions
- * - Office Manager: Office management, view office people, approve commissions
- * - Team Lead: Team management, view team members, create recruits
- * - Sales Rep: View own data only, create recruits
+ *
+ * Hierarchy (low → high): Sales Rep → Team Lead → Area Director → Regional Manager → Divisional → VP → Admin
  */
 export const ROLE_PERMISSIONS: RolePermissions = {
   Admin: [
@@ -29,7 +24,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
     Permission.RUN_PAYROLL,
     Permission.VIEW_OWN_DATA_ONLY,
   ],
-  "Regional Manager": [
+  VP: [
     Permission.MANAGE_OWN_REGION,
     Permission.VIEW_ALL_PEOPLE,
     Permission.VIEW_OWN_OFFICE_PEOPLE,
@@ -39,8 +34,19 @@ export const ROLE_PERMISSIONS: RolePermissions = {
     Permission.EDIT_DEALS,
     Permission.APPROVE_COMMISSIONS,
   ],
-  "Office Manager": [
-    Permission.MANAGE_OWN_OFFICE,
+  Divisional: [
+    Permission.MANAGE_OWN_REGION,
+    Permission.VIEW_ALL_PEOPLE,
+    Permission.VIEW_OWN_OFFICE_PEOPLE,
+    Permission.VIEW_OWN_TEAM,
+    Permission.CREATE_RECRUITS,
+    Permission.CREATE_DEALS,
+    Permission.EDIT_DEALS,
+    Permission.APPROVE_COMMISSIONS,
+  ],
+  "Regional Manager": [
+    Permission.MANAGE_OWN_REGION,
+    Permission.VIEW_ALL_PEOPLE,
     Permission.VIEW_OWN_OFFICE_PEOPLE,
     Permission.VIEW_OWN_TEAM,
     Permission.CREATE_RECRUITS,

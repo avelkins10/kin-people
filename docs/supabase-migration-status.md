@@ -20,7 +20,7 @@ These **16 public tables** are expected and have been created on Supabase:
 
 | Table | Purpose |
 |-------|--------|
-| `roles` | RBAC roles (Admin, Office Manager, Team Lead, Sales Rep, Area Director, Regional Manager) |
+| `roles` | RBAC roles (Admin, Area Director, Team Lead, Sales Rep, Regional Manager) |
 | `offices` | Offices/regions |
 | `pay_plans` | Commission pay plans |
 | `teams` | Teams (optional office/team_lead) |
@@ -43,7 +43,7 @@ Indexes and foreign keys for these tables are in place.
 
 ## Seed data (applied via MCP or script)
 
-- **Roles**: Sales Rep, Team Lead, Area Director, Regional Manager, Admin, **Office Manager** (required by `lib/permissions/roles.ts` and pilot workflow).
+- **Roles**: Sales Rep, Team Lead, Area Director, Regional Manager, Admin (required by `lib/permissions/roles.ts` and pilot workflow).
 - **Offices**: Utah HQ, Pilot Office (and optionally more via `npm run db:seed`).
 - **Pay plans**: Standard Setter Plan, Standard Closer Plan, Team Lead Plan.
 
@@ -118,7 +118,7 @@ If you later run `npm run db:migrate`, it may try to run 0000/0001 again. 0000 m
 | Item | Status |
 |------|--------|
 | All 16 public tables + FKs + indexes | Done (via MCP) |
-| Roles (incl. Office Manager) | Done |
+| Roles (incl. Area Director) | Done |
 | Offices (min 2) | Done |
 | Pay plans (3) | Done |
 | Commission rules (full set) | Optional: run `npm run db:seed` |

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, text, jsonb, boolean, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, integer, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const roles = pgTable(
   'roles',
@@ -7,7 +7,6 @@ export const roles = pgTable(
     name: varchar('name', { length: 100 }).notNull(),
     level: integer('level').notNull(), // hierarchy level (1 = lowest)
     description: text('description'),
-    permissions: jsonb('permissions').default('{}'),
     isActive: boolean('is_active').default(true),
     sortOrder: integer('sort_order').default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

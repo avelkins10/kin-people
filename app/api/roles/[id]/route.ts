@@ -13,7 +13,6 @@ const updateRoleSchema = z.object({
   description: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
-  permissions: z.array(z.string()).optional(),
 });
 
 export async function PATCH(
@@ -37,7 +36,6 @@ export async function PATCH(
       if (validated.description !== undefined) updateData.description = validated.description;
       if (validated.isActive !== undefined) updateData.isActive = validated.isActive;
       if (validated.sortOrder !== undefined) updateData.sortOrder = validated.sortOrder;
-      if (validated.permissions !== undefined) updateData.permissions = validated.permissions;
 
       const [updated] = await db
         .update(roles)

@@ -63,7 +63,7 @@ export function getVisibilityFilter(user: NonNullable<CurrentUser>) {
     return null; // No filter - async version handles proper region filtering
   }
 
-  // Office Manager: filter by office
+  // Area Director: filter by office
   if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
     if (!user.officeId) {
       return { id: user.id }; // Fallback to own data if no office
@@ -532,7 +532,7 @@ export function getCommissionVisibilityFilter(
 
   // For "my-deals" tab
   if (tab === "my-deals") {
-    // Office Manager: filter by office
+    // Area Director: filter by office
     if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
       if (!user.officeId) {
         return { personId: user.id }; // Fallback to own commissions
@@ -554,7 +554,7 @@ export function getCommissionVisibilityFilter(
 
   // For "overrides" tab
   if (tab === "overrides") {
-    // Office Manager: filter by office
+    // Area Director: filter by office
     if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
       if (!user.officeId) {
         return { personId: user.id, commissionTypes: ["override_reports_to_l1", "override_reports_to_l2", "override_recruited_by_l1", "override_recruited_by_l2"] };
@@ -941,7 +941,7 @@ export function getRecruitVisibilityFilter(user: NonNullable<CurrentUser>) {
     return null;
   }
 
-  // Office Manager: filter by target office
+  // Area Director: filter by target office
   if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
     if (!user.officeId) {
       return { recruiterId: user.id }; // Fallback to own recruits if no office
@@ -1023,7 +1023,7 @@ export function getDealVisibilityFilter(user: NonNullable<CurrentUser>) {
     return null;
   }
 
-  // Office Manager: filter by office
+  // Area Director: filter by office
   if (hasPermission(user, Permission.MANAGE_OWN_OFFICE)) {
     if (!user.officeId) {
       return { setterId: user.id }; // Fallback to own deals if no office
@@ -1102,7 +1102,7 @@ export function applyCommissionVisibilityFilter(
     return query.where(eq(people.id, user.id));
   }
 
-  // Team Lead/Office Manager: their team/office commissions
+  // Team Lead/Area Director: their team/office commissions
   if (
     hasPermission(user, Permission.MANAGE_OWN_TEAM) ||
     hasPermission(user, Permission.MANAGE_OWN_OFFICE)

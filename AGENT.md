@@ -240,7 +240,7 @@ export const POST = withPermission(Permission.MANAGE_OWN_OFFICE, async (req, use
 | `VIEW_ALL_PEOPLE` | Admin - see everyone |
 | `MANAGE_ALL_OFFICES` | Admin - manage everyone |
 | `MANAGE_OWN_REGION` | Regional Manager |
-| `MANAGE_OWN_OFFICE` | Area Director / Office Manager |
+| `MANAGE_OWN_OFFICE` | Area Director |
 | `MANAGE_OWN_TEAM` | Team Lead |
 | `VIEW_OWN_DATA_ONLY` | Sales Rep |
 | `MANAGE_SETTINGS` | Can modify app settings |

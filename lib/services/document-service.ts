@@ -548,7 +548,6 @@ export async function getExpiredDocuments(userId: string): Promise<DocumentWithD
         officeId: people.officeId,
         roleId: people.roleId,
         roleName: roles.name,
-        rolePermissions: roles.permissions,
       })
       .from(people)
       .innerJoin(roles, eq(people.roleId, roles.id))
@@ -563,10 +562,6 @@ export async function getExpiredDocuments(userId: string): Promise<DocumentWithD
       id: userRow.id,
       officeId: userRow.officeId,
       roleName: userRow.roleName,
-      rolePermissions:
-        Array.isArray(userRow.rolePermissions) && userRow.rolePermissions.length > 0
-          ? (userRow.rolePermissions as string[])
-          : undefined,
     } as NonNullable<CurrentUser>;
 
     // Include: status "expired" (webhook-marked) or still pending/viewed/partially_signed but past expiration

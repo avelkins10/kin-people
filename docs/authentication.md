@@ -44,20 +44,20 @@ The system defines granular permissions in `lib/permissions/types.ts`:
 
 ### Role Permissions Matrix
 
-| Permission | Admin | Regional Manager | Office Manager | Area Director | Team Lead | Sales Rep |
-|------------|-------|------------------|----------------|---------------|-----------|-----------|
-| Manage settings/config | ✓ | | | | | |
-| Manage all offices | ✓ | | | | | |
-| Manage own region | ✓ | ✓ | | | | |
-| Manage own office | ✓ | ✓ | ✓ | ✓ | | |
-| Manage own team | ✓ | ✓ | ✓ | ✓ | ✓ | |
-| View all people | ✓ | ✓ | | | | |
-| View own office people | ✓ | ✓ | ✓ | ✓ | ✓ | |
-| View own team | ✓ | ✓ | ✓ | ✓ | ✓ | |
-| Create recruits | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Approve commissions | ✓ | ✓ | | | | |
-| Run payroll | ✓ | | | | | |
-| View own data only | | | | | | ✓ |
+| Permission | Admin | Regional Manager | Area Director | Team Lead | Sales Rep |
+|------------|-------|------------------|---------------|-----------|-----------|
+| Manage settings/config | ✓ | | | | |
+| Manage all offices | ✓ | | | | |
+| Manage own region | ✓ | ✓ | | | |
+| Manage own office | ✓ | ✓ | ✓ | | |
+| Manage own team | ✓ | ✓ | ✓ | ✓ | |
+| View all people | ✓ | ✓ | | | |
+| View own office people | ✓ | ✓ | ✓ | ✓ | |
+| View own team | ✓ | ✓ | ✓ | ✓ | |
+| Create recruits | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Approve commissions | ✓ | ✓ | | | |
+| Run payroll | ✓ | | | | |
+| View own data only | | | | | ✓ |
 
 ## Usage
 
@@ -168,7 +168,7 @@ import { RoleGuard } from "@/components/auth/role-guard";
 The system automatically filters data based on user roles:
 
 - **Admin/Regional Manager**: Can see all data (no filter)
-- **Office Manager/Area Director**: Can see data from their office (`officeId = user.officeId`)
+- **Area Director**: Can see data from their office (`officeId = user.officeId`)
 - **Team Lead**: Can see data from their office OR people who report to them
 - **Sales Rep**: Can only see their own data (`id = user.id`)
 

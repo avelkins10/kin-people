@@ -196,7 +196,7 @@ Test the following routes in a browser:
 
 **Database Verification**:
 - Check Supabase Dashboard → Database → Tables for expected schema
-- Verify `roles` table has seed data (Admin, Office Manager, Team Lead, Sales Rep)
+- Verify `roles` table has seed data (Admin, Area Director, Team Lead, Sales Rep)
 - If seed data is missing, run: `tsx lib/db/seed.ts` with production `DATABASE_URL`
 - **Reference**: `file:lib/db/seed.ts`
 

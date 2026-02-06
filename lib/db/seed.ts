@@ -32,7 +32,6 @@ export async function seedDatabase() {
       name: 'Sales Rep',
       level: 1,
       description: 'Entry-level sales representative',
-      permissions: { view_own_data_only: true },
       isActive: true,
       sortOrder: 1,
     },
@@ -40,15 +39,13 @@ export async function seedDatabase() {
       name: 'Team Lead',
       level: 2,
       description: 'Team leader with override responsibilities',
-      permissions: { manage_own_team: true },
       isActive: true,
       sortOrder: 2,
     },
     {
       name: 'Area Director',
       level: 3,
-      description: 'Area director with regional oversight',
-      permissions: { manage_own_office: true, approve_commissions: true },
+      description: 'Area director with office oversight',
       isActive: true,
       sortOrder: 3,
     },
@@ -56,17 +53,29 @@ export async function seedDatabase() {
       name: 'Regional Manager',
       level: 4,
       description: 'Regional manager with multi-area oversight',
-      permissions: { manage_own_region: true, view_all_people: true, approve_commissions: true },
       isActive: true,
       sortOrder: 4,
     },
     {
-      name: 'Admin',
+      name: 'Divisional',
       level: 5,
-      description: 'System administrator',
-      permissions: { manage_all: true },
+      description: 'Divisional leader with multi-region oversight',
       isActive: true,
       sortOrder: 5,
+    },
+    {
+      name: 'VP',
+      level: 6,
+      description: 'Vice president with company-wide oversight',
+      isActive: true,
+      sortOrder: 6,
+    },
+    {
+      name: 'Admin',
+      level: 7,
+      description: 'System administrator',
+      isActive: true,
+      sortOrder: 7,
     },
   ];
 
@@ -272,21 +281,19 @@ export async function seedDatabase() {
   };
 }
 
-const PILOT_ROLE_NAMES = ['Admin', 'Office Manager', 'Team Lead', 'Sales Rep'] as const;
+const PILOT_ROLE_NAMES = ['Admin', 'Area Director', 'Team Lead', 'Sales Rep'] as const;
 const PILOT_ROLE_SPECS: Record<(typeof PILOT_ROLE_NAMES)[number], NewRole> = {
   Admin: {
     name: 'Admin',
-    level: 5,
+    level: 7,
     description: 'System administrator',
-    permissions: { manage_all: true },
     isActive: true,
-    sortOrder: 5,
+    sortOrder: 7,
   },
-  'Office Manager': {
-    name: 'Office Manager',
+  'Area Director': {
+    name: 'Area Director',
     level: 3,
-    description: 'Office manager with office oversight',
-    permissions: { manage_own_office: true, approve_commissions: true },
+    description: 'Area director with office oversight',
     isActive: true,
     sortOrder: 3,
   },
@@ -294,7 +301,6 @@ const PILOT_ROLE_SPECS: Record<(typeof PILOT_ROLE_NAMES)[number], NewRole> = {
     name: 'Team Lead',
     level: 2,
     description: 'Team leader with override responsibilities',
-    permissions: { manage_own_team: true },
     isActive: true,
     sortOrder: 2,
   },
@@ -302,7 +308,6 @@ const PILOT_ROLE_SPECS: Record<(typeof PILOT_ROLE_NAMES)[number], NewRole> = {
     name: 'Sales Rep',
     level: 1,
     description: 'Entry-level sales representative',
-    permissions: { view_own_data_only: true },
     isActive: true,
     sortOrder: 1,
   },
