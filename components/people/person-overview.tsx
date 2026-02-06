@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import type { PersonWithDetails } from "@/types/people";
+import { PersonAppAccess } from "./person-app-access";
 
 function formatDate(date: Date | string | null): string {
   if (!date) return "-";
@@ -218,6 +219,9 @@ export function PersonOverview({
           )}
         </CardContent>
       </Card>
+
+      {/* App Access */}
+      {personId && <PersonAppAccess personId={personId} />}
     </div>
   );
 }

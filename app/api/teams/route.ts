@@ -2,15 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { teams, offices } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
+import { getAccessibleOfficeIds } from "@/lib/auth/visibility-rules";
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, user) => {
   try {
     const { searchParams } = new URL(req.url);
     const activeOnly = searchParams.get("active") === "true";
+    const scoped = searchParams.get("scoped") === "true";
+
+    const conditions: any[] = [];
+
+    if (activeOnly) {
+      conditions.push(eq(teams.isActive, true));
+    }
+
+    if (scoped) {
+      const accessibleIds = await getAccessibleOfficeIds(user);
+      if (accessibleIds !== null) {
+        if (accessibleIds.length === 0) {
+          return NextResponse.json([]);
+        }
+        // Only include teams whose officeId is in the accessible list
+        conditions.push(inArray(teams.officeId, accessibleIds));
+      }
+      // If null (admin), no filter — include all teams
+    }
 
     let query = db
       .select({
@@ -27,8 +47,8 @@ export const GET = withAuth(async (req: NextRequest) => {
       .from(teams)
       .leftJoin(offices, eq(teams.officeId, offices.id));
 
-    if (activeOnly) {
-      query = query.where(eq(teams.isActive, true)) as any;
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
     }
 
     const teamsList = await query;
@@ -47,6 +67,7 @@ const createTeamSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
   officeId: z.string().uuid().optional(),
+  teamLeadId: z.string().uuid().optional(),
   isActive: z.boolean().optional().default(true),
 });
 
@@ -61,6 +82,7 @@ export const POST = withPermission(Permission.MANAGE_OWN_TEAM, async (req, user)
         name: validated.name,
         description: validated.description || null,
         officeId: validated.officeId || null,
+        teamLeadId: validated.teamLeadId || null,
         isActive: validated.isActive ?? true,
       })
       .returning();

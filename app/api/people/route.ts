@@ -3,8 +3,9 @@ import { z } from "zod";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import { people, roles, offices } from "@/lib/db/schema";
-import { eq, gte, sql, and } from "drizzle-orm";
+import { eq, gte, sql, and, inArray } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
+import { getVisibilityFilterAsync, getAccessibleOfficeIds } from "@/lib/auth/visibility-rules";
 import { Permission } from "@/lib/permissions/types";
 import { generateKinId } from "@/lib/db/helpers/kin-id-helpers";
 import {
@@ -12,6 +13,7 @@ import {
   checkForDuplicatePerson,
   formatDuplicateError,
 } from "@/lib/db/helpers/duplicate-helpers";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const managerAlias = alias(people, "manager");
 
@@ -27,7 +29,7 @@ const createPersonSchema = z.object({
   hireDate: z.string().optional(),
 });
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, user) => {
   try {
     const { searchParams } = new URL(req.url);
     const roleLevel = searchParams.get("roleLevel");
@@ -56,6 +58,28 @@ export const GET = withAuth(async (req: NextRequest) => {
       .leftJoin(managerAlias, eq(people.reportsToId, managerAlias.id));
 
     const conditions: ReturnType<typeof eq>[] = [];
+
+    // Apply role-based visibility filter
+    const visibility = await getVisibilityFilterAsync(user);
+    if (visibility) {
+      switch (visibility.type) {
+        case 'offices':
+        case 'office':
+          if (visibility.officeIds && visibility.officeIds.length > 0) {
+            conditions.push(inArray(people.officeId, visibility.officeIds) as any);
+          }
+          break;
+        case 'team':
+          if (visibility.personIds && visibility.personIds.length > 0) {
+            conditions.push(inArray(people.id, visibility.personIds) as any);
+          }
+          break;
+        case 'self':
+          conditions.push(eq(people.id, user.id));
+          break;
+      }
+    }
+
     if (roleLevel === "manager") {
       conditions.push(gte(roles.level, 3) as any);
     }
@@ -84,10 +108,21 @@ export const GET = withAuth(async (req: NextRequest) => {
   }
 });
 
-export const POST = withPermission(Permission.VIEW_ALL_PEOPLE, async (req: NextRequest) => {
+export const POST = withPermission(Permission.VIEW_ALL_PEOPLE, async (req: NextRequest, user) => {
   try {
     const body = await req.json();
     const validated = createPersonSchema.parse(body);
+
+    // Validate officeId is within user's accessible scope
+    if (validated.officeId) {
+      const accessibleIds = await getAccessibleOfficeIds(user);
+      if (accessibleIds !== null && !accessibleIds.includes(validated.officeId)) {
+        return NextResponse.json(
+          { error: "You do not have permission to add people to this office" },
+          { status: 403 }
+        );
+      }
+    }
 
     // Check for duplicate person
     const duplicatePerson = await checkForDuplicatePerson(
@@ -124,8 +159,31 @@ export const POST = withPermission(Permission.VIEW_ALL_PEOPLE, async (req: NextR
       })
       .returning({ id: people.id, kinId: people.kinId });
 
+    // Send Supabase invite email and link auth account
+    let inviteSent = false;
+    try {
+      const supabaseAdmin = createAdminClient();
+      const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
+      const { data: inviteData, error: inviteError } =
+        await supabaseAdmin.auth.admin.inviteUserByEmail(validated.email, {
+          redirectTo: `${origin}/confirm`,
+        });
+
+      if (inviteError) {
+        console.warn("[people] Invite email failed:", inviteError.message);
+      } else if (inviteData?.user?.id && newPerson?.id) {
+        await db
+          .update(people)
+          .set({ authUserId: inviteData.user.id })
+          .where(eq(people.id, newPerson.id));
+        inviteSent = true;
+      }
+    } catch (inviteErr) {
+      console.warn("[people] Invite email error:", inviteErr);
+    }
+
     return NextResponse.json(
-      { id: newPerson?.id, kinId: newPerson?.kinId, message: "Person created successfully" },
+      { id: newPerson?.id, kinId: newPerson?.kinId, inviteSent, message: "Person created successfully" },
       { status: 201 }
     );
   } catch (error: any) {

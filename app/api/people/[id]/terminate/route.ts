@@ -6,12 +6,17 @@ import {
   personPayPlans,
   personTeams,
   personHistory,
+  officeLeadership,
+  teams,
 } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { getPersonWithDetails, createPersonHistoryRecord } from "@/lib/db/helpers/person-helpers";
 import { canManagePerson } from "@/lib/auth/visibility-rules";
+import { getRepcardAccountByPersonId, setRepcardAccountStatus } from "@/lib/db/helpers/repcard-helpers";
+import { deactivateRepcardUser } from "@/lib/integrations/repcard";
+import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
 
 const schema = z.object({
   terminationDate: z.string(),
@@ -79,6 +84,23 @@ export async function POST(
             )
           );
 
+        // End all active leadership assignments (office_leadership)
+        await tx
+          .update(officeLeadership)
+          .set({ effectiveTo: validated.terminationDate, updatedAt: new Date() })
+          .where(
+            and(
+              eq(officeLeadership.personId, id),
+              isNull(officeLeadership.effectiveTo)
+            )
+          );
+
+        // Clear team lead role if this person is a team lead
+        await tx
+          .update(teams)
+          .set({ teamLeadId: null, updatedAt: new Date() })
+          .where(eq(teams.teamLeadId, id));
+
         // Create history record
         await tx.insert(personHistory).values({
           personId: id,
@@ -95,6 +117,29 @@ export async function POST(
           changedById: user.id,
         });
       });
+
+      // Auto-deactivate RepCard account (non-blocking)
+      try {
+        const repcardAccount = await getRepcardAccountByPersonId(id);
+        if (repcardAccount?.account?.repcardUserId && repcardAccount.account.status === "active") {
+          await deactivateRepcardUser(repcardAccount.account.repcardUserId);
+          await setRepcardAccountStatus(repcardAccount.account.id, "deactivated");
+          try {
+            await logActivity({
+              entityType: "repcard_account",
+              entityId: repcardAccount.account.id,
+              action: "deactivated",
+              details: { personId: id, reason: "Person terminated" },
+              actorId: user.id,
+            });
+          } catch (logError) {
+            console.error("Failed to log RepCard deactivation activity:", logError);
+          }
+        }
+      } catch (repcardError) {
+        // Non-blocking: log but don't prevent termination
+        console.error("Failed to auto-deactivate RepCard account:", repcardError);
+      }
 
       // Fetch updated person data
       const updatedPerson = await getPersonWithDetails(id);

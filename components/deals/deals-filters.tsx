@@ -27,7 +27,7 @@ export function DealsFilters() {
   useEffect(() => {
     async function fetchOffices() {
       try {
-        const response = await fetch("/api/offices?active=true");
+        const response = await fetch("/api/offices?active=true&scoped=true");
         if (response.ok) {
           const data = await response.json();
           setOffices(data);

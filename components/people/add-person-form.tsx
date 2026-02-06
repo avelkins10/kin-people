@@ -70,7 +70,7 @@ export function AddPersonForm() {
       try {
         const [rolesRes, officesRes, managersRes] = await Promise.all([
           fetch("/api/roles?active=true"),
-          fetch("/api/offices?active=true"),
+          fetch("/api/offices?active=true&scoped=true"),
           fetch("/api/people?roleLevel=manager"),
         ]);
 

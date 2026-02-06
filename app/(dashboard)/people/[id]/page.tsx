@@ -14,6 +14,8 @@ import { PersonOnboarding } from "@/components/people/person-onboarding";
 import { SendDocumentModalWrapper } from "@/components/people/modals/send-document-modal-wrapper";
 import { SendDocumentModal } from "@/components/documents/send-document-modal";
 import { PersonEditForm } from "@/components/people/person-edit-form";
+import { PersonActionMenu } from "@/components/people/person-action-menu";
+import { SoftwareAccessTab } from "@/components/people/software-access-tab";
 import type { PersonWithDetails } from "@/types/people";
 import { ArrowLeft, Loader2, Edit2 } from "lucide-react";
 import { useRoles, useOffices, usePeople } from "@/hooks/use-people-data";
@@ -165,13 +167,16 @@ export default function PersonDetailPage() {
           )}
         </div>
         {!isEditing && (
-          <Button
-            variant="outline"
-            onClick={() => setSendDocModalOpen(true)}
-            aria-label="Send document"
-          >
-            Send Document
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSendDocModalOpen(true)}
+              aria-label="Send document"
+            >
+              Send Document
+            </Button>
+            <PersonActionMenu personId={id} personName={displayName} />
+          </div>
         )}
       </header>
 
@@ -195,6 +200,7 @@ export default function PersonDetailPage() {
           <TabsTrigger value="deals">Deals</TabsTrigger>
           <TabsTrigger value="commissions">Commissions</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="software-access">Software Access</TabsTrigger>
           <TabsTrigger value="recruits">Recruits</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
@@ -228,6 +234,9 @@ export default function PersonDetailPage() {
               })
             }
           />
+        </TabsContent>
+        <TabsContent value="software-access">
+          <SoftwareAccessTab personId={id} />
         </TabsContent>
         <TabsContent value="recruits">
           <PersonRecruits personId={id} />

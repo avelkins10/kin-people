@@ -75,7 +75,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center p-8">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Kin People App</CardTitle>
+          <CardTitle>KINNECT</CardTitle>
           <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -118,13 +118,7 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
             </Button>
-            <div className="flex w-full flex-wrap justify-between gap-2 text-sm">
-              <Link
-                href="/signup"
-                className="text-primary hover:underline"
-              >
-                Sign up
-              </Link>
+            <div className="flex w-full justify-end text-sm">
               <Link
                 href="#"
                 className="text-muted-foreground hover:underline"

@@ -18,6 +18,7 @@ function ConfirmContent() {
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(2);
+  const [redirectTarget, setRedirectTarget] = useState("/dashboard");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -26,6 +27,8 @@ function ConfirmContent() {
     const type = searchParams.get("type");
     const code = searchParams.get("code");
     const supabase = createClient();
+
+    const isInvite = type === "invite";
 
     async function verifyAndSync() {
       // Establish session from URL before getUser(): hash (implicit) or code (PKCE)
@@ -47,7 +50,21 @@ function ConfirmContent() {
         }
       }
 
-      // Supabase may pass token_hash and type in query (custom flow); verifyOtp establishes session for that path
+      // Handle invite token verification
+      if (tokenHash && isInvite) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "invite",
+        });
+
+        if (verifyError) {
+          setError(verifyError.message);
+          setStatus("error");
+          return;
+        }
+      }
+
+      // Handle signup token verification
       if (tokenHash && type === "signup") {
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
@@ -80,13 +97,16 @@ function ConfirmContent() {
         }),
       });
 
+      // Invite users need to set their password; signup users go straight to dashboard
+      const destination = isInvite ? "/set-password" : "/dashboard";
+      setRedirectTarget(destination);
       setStatus("success");
 
       const interval = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-            router.push("/dashboard");
+            router.push(destination);
             router.refresh();
             return 0;
           }
@@ -139,13 +159,11 @@ function ConfirmContent() {
             )}
             <Button
               onClick={() => {
-                setStatus("loading");
-                setError(null);
-                router.push("/signup");
+                router.push("/login");
               }}
               className="w-full"
             >
-              Try again
+              Back to login
             </Button>
           </CardContent>
         </Card>
@@ -159,7 +177,7 @@ function ConfirmContent() {
         <CardHeader>
           <CardTitle>Email confirmed</CardTitle>
           <CardDescription>
-            Your account is ready. Redirecting to the dashboard in {countdown}{" "}
+            Your account is ready. Redirecting{redirectTarget === "/set-password" ? " to set your password" : " to the dashboard"} in {countdown}{" "}
             second{countdown !== 1 ? "s" : ""}…
           </CardDescription>
         </CardHeader>

@@ -21,6 +21,8 @@ export interface Person {
 export interface Office {
   id: string;
   name: string;
+  regionId: string | null;
+  region: string | null;
 }
 
 export interface Role {
@@ -68,6 +70,19 @@ export function usePerson(personId: string | null) {
       return response.json() as Promise<Person>;
     },
     enabled: !!personId,
+  });
+}
+
+export function useRegions() {
+  return useQuery({
+    queryKey: ["regions"],
+    queryFn: async () => {
+      const response = await fetch("/api/regions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch regions");
+      }
+      return response.json() as Promise<Array<{ id: string; name: string; isActive: boolean | null }>>;
+    },
   });
 }
 
@@ -131,6 +146,86 @@ export function useUpdatePerson() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update person",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export interface AuthStatus {
+  status: "not_invited" | "invited" | "active";
+  lastSignInAt: string | null;
+  invitedAt: string | null;
+  emailConfirmed: boolean;
+}
+
+export function useAuthStatus(personId: string | null) {
+  return useQuery({
+    queryKey: ["auth-status", personId],
+    queryFn: async () => {
+      if (!personId) throw new Error("Person ID is required");
+      const response = await fetch(`/api/people/${personId}/auth-status`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch auth status");
+      }
+      return response.json() as Promise<AuthStatus>;
+    },
+    enabled: !!personId,
+  });
+}
+
+export function useResendInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (personId: string) => {
+      const response = await fetch(`/api/people/${personId}/resend-invite`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error((error as { error?: string }).error ?? "Failed to send invite");
+      }
+      return response.json();
+    },
+    onSuccess: (_, personId) => {
+      toast({
+        title: "Invite sent",
+        description: "The invitation email has been sent.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["auth-status", personId] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send invite",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useRemovePerson() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/people/${id}/remove`, { method: "DELETE" });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error((error as { error?: string }).error ?? "Failed to remove person");
+      }
+    },
+    onSuccess: (_, id) => {
+      toast({
+        title: "Person removed",
+        description: "The person has been permanently removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["people", id] });
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove person",
         variant: "destructive",
       });
     },

@@ -159,7 +159,7 @@ export function DealsPage() {
 
   const fetchOffices = useCallback(async () => {
     try {
-      const res = await fetch("/api/offices?active=true");
+      const res = await fetch("/api/offices?active=true&scoped=true");
       if (res.ok) {
         const data = await res.json();
         setOffices(data.map((o: any) => ({ id: o.id, name: o.name })));

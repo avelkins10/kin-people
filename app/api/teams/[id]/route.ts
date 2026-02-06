@@ -11,6 +11,7 @@ const updateTeamSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().nullable().optional(),
   officeId: z.string().uuid().nullable().optional(),
+  teamLeadId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -33,6 +34,7 @@ export async function PATCH(
       if (validated.name !== undefined) updateData.name = validated.name;
       if (validated.description !== undefined) updateData.description = validated.description;
       if (validated.officeId !== undefined) updateData.officeId = validated.officeId;
+      if (validated.teamLeadId !== undefined) updateData.teamLeadId = validated.teamLeadId;
       if (validated.isActive !== undefined) updateData.isActive = validated.isActive;
 
       const [updated] = await db

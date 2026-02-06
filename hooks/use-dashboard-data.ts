@@ -1,12 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 
-export interface DashboardStats {
+export interface StatsBlock {
   totalPeople: number;
   activeRecruits: number;
   pendingCommissions: number;
   recentDealsCount: number;
   pipelineStageCounts: Record<string, number>;
   onboardingCount: number;
+}
+
+export interface DashboardStats {
+  personal: StatsBlock;
+  team: StatsBlock | null;
 }
 
 export interface OnboardingPerson {
@@ -68,5 +73,27 @@ export function useRecruitingStats() {
       }
       return response.json() as Promise<RecruitingStats>;
     },
+  });
+}
+
+export interface FeedItem {
+  id: string;
+  event: string;
+  subjectName: string;
+  actorName: string | null;
+  createdAt: string;
+}
+
+export function useFeed() {
+  return useQuery({
+    queryKey: ["feed"],
+    queryFn: async () => {
+      const response = await fetch("/api/feed?limit=15");
+      if (!response.ok) {
+        throw new Error("Failed to fetch feed");
+      }
+      return response.json() as Promise<{ items: FeedItem[] }>;
+    },
+    refetchInterval: 60_000,
   });
 }

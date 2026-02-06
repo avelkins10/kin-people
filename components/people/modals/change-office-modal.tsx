@@ -50,7 +50,7 @@ export function ChangeOfficeModal({ personId, open, onClose }: ChangeOfficeModal
     try {
       const [personRes, officesRes] = await Promise.all([
         fetch(`/api/people/${personId}`),
-        fetch("/api/offices?active=true"),
+        fetch("/api/offices?active=true&scoped=true"),
       ]);
 
       if (personRes.ok) {

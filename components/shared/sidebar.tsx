@@ -52,11 +52,9 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 h-full w-56 bg-white border-r border-gray-100 z-30 flex flex-col">
       {/* Logo */}
       <div className="p-6 flex items-center border-b border-gray-50">
-        <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center mr-3">
-          <span className="text-white font-bold text-lg">K</span>
-        </div>
-        <span className="text-xl font-extrabold tracking-tight text-black">
-          Kin People
+        <img src="/kinnect-logo.png" alt="KINNECT" className="w-7 h-7 mr-2.5" />
+        <span className="text-base font-extrabold tracking-tight text-black">
+          KINNECT
         </span>
       </div>
 

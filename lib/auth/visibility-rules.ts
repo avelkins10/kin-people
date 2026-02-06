@@ -13,6 +13,35 @@ import {
 } from "@/lib/db/helpers/person-helpers";
 
 /**
+ * Get the office IDs a user is allowed to target in create/update operations.
+ *
+ * Returns `null` for admins (no restriction) or `string[]` of office IDs.
+ * - region scope → all offices in their region
+ * - office scope → their managed office
+ * - team / self scope → their own office only
+ */
+export async function getAccessibleOfficeIds(
+  user: NonNullable<CurrentUser>
+): Promise<string[] | null> {
+  if (hasPermission(user, Permission.VIEW_ALL_PEOPLE)) {
+    return null; // admin — no restriction
+  }
+
+  const scope = await getVisibilityScope(user.id, user.officeId);
+
+  switch (scope.type) {
+    case 'region':
+    case 'office':
+      return scope.officeIds ?? [];
+    case 'team':
+    case 'self':
+      return user.officeId ? [user.officeId] : [];
+    default:
+      return user.officeId ? [user.officeId] : [];
+  }
+}
+
+/**
  * Get visibility filter criteria based on user role.
  *
  * Returns filter conditions that should be applied to queries

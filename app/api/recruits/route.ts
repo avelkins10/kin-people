@@ -5,7 +5,7 @@ import { recruits, people, offices, roles, documents } from "@/lib/db/schema";
 import { eq, and, desc, inArray, isNotNull, sql, or } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
-import { getRecruitVisibilityFilterAsync } from "@/lib/auth/visibility-rules";
+import { getRecruitVisibilityFilterAsync, getAccessibleOfficeIds } from "@/lib/auth/visibility-rules";
 import { createRecruitHistoryRecord } from "@/lib/db/helpers/recruit-helpers";
 import {
   normalizePhone,
@@ -164,6 +164,17 @@ export const POST = withPermission(Permission.CREATE_RECRUITS, async (req: NextR
   try {
     const body = await req.json();
     const validated = createRecruitSchema.parse(body);
+
+    // Validate targetOfficeId is within user's accessible scope
+    if (validated.targetOfficeId) {
+      const accessibleIds = await getAccessibleOfficeIds(user);
+      if (accessibleIds !== null && !accessibleIds.includes(validated.targetOfficeId)) {
+        return NextResponse.json(
+          { error: "You do not have permission to target this office" },
+          { status: 403 }
+        );
+      }
+    }
 
     // Check for duplicate recruit
     const duplicateRecruit = await checkForDuplicateRecruit(

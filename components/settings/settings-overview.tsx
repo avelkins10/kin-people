@@ -42,7 +42,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     label: "Add Office",
     icon: MapPin,
-    tab: "offices",
+    tab: "org-structure",
     description: "Set up a new office location",
   },
   {

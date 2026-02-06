@@ -29,6 +29,7 @@ interface NavItem {
   id: Page;
   name: string;
   icon: React.ElementType;
+  comingSoon?: boolean;
 }
 interface NavSection {
   label: string;
@@ -104,12 +105,14 @@ export function Sidebar({
     {
       id: 'deals',
       name: 'Deals',
-      icon: Handshake
+      icon: Handshake,
+      comingSoon: true
     },
     {
       id: 'commissions',
       name: 'Commissions',
-      icon: DollarSign
+      icon: DollarSign,
+      comingSoon: true
     }]
 
   }];
@@ -120,12 +123,10 @@ export function Sidebar({
 
       {/* Logo */}
       <div className="p-6 flex items-center border-b border-gray-50">
-        <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center mr-3 shrink-0">
-          <span className="text-white font-bold text-lg">K</span>
-        </div>
+        <img src="/kinnect-logo.png" alt="KINNECT" className={`shrink-0 ${isOpen ? 'w-7 h-7 mr-2.5' : 'w-7 h-7 mx-auto'}`} />
         {isOpen &&
-        <span className="text-xl font-extrabold tracking-tight text-black">
-            Kin People
+        <span className="text-base font-extrabold tracking-tight text-black">
+            KINNECT
           </span>
         }
       </div>
@@ -148,9 +149,35 @@ export function Sidebar({
               {section.items.map((item) => {
                 const href = PAGE_HREF[item.id];
                 const isActive =
+                  !item.comingSoon && (
                   activePage === item.id ||
                   pathname === href ||
-                  (href !== "/" && pathname.startsWith(href + "/"));
+                  (href !== "/" && pathname.startsWith(href + "/")));
+
+                if (item.comingSoon) {
+                  return (
+                    <li key={item.id}>
+                      <span
+                        className="w-full flex items-center px-6 py-3 opacity-50 cursor-default relative"
+                      >
+                        <item.icon
+                          className={`w-5 h-5 shrink-0 ${isOpen ? "mr-3" : "mx-auto"} text-gray-400`}
+                        />
+                        {isOpen && (
+                          <>
+                            <span className="font-bold tracking-tight text-xs text-gray-500">
+                              {item.name}
+                            </span>
+                            <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                              Coming Soon
+                            </span>
+                          </>
+                        )}
+                      </span>
+                    </li>
+                  );
+                }
+
                 return (
                   <li key={item.id}>
                     <Link

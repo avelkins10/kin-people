@@ -14,10 +14,30 @@ export interface Role {
   updatedAt?: string;
 }
 
+export interface Division {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Region {
+  id: string;
+  name: string;
+  description: string | null;
+  divisionId: string | null;
+  isActive: boolean | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Office {
   id: string;
   name: string;
   region: string | null;
+  regionId: string | null;
   division: string | null;
   address: string | null;
   isActive: boolean;
@@ -33,6 +53,21 @@ export interface Team {
   teamLeadId: string | null;
   isActive: boolean;
   officeName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LeadershipAssignment {
+  id: string;
+  officeId: string | null;
+  region: string | null;
+  regionId: string | null;
+  division: string | null;
+  roleType: string;
+  personId: string;
+  personName: string | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -101,8 +136,11 @@ export interface PersonListItem {
 
 interface SettingsData {
   roles: Role[];
+  divisions: Division[];
+  regions: Region[];
   offices: Office[];
   teams: Team[];
+  leadership: LeadershipAssignment[];
   payPlans: PayPlan[];
   commissionRules: CommissionRule[];
   documentTemplates: DocumentTemplate[];
@@ -125,8 +163,11 @@ function toArray<T>(value: unknown): T[] {
 export function useSettingsData() {
   const [data, setData] = useState<SettingsData>({
     roles: [],
+    divisions: [],
+    regions: [],
     offices: [],
     teams: [],
+    leadership: [],
     payPlans: [],
     commissionRules: [],
     documentTemplates: [],
@@ -139,11 +180,14 @@ export function useSettingsData() {
     setLoading(true);
     setError(null);
     try {
-      const [rolesRaw, officesRaw, teamsRaw, payPlansRaw, commissionRulesRaw, documentTemplatesRaw, peopleRaw] =
+      const [rolesRaw, divisionsRaw, regionsRaw, officesRaw, teamsRaw, leadershipRaw, payPlansRaw, commissionRulesRaw, documentTemplatesRaw, peopleRaw] =
         await Promise.all([
           fetchJson("/api/roles"),
+          fetchJson("/api/divisions"),
+          fetchJson("/api/regions"),
           fetchJson("/api/offices"),
           fetchJson("/api/teams"),
+          fetchJson("/api/office-leadership?current=true"),
           fetchJson("/api/pay-plans"),
           fetchJson("/api/commission-rules"),
           fetchJson("/api/document-templates"),
@@ -151,8 +195,11 @@ export function useSettingsData() {
         ]);
       setData({
         roles: toArray<Role>(rolesRaw),
+        divisions: toArray<Division>(divisionsRaw),
+        regions: toArray<Region>(regionsRaw),
         offices: toArray<Office>(officesRaw),
         teams: toArray<Team>(teamsRaw),
+        leadership: toArray<LeadershipAssignment>(leadershipRaw),
         payPlans: toArray<PayPlan>(payPlansRaw),
         commissionRules: toArray<CommissionRule>(commissionRulesRaw),
         documentTemplates: toArray<DocumentTemplate>(documentTemplatesRaw),

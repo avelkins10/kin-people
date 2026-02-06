@@ -48,7 +48,7 @@ export function AddToTeamModal({ personId, open, onClose }: AddToTeamModalProps)
 
   async function fetchTeams() {
     try {
-      const response = await fetch("/api/teams?active=true");
+      const response = await fetch("/api/teams?active=true&scoped=true");
       if (response.ok) {
         const teamsData = await response.json();
         setTeams(teamsData);

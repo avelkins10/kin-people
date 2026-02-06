@@ -9,7 +9,7 @@ const resend = process.env.RESEND_API_KEY
   : null;
 
 // Default "from" address - matches Supabase SMTP config
-const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'The KIN Team <team@kinhome.com>';
+const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'The KINNECT Team <team@kinhome.com>';
 
 // Email template types and keys
 type EmailTemplateType = 'welcome' | 'reminder' | 'completion';

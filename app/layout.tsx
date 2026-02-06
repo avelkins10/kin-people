@@ -6,8 +6,8 @@ import { Providers } from "@/components/providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Kin People App",
-  description: "Sales team management and commission tracking",
+  title: "KINNECT",
+  description: "People operations platform — onboarding, commissions, recruiting, and performance tracking",
   generator: "v0.app",
 };
 

@@ -66,7 +66,7 @@ export function CreateDealModal({ children }: CreateDealModalProps) {
     try {
       const [peopleRes, officesRes] = await Promise.all([
         fetch("/api/people"),
-        fetch("/api/offices?active=true"),
+        fetch("/api/offices?active=true&scoped=true"),
       ]);
 
       if (peopleRes.ok) {

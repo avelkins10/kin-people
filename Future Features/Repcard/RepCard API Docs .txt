@@ -1,0 +1,683 @@
+
+
+
+Public
+
+
+ENVIRONMENT
+
+
+Prod
+
+
+LAYOUT
+
+
+Double Column
+
+
+LANGUAGE
+
+
+JavaScript - Fetch
+
+
+
+
+REPCARD API DOCUMENTATION
+Introduction
+
+
+User
+
+
+Customer
+
+
+Customer Status
+
+
+Customer Notes
+
+
+Calendar
+
+
+Appointment
+
+
+Leaderboard
+
+
+Office
+
+
+Company
+
+
+Attachment
+RepCard API Documentation
+
+
+User
+
+GET
+Get Users
+https://app.repcard.com/api/users/minimal?company_id=597&per_page=1&search=bob&firstVerifiedDoorKnock=1&firstAppointment=1
+This endpoint makes an HTTP GET request to retrieve minimal user information based on the provided company ID and pagination. The response will be in JSON format with a status code of 200. The response includes an array of user data, where each user object contains minimal details such as ID, first name, last name, date of birth, email, username, address, office, team, job title, phone number, image, rating, bio, company name, badge ID, QR code, and external ID. The "result" object also provides metadata such as totalCount, currentPage, and totalPages.
+Example response:
+View More
+json
+{
+    "status": 0,
+    "statusCode": 0,
+    "message": "",
+    "result": {
+        "data": [
+            {
+                "id": 0,
+                "firstName": "",
+                "lastName": "",
+                "dob": "",
+                "email": "",
+                "username": "",
+                "address": "",
+                "office": "",
+                "team": "",
+                "jobTitle": "",
+                "phoneNumber": "",
+                "image": "",
+                "rating": "",
+                "bio": "",
+                "companyName": "",
+                "badgeId": "",
+                "qrCode": ""
+            }
+        ],
+        "totalCount": 0,
+        "currentPage": 0,
+        "totalPages": 0
+    }
+}
+HEADERS
+x-api-key
+foobar
+PARAMS
+company_id
+597
+per_page
+1
+search
+bob
+firstVerifiedDoorKnock
+1
+firstAppointment
+1
+Example Request
+
+
+Get Users
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var requestOptions = {
+  method: 'GET',
+  headers: myHeaders,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/users/minimal", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+200 OK
+Example Response
+	•	Body
+	•	Headers (11)
+View More
+json
+{
+  "status": 1,
+  "statusCode": 200,
+  "message": "",
+  "result": {
+    "data": [
+      {
+        "id": 1466,
+        "firstName": "ksc1",
+        "lastName": "owner",
+        "dob": "1980-02-13",
+        "email": "ksc1@yopmail.com",
+        "username": "ksc1owner",
+        "address": "",
+        "office": "Corporate Office",
+        "team": "Team 1",
+        "jobTitle": "Owner ksc1",
+        "phoneNumber": "+919910891993",
+        "image": "https://s3-ap-southeast-2.amazonaws.com/repcard/users/oms6Z17000393698792.jpg",
+        "rating": "0.0",
+        "bio": "Hey it's ksc1. I have been working with KP QA Test - Subcom-5 - Child 1 for a while now and I really enjoy it. They have been good to me and care about their employees. Thank you in advance for any reviews!",
+        "companyName": "KP QA Test - Subcom-5 - Child 1",
+        "badgeId": "NVYHP9",
+        "qrCode": ""
+      },
+      {
+        "id": 1476,
+        "firstName": "NEW",
+        "lastName": "USER",
+        "dob": "1993-11-12",
+        "email": "newuser123@yopmail.com",
+        "username": "newuser12",
+        "address": "",
+        "office": "Corporate Office",
+        "team": "Team 1",
+        "jobTitle": "Sales",
+        "phoneNumber": "+919910891993",
+        "image": "",
+        "rating": "0.0",
+        "bio": "Hey it's NEW. I have been working with KP QA Test - Subcom-5 - Child 1 for a while now and I really enjoy it. They have been good to me and care about their employees. Thank you in advance for any reviews!",
+        "companyName": "KP QA Test - Subcom-5 - Child 1",
+        "badgeId": "1UHIPJ",
+        "qrCode": ""
+      }
+    ],
+    "totalCount": 2,
+    "currentPage": 1,
+    "totalPages": 1
+  }
+}
+GET
+Get User Details
+https://app.repcard.com/api/users/26682/details?firstVerifiedDoorKnock=1&firstAppointment=1
+This endpoint retrieves information about a user with the given ID who is registered to specific event.
+The response will include details such as the user's first name, last name, date of birth, email, username, address, office, team, job title, phone number, image, rating, bio, company name, badge ID, and QR code.
+If the user with the provided ID is not found, the endpoint will return a 404 status with an empty result object in the response.
+HEADERS
+x-api-key
+foobar
+PARAMS
+firstVerifiedDoorKnock
+1
+firstAppointment
+1
+Example Request
+
+
+200
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var requestOptions = {
+  method: 'GET',
+  headers: myHeaders,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/users/26682/details", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+200 OK
+Example Response
+	•	Body
+	•	Headers (12)
+View More
+json
+{
+  "status": 1,
+  "statusCode": 200,
+  "message": "",
+  "result": {
+    "id": 26682,
+    "firstName": "Jitender",
+    "lastName": "Thakur",
+    "dob": null,
+    "email": "jitender@repcard.com",
+    "username": "jitenderthakur",
+    "address": "",
+    "office": "India Office",
+    "team": "Backend",
+    "jobTitle": "Product Architect",
+    "phoneNumber": "+918447554882",
+    "image": "https://s3-ap-southeast-2.amazonaws.com/repcard/users/dJEID16856188417637.jpg",
+    "rating": "0.0",
+    "bio": "Hey it’s Jitender. I have been working with RepCard y for a while now and I really enjoy it. They have been good to me and care about their employees. Thank you in advance for any reviews!",
+    "companyName": "RepCard",
+    "badgeId": "5C6762",
+    "qrCode": ""
+  }
+}
+
+
+PUT
+Update User
+https://app.repcard.com/api/users/1466
+This endpoint allows you to update user information by sending an HTTP PUT request to the specified URL.
+Request Body
+The request should include a raw JSON body with the following parameters:
+	•	firstName (string): The first name of the user. (Required)
+	•	lastName (string): The last name of the user. (Required)
+	•	userEmail (string): The email address of the user. (Required)
+	•	phoneNumber (number): The phone number of the user. (Required)
+	•	jobTitle (string): The job title of the user. (Required)
+	•	roleName (string): The role name of the user. (Required)
+	•	officeName (string): The office name of the user. (Required)
+	•	teamName (string): The office team name of the user. (Required)
+	•	countryCode (string): The country code of the user. (Required)
+	•	externalId (string): The external ID of the user (optional).
+Response
+The endpoint returns a status code of 401 and a JSON response with the following structure:
+	•	status (number): The status of the response.
+	•	statusCode (number): The status code of the response.
+	•	message (string): A message related to the response.
+	•	result (object): An empty object.
+Note: The response indicates that the request was not authorized.
+HEADERS
+x-api-key
+foobar
+Body
+raw (json)
+View More
+json
+{
+    "firstName" : "foo",
+    "lastName" : "bar",
+    "userEmail" : "foobar@yopmail.com",
+    "phoneNumber" : 9999999999,
+    "jobTitle" : "software developer",
+    "username": "foobar",
+    "roleName": "sales",
+    "officeName": "Corporate Office",
+    "teamName": "office team",
+    "countryCode": "+1",
+    "externalId" : "123xyz"
+}
+Example Request
+
+
+Update User
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var raw = "{\r\n    \"firstName\" : \"foo\",\r\n    \"lastName\" : \"bar\",\r\n    \"userEmail\" : \"foobar@yopmail.com\",\r\n    \"phoneNumber\" : 9999999999,\r\n    \"jobTitle\" : \"software developer\",\r\n    \"username\": \"foobar\",\r\n    \"roleName\": \"sales\",\r\n    \"officeName\": \"Corporate Office\",\r\n    \"teamName\": \"office team\",\r\n    \"countryCode\": \"+1\",\r\n    \"externalId\" : \"123xyz\"\r\n}";
+
+var requestOptions = {
+  method: 'PUT',
+  headers: myHeaders,
+  body: raw,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/users/1466", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+Example Response
+	•	Body
+	•	Headers (0)
+No response body
+This request doesn't return any response body
+POST
+Remove User
+https://app.repcard.com/api/users/1476/unlink
+HEADERS
+x-api-key
+foobar
+Body
+raw (json)
+json
+{
+    "assignContact":2,
+    "leadToUser": 1477,
+    "customerToUser": 1477,
+    "recruitToUser": 1477,
+    "otherToUser": 1477
+}
+Example Request
+
+
+Remove User
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var raw = "{\r\n    \"assignContact\":2,\r\n    \"leadToUser\": 1477,\r\n    \"customerToUser\": 1477,\r\n    \"recruitToUser\": 1477,\r\n    \"otherToUser\": 1477\r\n}";
+
+var requestOptions = {
+  method: 'POST',
+  headers: myHeaders,
+  body: raw,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/users/1476/unlink", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+Example Response
+	•	Body
+	•	Headers (0)
+No response body
+This request doesn't return any response body
+PUT
+Activate/Deactivate
+https://app.repcard.com/api/users/26682/activate-deactivate
+Activate/Deactivate User
+This endpoint allows you to activate or deactivate a user by updating their status.
+Request
+	•	Method: PUT
+	•	Endpoint: https://app.repcard.com/api/users/{userId}/activate-deactivate
+Path Parameters
+	•	userId (required): The unique identifier of the user you wish to activate or deactivate.
+Request Body
+The request body must be in JSON format and should contain the following parameter:
+	•	status (integer, required):
+	◦	A value of 1 to activate the user.
+	◦	A value of 0 to deactivate the user.
+Example Request Body:
+json
+{
+  "status": 1
+}
+Response
+The response will be in JSON format and will include the following fields:
+	•	status (integer): Indicates the success or failure of the request.
+	•	statusCode (integer): A code representing the status of the operation.
+	•	message (string): A message providing additional context about the request outcome.
+	•	result (object): An object that may contain additional data related to the request.
+Example Response
+json
+{
+  "status": 0,
+  "statusCode": 0,
+  "message": "",
+  "result": {}
+}
+Error Handling
+A response with a 400 status code indicates a bad request, which could be due to an invalid status value or other issues with the request.
+Ensure that the status parameter is correctly set to either 1 or 0 to avoid errors.
+HEADERS
+x-api-key
+foobar
+Body
+raw (json)
+json
+{
+    "status": 1
+}
+Example Request
+
+
+200
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var raw = "{\r\n    \"status\": 0\r\n}";
+
+var requestOptions = {
+  method: 'PUT',
+  headers: myHeaders,
+  body: raw,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/users/26682/activate-deactivate", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+200 OK
+Example Response
+	•	Body
+	•	Headers (15)
+json
+{
+  "status": 1,
+  "statusCode": 200,
+  "message": "The user has been de-activated successfully.",
+  "result": {}
+}
+
+
+
+
+
+
+
+GET
+Get Customer
+https://app.repcard.com/api/customers/25997808
+This endpoint makes an HTTP GET request to retrieve customer details by their ID. The response will include various details about the customer, such as their full name, email, phone number, address, user information, and additional attributes related to the customer and their interactions.
+HEADERS
+x-api-key
+foobar
+PARAMS
+withRelations
+user,notes
+withAttributes
+ShowSoloField
+Example Request
+
+
+200
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var requestOptions = {
+  method: 'GET',
+  headers: myHeaders,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/customers/25997808", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+200 OK
+Example Response
+	•	Body
+	•	Headers (17)
+View More
+json
+{
+  "data": {
+    "id": 25997808,
+    "fullName": "RepCard Demo",
+    "firstName": "RepCard",
+    "lastName": "Demo",
+    "name": "RepCard Demo",
+    "email": "",
+    "countryCode": "+1",
+    "isoCountryCode": "US",
+    "phoneNumber": "1234567890",
+    "companyName": "RepCard",
+    "statusId": 173325,
+    "statusTitle": null,
+    "address": "3820 E Main St #2",
+    "address2": null,
+    "state": "AZ",
+    "city": "Mesa",
+    "zip": null,
+    "latitude": "55.34",
+    "longitude": "34.22",
+    "externalId": null,
+    "type": 2,
+    "isReferral": 0,
+    "isReferrer": 0,
+    "userId": 26682,
+    "ownerId": 26682,
+    "houseId": null,
+    "enerfloCustomerId": null,
+    "createdAt": "2025-01-13T13:35:13.000000Z",
+    "hasSentAnyBusinessCard": false,
+    "referredBy": null,
+    "image": null,
+    "title": "Sales",
+    "experience": null,
+    "contactDistance": 25.91,
+    "companyId": 12,
+    "displayShortName": "RepCard D",
+    "typeDisplayName": "Customer",
+    "formattedPhoneNumber": "+1 1234567890",
+    "fullAddress": "3820 E Main St #2 Mesa AZ",
+    "doorKnocks": [],
+    "verifiedDoorKnocks": [],
+    "statusChangeLogs": [
+      {
+        "user": "Jitender Thakur",
+        "statusFrom": "",
+        "statusTo": "Deal Closed",
+        "createdAt": "2025-01-13T13:35:13.000000Z"
+      }
+    ],
+    "updatedAt": "2025-01-13T13:35:13.000000Z",
+    "notes": null,
+    "user": null,
+    "attachments": null,
+    "soloProposals": [],
+    "auroraProjectLinks": null,
+    "contactSource": "API",
+    "onboarding_amount": null,
+    "price_per_map_user": null,
+    "total_number_of_users": null,
+    "lead_priority": null
+  }
+}
+GET
+Get Single Customer Attachments
+https://app.repcard.com/api/customers/166701/attachments?per_page=50
+This endpoint retrieves a list of attachments for a specific customer with the ID 166701. The request includes a query parameter "per_page" to specify the number of attachments per page.
+The response includes information such as the current page, data array containing attachment details, pagination links, and total count of attachments.
+HEADERS
+x-api-key
+foobar
+PARAMS
+per_page
+50
+Example Request
+
+
+Get Customer's Attachments
+
+
+View More
+javascript
+var myHeaders = new Headers();
+myHeaders.append("x-api-key", "foobar");
+
+var requestOptions = {
+  method: 'GET',
+  headers: myHeaders,
+  redirect: 'follow'
+};
+
+fetch("https://app.repcard.com/api/customers/138454/attachments?per_page=250", requestOptions)
+  .then(response => response.text())
+  .then(result => console.log(result))
+  .catch(error => console.log('error', error));
+200 OK
+Example Response
+	•	Body
+	•	Headers (11)
+View More
+json
+{
+  "current_page": 1,
+  "data": [
+    {
+      "id": 2031,
+      "crmId": null,
+      "title": "IMG_3356.PNG",
+      "attachment": "o48hq16969397073278.PNG",
+      "attachmentInfo": {
+        "fileName": "IMG_3356.PNG.PNG"
+      },
+      "userId": 667,
+      "resourceId": 138454,
+      "createdAt": "2023-10-10T12:08:28.000000Z",
+      "updatedAt": "2023-10-10T12:08:28.000000Z",
+      "attachmentUrl": "https://s3-ap-southeast-2.amazonaws.com/repcard/attachments/o48hq16969397073278.PNG"
+    }
+  ],
+  "first_page_url": "https://qa.repcard.com/api/customers/138454/attachments?page=1",
+  "from": 1,
+  "last_page": 1,
+  "last_page_url": "https://qa.repcard.com/api/customers/138454/attachments?page=1",
+  "links": [
+    {
+      "url": null,
+      "label": "&laquo; Previous",
+      "active": false
+    },
+    {
+      "url": "https://qa.repcard.com/api/customers/138454/attachments?page=1",
+      "label": "1",
+      "active": true
+    },
+    {
+      "url": null,
+      "label": "Next &raquo;",
+      "active": false
+    }
+  ],
+  "next_page_url": null,
+  "path": "https://qa.repcard.com/api/customers/138454/attachments",
+  "per_page": 250,
+  "prev_page_url": null,
+  "to": 1,
+  "total": 1
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

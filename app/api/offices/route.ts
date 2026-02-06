@@ -2,20 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { offices } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
 import { logActivity } from "@/lib/db/helpers/activity-log-helpers";
+import { getAccessibleOfficeIds } from "@/lib/auth/visibility-rules";
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, user) => {
   try {
     const { searchParams } = new URL(req.url);
     const activeOnly = searchParams.get("active") === "true";
+    const scoped = searchParams.get("scoped") === "true";
 
-    let query = db.select().from(offices);
+    const conditions: any[] = [];
 
     if (activeOnly) {
-      query = query.where(eq(offices.isActive, true)) as any;
+      conditions.push(eq(offices.isActive, true));
+    }
+
+    if (scoped) {
+      const accessibleIds = await getAccessibleOfficeIds(user);
+      if (accessibleIds !== null) {
+        if (accessibleIds.length === 0) {
+          return NextResponse.json([]);
+        }
+        conditions.push(inArray(offices.id, accessibleIds));
+      }
+    }
+
+    let query = db.select().from(offices);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
     }
 
     const officesList = await query;
@@ -33,6 +50,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 const createOfficeSchema = z.object({
   name: z.string().min(1).max(100),
   region: z.string().optional(),
+  regionId: z.string().uuid().nullable().optional(),
   division: z.string().optional(),
   address: z.string().optional(),
   isActive: z.boolean().optional().default(true),
@@ -48,6 +66,7 @@ export const POST = withPermission(Permission.MANAGE_ALL_OFFICES, async (req, us
       .values({
         name: validated.name,
         region: validated.region || null,
+        regionId: validated.regionId || null,
         division: validated.division || null,
         address: validated.address || null,
         isActive: validated.isActive ?? true,

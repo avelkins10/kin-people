@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserPlus, Edit2, Shield, Mail, MapPin } from "lucide-react";
+import { UserPlus, Edit2, Shield, Mail, MapPin, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -261,6 +261,28 @@ export function SettingsUsersSection({
     }
   };
 
+  const handleResendInvite = async (person: PersonListItem) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/people/${person.id}/resend-invite`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Failed to send invite");
+      }
+      toast({ title: "Invite sent", description: `Invite email sent to ${person.email}` });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to send invite",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const officeLookup = new Map(offices.map((o) => [o.id, o.name]));
 
   return (
@@ -301,6 +323,17 @@ export function SettingsUsersSection({
               }
               actions={
                 <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleResendInvite(person)}
+                    disabled={saving}
+                    aria-label={`Resend invite to ${person.name}`}
+                    title="Resend invite"
+                  >
+                    <Send className="w-3 h-3 text-blue-600" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

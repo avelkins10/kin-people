@@ -4,24 +4,7 @@
  */
 
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
-
-/**
- * Create Supabase admin client using service role key.
- * Required for document storage operations; bypasses RLS.
- */
-function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRoleKey) {
-    throw new Error(
-      "Supabase admin client requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
-    );
-  }
-
-  return createClient(url, serviceRoleKey);
-}
+import { createAdminClient } from "./admin";
 
 /**
  * Upload a document buffer to Supabase Storage.

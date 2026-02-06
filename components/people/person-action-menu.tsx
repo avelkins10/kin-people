@@ -15,13 +15,23 @@ import { ChangeManagerModal } from "./modals/change-manager-modal";
 import { ChangePayPlanModal } from "./modals/change-pay-plan-modal";
 import { AddToTeamModal } from "./modals/add-to-team-modal";
 import { TerminateModal } from "./modals/terminate-modal";
+import { RemovePersonModal } from "./modals/remove-person-modal";
+import { CreateRepcardAccountModal } from "./modals/create-repcard-account-modal";
+import { DeactivateRepcardModal } from "./modals/deactivate-repcard-modal";
+import { useRepcardAccount, useSyncRepcardAccount } from "@/hooks/use-repcard-data";
+import { useResendInvite } from "@/hooks/use-people-data";
 
 interface PersonActionMenuProps {
   personId: string;
+  personName?: string;
 }
 
-export function PersonActionMenu({ personId }: PersonActionMenuProps) {
+export function PersonActionMenu({ personId, personName = "this person" }: PersonActionMenuProps) {
   const [openModal, setOpenModal] = useState<string | null>(null);
+  const { data: repcardData } = useRepcardAccount(personId);
+  const syncMutation = useSyncRepcardAccount();
+  const resendInvite = useResendInvite();
+  const repcardAccount = repcardData?.account ?? null;
 
   return (
     <>
@@ -47,11 +57,38 @@ export function PersonActionMenu({ personId }: PersonActionMenuProps) {
           <DropdownMenuItem onClick={() => setOpenModal("team")}>
             Add to Team
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => resendInvite.mutate(personId)}>
+            Resend Invite
+          </DropdownMenuItem>
+          {!repcardAccount && (
+            <DropdownMenuItem onClick={() => setOpenModal("create-repcard")}>
+              Create RepCard Account
+            </DropdownMenuItem>
+          )}
+          {repcardAccount?.status === "active" && (
+            <DropdownMenuItem onClick={() => syncMutation.mutate(personId)}>
+              Sync RepCard Account
+            </DropdownMenuItem>
+          )}
+          {repcardAccount?.status === "active" && (
+            <DropdownMenuItem
+              onClick={() => setOpenModal("deactivate-repcard")}
+              className="text-red-600"
+            >
+              Deactivate RepCard Account
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => setOpenModal("terminate")}
             className="text-red-600"
           >
             Terminate
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setOpenModal("remove")}
+            className="text-red-600"
+          >
+            Remove person
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -93,6 +130,28 @@ export function PersonActionMenu({ personId }: PersonActionMenuProps) {
       )}
       {openModal === "terminate" && (
         <TerminateModal
+          personId={personId}
+          open={true}
+          onClose={() => setOpenModal(null)}
+        />
+      )}
+      {openModal === "remove" && (
+        <RemovePersonModal
+          personId={personId}
+          personName={personName}
+          open={true}
+          onClose={() => setOpenModal(null)}
+        />
+      )}
+      {openModal === "create-repcard" && (
+        <CreateRepcardAccountModal
+          personId={personId}
+          open={true}
+          onClose={() => setOpenModal(null)}
+        />
+      )}
+      {openModal === "deactivate-repcard" && (
+        <DeactivateRepcardModal
           personId={personId}
           open={true}
           onClose={() => setOpenModal(null)}

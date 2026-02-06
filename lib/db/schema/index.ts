@@ -16,6 +16,7 @@
 
 // Configuration tables
 export * from './roles';
+export * from './divisions';
 export * from './regions';
 export * from './offices';
 export * from './office-leadership';
@@ -50,12 +51,20 @@ export * from './deals';
 export * from './commissions';
 export * from './commission-history';
 
+// Integration tables
+export * from './repcard-accounts';
+export * from './repcard-office-mappings';
+export * from './repcard-role-mappings';
+export * from './repcard-region-mappings';
+export * from './repcard-permissions';
+
 // Audit tables
 export * from './activity-log';
 export * from './app-settings';
 
 // Export schema object for Drizzle migrations
 import { roles } from './roles';
+import { divisions } from './divisions';
 import { regions } from './regions';
 import { offices } from './offices';
 import { officeLeadership } from './office-leadership';
@@ -78,12 +87,18 @@ import { documentTemplates } from './document-templates';
 import { deals } from './deals';
 import { commissions } from './commissions';
 import { commissionHistory } from './commission-history';
+import { repcardAccounts } from './repcard-accounts';
+import { repcardOfficeMappings } from './repcard-office-mappings';
+import { repcardRoleMappings } from './repcard-role-mappings';
+import { repcardRegionMappings } from './repcard-region-mappings';
+import { repcardPermissions } from './repcard-permissions';
 import { activityLog } from './activity-log';
 import { appSettings } from './app-settings';
 import { kinIdSequence } from './kin-id-sequence';
 
 export const schema = {
   roles,
+  divisions,
   regions,
   offices,
   officeLeadership,
@@ -106,6 +121,11 @@ export const schema = {
   deals,
   commissions,
   commissionHistory,
+  repcardAccounts,
+  repcardOfficeMappings,
+  repcardRoleMappings,
+  repcardRegionMappings,
+  repcardPermissions,
   activityLog,
   appSettings,
   kinIdSequence,

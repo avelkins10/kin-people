@@ -6,8 +6,7 @@ import { useSettingsData } from "@/hooks/use-settings-data";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { SettingsOverview } from "@/components/settings/settings-overview";
 import { SettingsRolesSection } from "@/components/settings/SettingsRolesSection";
-import { SettingsOfficesSection } from "@/components/settings/SettingsOfficesSection";
-import { SettingsTeamsSection } from "@/components/settings/SettingsTeamsSection";
+import { SettingsOrgStructureSection } from "@/components/settings/SettingsOrgStructureSection";
 import { SettingsPayPlansSection } from "@/components/settings/SettingsPayPlansSection";
 import { SettingsCommissionRulesSection } from "@/components/settings/SettingsCommissionRulesSection";
 import { SettingsDocumentTemplatesSection } from "@/components/settings/SettingsDocumentTemplatesSection";
@@ -28,8 +27,7 @@ import {
   LayoutDashboard,
   Users,
   Shield,
-  MapPin,
-  UsersRound,
+  Network,
   FileText,
   DollarSign,
   Percent,
@@ -44,8 +42,7 @@ const TAB_VALUES = [
   "overview",
   "users",
   "roles",
-  "offices",
-  "teams",
+  "org-structure",
   "documents",
   "pay-plans",
   "commission-rules",
@@ -58,7 +55,6 @@ type TabValue = (typeof TAB_VALUES)[number];
 
 // Tab groupings for the navigation
 const PEOPLE_TABS: TabValue[] = ["users", "roles"];
-const STRUCTURE_TABS: TabValue[] = ["offices", "teams"];
 const COMPENSATION_TABS: TabValue[] = ["pay-plans", "commission-rules"];
 const SYSTEM_TABS: TabValue[] = ["history", "integrations"];
 
@@ -66,8 +62,7 @@ const TAB_CONFIG: Record<TabValue, { label: string; icon: typeof LayoutDashboard
   overview: { label: "Overview", icon: LayoutDashboard },
   users: { label: "Users", icon: Users },
   roles: { label: "Roles", icon: Shield },
-  offices: { label: "Offices", icon: MapPin },
-  teams: { label: "Teams", icon: UsersRound },
+  "org-structure": { label: "Org Structure", icon: Network },
   documents: { label: "Documents", icon: FileText },
   "pay-plans": { label: "Pay Plans", icon: DollarSign },
   "commission-rules": { label: "Commission", icon: Percent },
@@ -203,8 +198,11 @@ export function SettingsPage() {
   }
 
   const roles = Array.isArray(data.roles) ? data.roles : [];
+  const divisions = Array.isArray(data.divisions) ? data.divisions : [];
+  const regions = Array.isArray(data.regions) ? data.regions : [];
   const offices = Array.isArray(data.offices) ? data.offices : [];
   const teams = Array.isArray(data.teams) ? data.teams : [];
+  const leadership = Array.isArray(data.leadership) ? data.leadership : [];
   const payPlans = Array.isArray(data.payPlans) ? data.payPlans : [];
   const commissionRules = Array.isArray(data.commissionRules) ? data.commissionRules : [];
   const documentTemplates = Array.isArray(data.documentTemplates) ? data.documentTemplates : [];
@@ -266,13 +264,7 @@ export function SettingsPage() {
 
             <NavDivider />
 
-            <TabDropdown
-              label="Structure"
-              icon={MapPin}
-              tabs={STRUCTURE_TABS}
-              activeTab={activeTab}
-              onClick={handleTabChange}
-            />
+            <TabButton value="org-structure" activeTab={activeTab} onClick={handleTabChange} />
 
             <NavDivider />
 
@@ -339,26 +331,18 @@ export function SettingsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="offices" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
-            <div className="max-w-2xl">
-              <SettingsOfficesSection
-                offices={offices}
-                people={people}
-                loading={loading}
-                onRefetch={refetch}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="teams" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
-            <div className="max-w-2xl">
-              <SettingsTeamsSection
-                teams={teams}
-                offices={offices}
-                loading={loading}
-                onRefetch={refetch}
-              />
-            </div>
+          <TabsContent value="org-structure" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">
+            <SettingsOrgStructureSection
+              divisions={divisions}
+              regions={regions}
+              offices={offices}
+              teams={teams}
+              leadership={leadership}
+              people={people}
+              roles={roles}
+              loading={loading}
+              onRefetch={refetch}
+            />
           </TabsContent>
 
           <TabsContent value="documents" className="mt-0 focus-visible:outline-none animate-in fade-in-0 duration-200">

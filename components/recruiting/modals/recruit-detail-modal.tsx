@@ -150,8 +150,8 @@ export function RecruitDetailModal({
   const fetchEditOptions = useCallback(async () => {
     try {
       const [officesRes, teamsRes, managersRes, rolesRes, payPlansRes] = await Promise.all([
-        fetch("/api/offices?active=true"),
-        fetch("/api/teams?active=true"),
+        fetch("/api/offices?active=true&scoped=true"),
+        fetch("/api/teams?active=true&scoped=true"),
         fetch("/api/people?roleLevel=manager"),
         fetch("/api/roles?active=true"),
         fetch("/api/pay-plans?active=true"),

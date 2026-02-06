@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/MetricCard";
 import { HiringVelocitySparkline } from "@/components/HiringVelocitySparkline";
@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   CheckCircle,
   ChevronRight,
+  ChevronDown,
   Loader2,
 } from "lucide-react";
 import { useModals } from "@/components/ModalsContext";
@@ -28,15 +29,6 @@ const PIPELINE_STAGE_CONFIG: { key: string; name: string; color: string }[] = [
   { key: "onboarding", name: "Onboarding", color: "bg-amber-500" },
 ];
 
-interface DashboardStats {
-  totalPeople: number;
-  activeRecruits: number;
-  pendingCommissions: number;
-  recentDealsCount: number;
-  pipelineStageCounts: Record<string, number>;
-  onboardingCount: number;
-}
-
 interface OnboardingPerson {
   id: string;
   name: string;
@@ -47,11 +39,17 @@ interface OnboardingPerson {
 
 export function OverviewPage() {
   const { openAddRecruit, navigateTo } = useModals();
+  const [managementExpanded, setManagementExpanded] = useState(false);
 
   // Use React Query hooks - these run in parallel and cache results
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
   const { data: onboardingData, isLoading: onboardingLoading } = useOnboardingPeople();
   const { data: recruitingStats, isLoading: recruitingLoading } = useRecruitingStats();
+
+  const personal = stats?.personal;
+  const team = stats?.team;
+  // Use team stats for pipeline/onboarding when available, otherwise personal
+  const displayStats = team ?? personal;
 
   // Process onboarding people data
   const onboardingPeople = useMemo(() => {
@@ -79,14 +77,15 @@ export function OverviewPage() {
   const loading = statsLoading;
   const error = statsError ? (statsError as Error).message : null;
 
+  const pipelineCounts = displayStats?.pipelineStageCounts;
   const pipelineStages = PIPELINE_STAGE_CONFIG.map((cfg) => {
     let count = 0;
-    if (cfg.key === "agreement" && stats?.pipelineStageCounts) {
+    if (cfg.key === "agreement" && pipelineCounts) {
       count =
-        (stats.pipelineStageCounts["agreement_sent"] ?? 0) +
-        (stats.pipelineStageCounts["agreement_signed"] ?? 0);
+        (pipelineCounts["agreement_sent"] ?? 0) +
+        (pipelineCounts["agreement_signed"] ?? 0);
     } else {
-      count = stats?.pipelineStageCounts?.[cfg.key] ?? 0;
+      count = pipelineCounts?.[cfg.key] ?? 0;
     }
     return { ...cfg, count };
   });
@@ -152,35 +151,103 @@ export function OverviewPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 shrink-0">
-        <MetricCard
-          label="Active Recruits"
-          value={stats?.activeRecruits ?? "—"}
-          icon={UserPlus}
-          trend="In pipeline"
-          trendUp={true}
-        />
-        <MetricCard
-          label="Conversion Rate"
-          value="—"
-          icon={TrendingUp}
-          trend="Lead → Hired"
-          trendUp={true}
-        />
-        <MetricCard
-          label="In Onboarding"
-          value={stats?.onboardingCount ?? "—"}
-          icon={GraduationCap}
-          trend="People"
-          trendUp={true}
-        />
-        <MetricCard
-          label="Avg Time to Hire"
-          value="—"
-          icon={Clock}
-          trend="—"
-          trendUp={true}
-        />
+      <div className="mb-8 space-y-6 shrink-0">
+        <div>
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+            Your Stats
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              label="Your Recruits"
+              value={personal?.activeRecruits ?? "—"}
+              icon={UserPlus}
+              trend="In pipeline"
+              trendUp={true}
+            />
+            <div className="relative">
+              <MetricCard
+                label="Your Deals (30d)"
+                value={personal?.recentDealsCount ?? "—"}
+                icon={TrendingUp}
+                trend="Setter or closer"
+                trendUp={true}
+              />
+              <div className="absolute inset-0 bg-black/60 rounded-sm flex items-center justify-center">
+                <span className="text-xs font-bold text-white uppercase tracking-wide">Coming Soon</span>
+              </div>
+            </div>
+            <MetricCard
+              label="Your Onboarding"
+              value={personal?.onboardingCount ?? "—"}
+              icon={GraduationCap}
+              trend="People you recruited"
+              trendUp={true}
+            />
+            <div className="relative">
+              <MetricCard
+                label="Pending Commissions"
+                value={personal?.pendingCommissions ? `$${personal.pendingCommissions.toLocaleString()}` : "—"}
+                icon={Clock}
+                trend="Awaiting payout"
+                trendUp={true}
+              />
+              <div className="absolute inset-0 bg-black/60 rounded-sm flex items-center justify-center">
+                <span className="text-xs font-bold text-white uppercase tracking-wide">Coming Soon</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {team && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setManagementExpanded((prev) => !prev)}
+              className="flex items-center gap-1.5 mb-3 group cursor-pointer"
+            >
+              {managementExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />
+              )}
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-600 transition-colors">
+                My Management
+              </h2>
+            </button>
+            {managementExpanded && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  label="Total People"
+                  value={team.totalPeople ?? "—"}
+                  icon={Users}
+                  trend="In scope"
+                  trendUp={true}
+                />
+                <MetricCard
+                  label="Active Recruits"
+                  value={team.activeRecruits ?? "—"}
+                  icon={UserPlus}
+                  trend="In pipeline"
+                  trendUp={true}
+                />
+                <MetricCard
+                  label="In Onboarding"
+                  value={team.onboardingCount ?? "—"}
+                  icon={GraduationCap}
+                  trend="People"
+                  trendUp={true}
+                />
+                <MetricCard
+                  label="Deals (30d)"
+                  value={team.recentDealsCount ?? "—"}
+                  icon={TrendingUp}
+                  trend="Team total"
+                  trendUp={true}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -299,7 +366,7 @@ export function OverviewPage() {
             <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-3 gap-4 text-center">
               <div>
                 <span className="text-xl font-extrabold text-black">
-                  {stats?.onboardingCount ?? 0}
+                  {displayStats?.onboardingCount ?? 0}
                 </span>
                 <span className="text-[10px] font-bold text-gray-400 uppercase block">
                   In Onboarding
@@ -307,15 +374,15 @@ export function OverviewPage() {
               </div>
               <div>
                 <span className="text-xl font-extrabold text-black">
-                  {stats?.totalPeople ?? 0}
+                  {displayStats?.totalPeople ?? 0}
                 </span>
                 <span className="text-[10px] font-bold text-gray-400 uppercase block">
-                  Total Team
+                  {team ? "Total Team" : "Your Recruits"}
                 </span>
               </div>
               <div>
                 <span className="text-xl font-extrabold text-green-600">
-                  {stats?.recentDealsCount ?? 0}
+                  {displayStats?.recentDealsCount ?? 0}
                 </span>
                 <span className="text-[10px] font-bold text-gray-400 uppercase block">
                   Deals (30d)

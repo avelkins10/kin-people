@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Building2 } from "lucide-react";
+import { User, Building2, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SettingsShellProps {
@@ -44,6 +44,20 @@ export function SettingsShell({ hasAdminAccess, children }: SettingsShellProps) 
           >
             <Building2 className="w-4 h-4" />
             Organization
+          </Link>
+        )}
+        {hasAdminAccess && (
+          <Link
+            href="/settings/integrations/repcard"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium transition-colors",
+              pathname?.startsWith("/settings/integrations")
+                ? "bg-gray-100 text-black"
+                : "text-gray-600 hover:text-black hover:bg-gray-50"
+            )}
+          >
+            <Plug className="w-4 h-4" />
+            Integrations
           </Link>
         )}
       </nav>

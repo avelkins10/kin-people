@@ -24,11 +24,9 @@ export default async function DashboardLayout({
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow border border-gray-100 max-w-md text-center">
-          <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center mx-auto mb-6">
-            <span className="text-white font-bold text-2xl">K</span>
-          </div>
+          <img src="/kinnect-logo.png" alt="KINNECT" className="w-16 h-16 mx-auto mb-6" />
           <h1 className="text-2xl font-extrabold tracking-tight text-black mb-2">
-            Welcome to Kin People
+            Welcome to KINNECT
           </h1>
           <p className="text-gray-500 mb-6">
             Your account has been created, but you need to be added to the system

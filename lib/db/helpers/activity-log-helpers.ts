@@ -2,9 +2,9 @@ import { db } from "@/lib/db";
 import { activityLog } from "@/lib/db/schema";
 
 export interface LogActivityParams {
-  entityType: "office" | "role" | "team" | "pay_plan" | "commission_rule" | "document_template";
+  entityType: "division" | "region" | "office" | "role" | "team" | "pay_plan" | "commission_rule" | "document_template" | "repcard_account";
   entityId: string;
-  action: "created" | "updated" | "deleted";
+  action: "created" | "updated" | "deleted" | "synced" | "deactivated" | "linked" | "sync_failed";
   details?: Record<string, unknown>;
   actorId?: string | null;
 }

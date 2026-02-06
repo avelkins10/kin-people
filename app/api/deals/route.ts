@@ -5,7 +5,7 @@ import { deals, people, offices } from "@/lib/db/schema";
 import { eq, and, or, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/route-protection";
 import { Permission } from "@/lib/permissions/types";
-import { getDealVisibilityFilterAsync } from "@/lib/auth/visibility-rules";
+import { getDealVisibilityFilterAsync, getAccessibleOfficeIds } from "@/lib/auth/visibility-rules";
 import { calculateCommissionsForDeal } from "@/lib/services/commission-calculator";
 
 const createDealSchema = z.object({
@@ -165,6 +165,17 @@ export const POST = withPermission(Permission.CREATE_DEALS, async (req: NextRequ
   try {
     const body = await req.json();
     const validated = createDealSchema.parse(body);
+
+    // Validate officeId is within user's accessible scope
+    if (validated.officeId) {
+      const accessibleIds = await getAccessibleOfficeIds(user);
+      if (accessibleIds !== null && !accessibleIds.includes(validated.officeId)) {
+        return NextResponse.json(
+          { error: "You do not have permission to create deals for this office" },
+          { status: 403 }
+        );
+      }
+    }
 
     // Calculate isSelfGen
     const isSelfGen = validated.setterId === validated.closerId;
