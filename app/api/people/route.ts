@@ -166,7 +166,7 @@ export const POST = withPermission(Permission.VIEW_ALL_PEOPLE, async (req: NextR
       const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
       const { data: inviteData, error: inviteError } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(validated.email, {
-          redirectTo: `${origin}/confirm`,
+          redirectTo: `${origin}/auth/callback?next=/set-password`,
         });
 
       if (inviteError) {
