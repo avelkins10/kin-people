@@ -1,7 +1,6 @@
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { DashboardShell } from "@/components/dashboard-shell";
 
 export default async function DashboardLayout({
@@ -36,12 +35,14 @@ export default async function DashboardLayout({
             Signed in as:{" "}
             <span className="font-medium text-gray-600">{authUser.email}</span>
           </p>
-          <Link
-            href="/api/auth/logout"
-            className="inline-flex items-center justify-center px-6 py-3 bg-black text-white rounded-sm text-sm font-bold hover:bg-gray-800 transition-colors"
-          >
-            Sign Out
-          </Link>
+          <form action="/api/auth/logout" method="POST">
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center px-6 py-3 bg-black text-white rounded-sm text-sm font-bold hover:bg-gray-800 transition-colors"
+            >
+              Sign Out
+            </button>
+          </form>
         </div>
       </div>
     );

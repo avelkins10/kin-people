@@ -223,15 +223,17 @@ export function Sidebar({
             )}
           </Link>
         </PermissionGuard>
-        <Link
-          href="/api/auth/logout"
-          className="w-full flex items-center px-4 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors mt-1"
-        >
-          <LogOut className={`w-5 h-5 ${isOpen ? "mr-3" : "mx-auto"}`} />
-          {isOpen && (
-            <span className="font-bold tracking-tight text-xs">Logout</span>
-          )}
-        </Link>
+        <form action="/api/auth/logout" method="POST" className="w-full mt-1">
+          <button
+            type="submit"
+            className="w-full flex items-center px-4 py-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
+          >
+            <LogOut className={`w-5 h-5 ${isOpen ? "mr-3" : "mx-auto"}`} />
+            {isOpen && (
+              <span className="font-bold tracking-tight text-xs">Logout</span>
+            )}
+          </button>
+        </form>
       </div>
     </aside>);
 
