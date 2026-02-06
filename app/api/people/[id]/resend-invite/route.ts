@@ -25,7 +25,7 @@ export async function POST(
 
       const supabaseAdmin = createAdminClient();
       const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
-      const redirectTo = `${origin}/auth/callback?next=/set-password`;
+      const redirectTo = `${origin}/auth-callback?next=/set-password`;
 
       // Try sending a fresh invite first
       const { data: inviteData, error: inviteError } =
@@ -38,7 +38,7 @@ export async function POST(
         if (inviteError.message?.includes("already been registered")) {
           const { error: resetError } =
             await supabaseAdmin.auth.resetPasswordForEmail(person.email, {
-              redirectTo: `${origin}/auth/callback?next=/set-password`,
+              redirectTo: `${origin}/auth-callback?next=/set-password`,
             });
 
           if (resetError) {
