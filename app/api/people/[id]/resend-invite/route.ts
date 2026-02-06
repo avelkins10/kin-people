@@ -25,12 +25,32 @@ export async function POST(
 
       const supabaseAdmin = createAdminClient();
       const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/$/, "") || "";
+      const redirectTo = `${origin}/confirm`;
+
+      // Try sending a fresh invite first
       const { data: inviteData, error: inviteError } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(person.email, {
-          redirectTo: `${origin}/confirm`,
+          redirectTo,
         });
 
       if (inviteError) {
+        // User already exists in Supabase auth — send a password reset link instead
+        if (inviteError.message?.includes("already been registered")) {
+          const { error: resetError } =
+            await supabaseAdmin.auth.resetPasswordForEmail(person.email, {
+              redirectTo: `${origin}/confirm`,
+            });
+
+          if (resetError) {
+            return NextResponse.json(
+              { error: `Failed to send reset email: ${resetError.message}` },
+              { status: 500 }
+            );
+          }
+
+          return NextResponse.json({ message: "Password setup email sent successfully" });
+        }
+
         return NextResponse.json(
           { error: `Failed to send invite: ${inviteError.message}` },
           { status: 500 }

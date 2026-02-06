@@ -29,6 +29,8 @@ function ConfirmContent() {
     const supabase = createClient();
 
     const isInvite = type === "invite";
+    const isRecovery = type === "recovery";
+    const needsPasswordSetup = isInvite || isRecovery;
 
     async function verifyAndSync() {
       // Establish session from URL before getUser(): hash (implicit) or code (PKCE)
@@ -78,6 +80,20 @@ function ConfirmContent() {
         }
       }
 
+      // Handle recovery (password reset) token verification
+      if (tokenHash && isRecovery) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+
+        if (verifyError) {
+          setError(verifyError.message);
+          setStatus("error");
+          return;
+        }
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -97,8 +113,15 @@ function ConfirmContent() {
         }),
       });
 
-      // Invite users need to set their password; signup users go straight to dashboard
-      const destination = isInvite ? "/set-password" : "/dashboard";
+      // Invite & recovery users need to set their password; others go to dashboard
+      // For PKCE code flow (no type param), check if user has never signed in
+      let destination = "/dashboard";
+      if (needsPasswordSetup) {
+        destination = "/set-password";
+      } else if (code && !type && user && !user.last_sign_in_at) {
+        // PKCE flow without type — user has never signed in, likely needs password
+        destination = "/set-password";
+      }
       setRedirectTarget(destination);
       setStatus("success");
 
